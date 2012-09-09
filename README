@@ -14,6 +14,16 @@ Stagefright Plugins for Android
 6. FFmpegExtractor is the reference to "ffmpeg/ffplay" to achieve. 
 
 ================================================================================
+Why is named nam?
+================================================================================
+
+Namtso, or Lake Nam, is one of the three holy lakes in Tibet Autonomous Region
+and should not be missed by any traveler to Tibet. In Tibetan, Namtso means
+"Heavenly Lake." It is famous for its high altitude and imposing scenery.
+
+I used to travel there in 2011 Sep.
+
+================================================================================
 Requirements
 ================================================================================
 
@@ -39,5 +49,5 @@ http://www.libsdl.org/tmp
 ================================================================================
 
 If you need help with the library, or just want to discuss nam related issues, 
-you can contact me: Michael Chen (omxcodec@gmail.com),
+you can contact me: Michael Chen (omxcodec@gmail.com)
 
