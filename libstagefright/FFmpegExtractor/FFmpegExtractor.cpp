@@ -36,12 +36,13 @@
 
 #include "include/avc_utils.h"
 #include "ffmpeg_utils/ffmpeg_utils.h"
-#include "include/FFmpegExtractor.h"
+#include "FFmpegExtractor.h"
 
 #define DEBUG_READ_ENTRY 0
 #define DIABLE_VIDEO     0
 #define DIABLE_AUDIO     0
 #define WAIT_KEY_PACKET_AFTER_SEEK 1
+#define DISABLE_NAL_TO_ANNEXB 0
 
 #define MAX_QUEUE_SIZE (15 * 1024 * 1024)
 #define MIN_AUDIOQ_SIZE (20 * 16 * 1024)
@@ -891,7 +892,7 @@ int FFmpegExtractor::initFFmpeg()
 
     setFFmpegDefaultOpts();
  
-    nam_av_log_set_flags(AV_LOG_SKIP_REPEATED);
+    //nam_av_log_set_flags(AV_LOG_SKIP_REPEATED);
     av_log_set_level(AV_LOG_DEBUG);
     av_log_set_callback(nam_av_log_callback);
 
@@ -1380,7 +1381,9 @@ retry:
     MediaBuffer *mediaBuffer = new MediaBuffer(pkt.size + FF_INPUT_BUFFER_PADDING_SIZE);
     mediaBuffer->meta_data()->clear();
     mediaBuffer->set_range(0, pkt.size);
-
+#if DISABLE_NAL_TO_ANNEXB
+    mNal2AnnexB = false;
+#endif
     if (mIsAVC && mNal2AnnexB) {
         /* Convert H.264 NAL format to annex b */
         if (mNALLengthSize >= 3 && mNALLengthSize <= 4 )

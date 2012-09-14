@@ -25,7 +25,7 @@
 #include <media/stagefright/MetaData.h>
 #include <utils/String8.h>
 
-#include "include/FFmpegExtractor.h"
+#include "FFmpegExtractor/FFmpegExtractor.h"
 #undef strcasecmp
 #include <strings.h>
 
