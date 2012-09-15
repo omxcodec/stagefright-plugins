@@ -472,8 +472,8 @@ int FFmpegExtractor::stream_component_open(int stream_index)
     case CODEC_ID_H263I:
     case CODEC_ID_AAC:
     case CODEC_ID_MP3:
-#if 0
     case CODEC_ID_MPEG2VIDEO:
+#if 0
     case CODEC_ID_VC1:
 #endif
         supported = true;
@@ -594,7 +594,12 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         case CODEC_ID_MPEG2VIDEO:
             LOGV("MPEG2VIDEO");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_MPEG2);
-            meta->setData(kKeyESDS, kTypeESDS, avctx->extradata, avctx->extradata_size);
+            {
+                sp<ABuffer> csd = new ABuffer(avctx->extradata_size);
+                memcpy(csd->data(), avctx->extradata, avctx->extradata_size);
+                sp<ABuffer> esds = MakeMPEGVideoESDS(csd);
+                meta->setData(kKeyESDS, kTypeESDS, esds->data(), esds->size());
+            }
             break;
         case CODEC_ID_VC1:
             LOGV("VC1");
