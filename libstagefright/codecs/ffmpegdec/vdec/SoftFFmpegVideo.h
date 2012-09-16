@@ -100,7 +100,6 @@ private:
     };
 
     AVCodecContext *mCtx;
-    AVCodec *mCodec;
     struct SwsContext *mImgConvertCtx;
 
     bool mExtradataReady;

@@ -306,13 +306,12 @@ status_t SoftFFmpegVideo::initDecoder() {
 }
 
 void SoftFFmpegVideo::deInitDecoder() {
-    if (mCodec) {
-        mCodec = NULL;
-    }
-
     if (mCtx) {
-        if (!mCtx->extradata)
+        if (!mCtx->extradata) {
             av_free(mCtx->extradata);
+            mCtx->extradata = NULL;
+            mCtx->extradata_size = 0;
+        }
         avcodec_close(mCtx);
         av_free(mCtx);
         mCtx = NULL;
