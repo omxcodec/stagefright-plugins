@@ -659,6 +659,11 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
 }
 
 void SoftFFmpegVideo::onPortFlushCompleted(OMX_U32 portIndex) {
+    if (portIndex == 0 && mCtx) {
+        // Make sure that the next buffer output does not still
+        // depend on fragments from the last one decoded.
+        avcodec_flush_buffers(mCtx);
+    }
 }
 
 void SoftFFmpegVideo::onPortEnableCompleted(OMX_U32 portIndex, bool enabled) {
