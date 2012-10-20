@@ -1,0 +1,4 @@
+#!/system/bin/sh
+
+setprop sys.media.vdec.sw 1
+
