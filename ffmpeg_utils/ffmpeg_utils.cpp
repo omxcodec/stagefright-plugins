@@ -49,8 +49,6 @@ extern "C" {
 #include "libavcodec/avfft.h"
 #include "libswresample/swresample.h"
 
-#include "cmdutils.h"
-
 #undef strncpy
 #include <string.h>
 
@@ -58,6 +56,9 @@ extern "C" {
 }
 #endif
 
+//////////////////////////////////////////////////////////////////////////////////
+// log
+//////////////////////////////////////////////////////////////////////////////////
 static int flags;
 
 namespace android {
@@ -158,5 +159,28 @@ const struct { const char *name; int level; } log_levels[] = {
 #define AV_LOG_DEBUG    48
 
 #endif
+
+//////////////////////////////////////////////////////////////////////////////////
+// dummy
+//////////////////////////////////////////////////////////////////////////////////
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "cmdutils.h"
+
+void av_noreturn exit_program(int ret)
+{
+    // do nothing
+}
+
+const char program_name[] = "dummy";
+const int program_birth_year = 2012;
+
+#ifdef __cplusplus
+}
+#endif
+
+
 }  // namespace android
 

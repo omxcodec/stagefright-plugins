@@ -1057,8 +1057,10 @@ void FFmpegExtractor::stopReaderThread() {
     LOGV("Stopping reader thread");
     Mutex::Autolock autoLock(mLock);
 
-    if (!mReaderThreadStarted)
+    if (!mReaderThreadStarted) {
+        LOGD("Reader thread have been stopped");
         return;
+    }
 
     mAbortRequest = 1;
 
@@ -1179,10 +1181,12 @@ void FFmpegExtractor::readerEntry() {
         mProbePkts++;
         if (ret < 0) {
             if (ret == AVERROR_EOF || url_feof(mFormatCtx->pb))
-                if (ret == AVERROR_EOF)
-                    LOGV("ret == AVERROR_EOF");
-                if (url_feof(mFormatCtx->pb))
+                if (ret == AVERROR_EOF) {
+                    //LOGV("ret == AVERROR_EOF");
+		}
+                if (url_feof(mFormatCtx->pb)) {
                     LOGV("url_feof(mFormatCtx->pb)");
+		}
 
                 eof = 1;
                 mEOF = true;

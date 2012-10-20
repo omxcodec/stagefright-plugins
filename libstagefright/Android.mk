@@ -18,6 +18,9 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
+FFMPEG_SRC_DIR   := $(TOP)/external/ffmpeg
+FFMPEG_BUILD_DIR := $(PRODUCT_OUT)/obj/ffmpeg
+
 LOCAL_SRC_FILES := \
         NamExtractor.cpp
 
@@ -28,10 +31,13 @@ LOCAL_C_INCLUDES := \
         $(TOP)/frameworks/base/media/libstagefright
 
 LOCAL_C_INCLUDES += \
-        $(TOP)/nam                      \
-        $(TOP)/nam/ffmpeg               \
-        $(TOP)/nam/libstagefright       \
-        $(TOP)/nam/SDL-1.3/android-project/jni/SDL/include
+	$(TOP)/external/sdl/include \
+        $(TOP)/external/stagefright-plugins \
+        $(TOP)/external/stagefright-plugins/libstagefright \
+
+LOCAL_C_INCLUDES += \
+	$(FFMPEG_SRC_DIR) \
+	$(FFMPEG_BUILD_DIR)
 
 LOCAL_SHARED_LIBRARIES := \
         libutils        \
@@ -51,6 +57,8 @@ endif
 ifeq ($(TARGET_ARCH),arm)
     LOCAL_CFLAGS += -Wno-psabi
 endif
+
+LOCAL_CFLAGS += -D__STDC_CONSTANT_MACROS=1
 
 include $(BUILD_SHARED_LIBRARY)
 
