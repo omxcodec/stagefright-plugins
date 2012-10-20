@@ -307,6 +307,7 @@ status_t SoftFFmpegVideo::initDecoder() {
 
 void SoftFFmpegVideo::deInitDecoder() {
     if (mCtx) {
+        avcodec_flush_buffers(mCtx);
         if (!mCtx->extradata) {
             av_free(mCtx->extradata);
             mCtx->extradata = NULL;
