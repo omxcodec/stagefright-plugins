@@ -118,7 +118,7 @@ git@github.com:omxcodec/android_external_sdl.git
 1. audio codec to be integrated
 2. some media file do not have h263 extradata(FFmpegExtractor)
 3. some .mov movies do not av resync when seeking
-4. video stream ended while seeking
+4. some video stream ended while seeking
 
 If you need help with the library, or just want to discuss nam related issues, 
 you can contact me: Michael Chen (omxcodec@gmail.com)
