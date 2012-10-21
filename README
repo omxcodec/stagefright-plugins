@@ -14,7 +14,7 @@ Stagefright Plugins for Android
 6. FFmpegExtractor is the reference to "ffmpeg/ffplay" to achieve. 
 
 ================================================================================
-Why is named nam?
+Why is named nam[NamExtractor]?
 ================================================================================
 
 Namtso, or Lake Nam, is one of the three holy lakes in Tibet Autonomous Region
@@ -30,23 +30,89 @@ Requirements
 CyanogenMod 9.x (Ice Cream Sandwich)
 http://wiki.cyanogenmod.com/wiki/Galaxy_Nexus_(GSM):_Compile_CyanogenMod_(Linux)
 
-FFMPEG-0.12
-http://ffmpeg.org
+FFMPEG-0.11.1
+git://android.git.linaro.org/platform/external/ffmpeg.git
 
 SDL-1.3.0
-http://www.libsdl.org/tmp
+git@github.com:omxcodec/android_external_sdl.git
 
 ================================================================================
  How to build
 ================================================================================
 
-================================================================================
- Additional documentation
-================================================================================
+1. Get the Source
+   clone cm-9.1.0 source from CyanogenMod git:
+       repo init -u git://github.com/CyanogenMod/android.git -b cm-9.1.0
+   plz ref: http://wiki.cyanogenmod.com/wiki/Galaxy_Nexus_(GSM):_Compile_CyanogenMod_(Linux)
+
+   clone my sources from the omxcodec{github} git!
+   in your "android/external" folder, run:
+   stagefright-plugins:
+       git clone git@github.com:omxcodec/stagefright-plugins.git stagefright-plugins
+   ffmpeg:
+       git clone git@github.com:omxcodec/android_external_ffmpeg.git ffmpeg -b linaro-0.11.1
+   sdl:
+       git clone git@github.com:omxcodec/android_external_sdl.git sdl
+
+   in your "android/external" folder, run:
+   cp stagefright-plugins/repo/local_manifest.xml ../.repo
+   cd ..      // go to android folder
+   repo sync  // sync "frameworks_base" code again!
+              // of course, you can merge my android_external_ffmpeg code instread of 
+              // "repo sync" frameworks_base. once you do, so you should pay attention to the
+              // "USES_NAM" flag, it is only in the "android/frameworks/base" directory
+ 
+2. Compile
+   add USES_NAM flag to COMMON_GLOBAL_CFLAGS in android build system
+       vi vendor/samsung/maguro/BoardConfigVendor.mk and add these lines to it
+           USES_NAM := true
+           ifdef USES_NAM
+               COMMON_GLOBAL_CFLAGS += -DUSES_NAM
+           endif
+
+   ffmpeg:
+   cd android/external/ffmpeg
+   mm ffmpeg  // NOT "mm", plz FIXME!
+
+   cd android/external/sdl
+   mm
+
+   cd android/external/stagefright-plugins
+   mm
+
+3. Install
+   adb root
+   adb remount
+   adb sync // sync your android build system to your phone or pad
+   reboot   // reboot your phone or pad
+
+4. Run
+   get test media files:
+       wget http://movies.apple.com/media/us/ipad/2012/tv-spots/apple-ipad-this_good-us-20120307_848x480.mov
+       wget http://movies.apple.com/media/us/ipad/2012/80ba527a-1a34-4f70-aae8-14f87ab76eea/tours/apple-ipad-feature-us-20120307_848x480.mp4
+
+   let us suppose your media files locate at "/sdcard/Movies/" folder. one console window, you should run:
+       adb logcat
+   and other cosole window, you should run:
+   test NamExtractor and FFmpegExtractor plugins:
+       adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/apple-ipad-this_good-us-20120307_848x480.mov -t video/*
+       adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/apple-ipad-feature-us-20120307_848x480.mp4 -t video/*
+   test SoftFFmpegVideo decoder plugin:
+       cd android/external/stagefright-plugins/tools folder, run
+       adb root
+       ./install // install my scripts
+       adb root && adb shell set-vdec-sw1	// let omxcode choose software decoder
+       adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/apple-ipad-this_good-us-20120307_848x480.mov -t video/*
+       adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/apple-ipad-feature-us-20120307_848x480.mp4 -t video/*
+
+   run it and enjoy!
 
 ================================================================================
  Known issues
 ================================================================================
+1. audio codec to be integrated
+2. some media file do not have h263 extradata(FFmpegExtractor)
+3. some .mov movies do not av resync when seeking
 
 If you need help with the library, or just want to discuss nam related issues, 
 you can contact me: Michael Chen (omxcodec@gmail.com)
