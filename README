@@ -12,6 +12,8 @@ Stagefright Plugins for Android
 5. NamExtractor will load FFmpegExtractor, MplayerExtractor and VLCExtractor.
    but only FFmpegExtractor is implemented now.
 6. FFmpegExtractor is the reference to "ffmpeg/ffplay" to achieve. 
+7. libstagefright_soft_ffmpegvdec plugin is video decoder
+8. libstagefright_soft_ffmpegadec plugin is audio decoder[TODO]
 
 ================================================================================
 Why is named nam[NamExtractor]?
@@ -58,9 +60,11 @@ git@github.com:omxcodec/android_external_sdl.git
    cp stagefright-plugins/repo/local_manifest.xml ../.repo
    cd ..      // go to android folder
    repo sync  // sync "frameworks_base" code again!
-              // of course, you can merge my android_external_ffmpeg code instread of 
-              // "repo sync" frameworks_base. once you do, so you should pay attention to the
-              // "USES_NAM" flag, it is only in the "android/frameworks/base" directory
+
+   "repo sync" sync "frameworks_base" code again! of course, you can merge my
+   android_external_ffmpeg code instread of "repo sync" frameworks_base. once you do,
+   so you should pay attention to the "USES_NAM" flag, it is only in the
+   "android/frameworks/base" directory
  
 2. Compile
    add USES_NAM flag to COMMON_GLOBAL_CFLAGS in android build system
@@ -91,17 +95,18 @@ git@github.com:omxcodec/android_external_sdl.git
        wget http://movies.apple.com/media/us/ipad/2012/tv-spots/apple-ipad-this_good-us-20120307_848x480.mov
        wget http://movies.apple.com/media/us/ipad/2012/80ba527a-1a34-4f70-aae8-14f87ab76eea/tours/apple-ipad-feature-us-20120307_848x480.mp4
 
-   let us suppose your media files locate at "/sdcard/Movies/" folder. one console window, you should run:
+   let us suppose your media files locate at "/sdcard/Movies/" folder.
+   one console window, you should run:
        adb logcat
    and other cosole window, you should run:
    test NamExtractor and FFmpegExtractor plugins:
        adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/apple-ipad-this_good-us-20120307_848x480.mov -t video/*
        adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/apple-ipad-feature-us-20120307_848x480.mp4 -t video/*
    test SoftFFmpegVideo decoder plugin:
-       cd android/external/stagefright-plugins/tools folder, run
+       cd android/external/stagefright-plugins/tools folder, run:
        adb root
        ./install // install my scripts
-       adb root && adb shell set-vdec-sw1	// let omxcode choose software decoder
+       adb root && adb shell set-vdec-sw1 // let omxcode choose software decoder
        adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/apple-ipad-this_good-us-20120307_848x480.mov -t video/*
        adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/apple-ipad-feature-us-20120307_848x480.mp4 -t video/*
 
