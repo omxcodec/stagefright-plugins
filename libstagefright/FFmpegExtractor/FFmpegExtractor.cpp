@@ -18,6 +18,8 @@
 #define LOG_TAG "FFmpegExtractor"
 #include <utils/Log.h>
 
+#include <limits.h> /* INT_MAX */
+
 #include <media/stagefright/foundation/ABitReader.h>
 #include <media/stagefright/foundation/ABuffer.h>
 #include <media/stagefright/foundation/ADebug.h>
@@ -47,14 +49,14 @@
 #define MAX_QUEUE_SIZE (15 * 1024 * 1024)
 #define MIN_AUDIOQ_SIZE (20 * 16 * 1024)
 #define MIN_FRAMES 5
-#define MAX_PROBE_PACKETS 200
+#define EXTRACTOR_MAX_PROBE_PACKETS 200
 
 enum {
     NO_SEEK = 0,
     SEEK,
 };
 
-AVPacket flush_pkt;
+static AVPacket flush_pkt;
 
 namespace android {
 
@@ -123,7 +125,7 @@ FFmpegExtractor::FFmpegExtractor(const sp<DataSource> &source)
     // start reader here, as we want to extract extradata from bitstream if no extradata
     startReaderThread();
 
-    while(mProbePkts <= MAX_PROBE_PACKETS && !mEOF &&
+    while(mProbePkts <= EXTRACTOR_MAX_PROBE_PACKETS && !mEOF &&
         (mFormatCtx->pb ? !mFormatCtx->pb->error : 1) &&
         (mDefersToCreateVideoTrack || mDefersToCreateAudioTrack)) {
         // FIXME, i am so lazy! Should use pthread_cond_wait to wait conditions
@@ -429,8 +431,8 @@ int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
         LOGI("No %s extradata found, should to extract it from bitstream",
             av_get_media_type_string(avctx->codec_type));
         *defersToCreateTrack = true;
-         CHECK(name != NULL);
-        if (!*bsfc) {
+         //CHECK(name != NULL);
+        if (!*bsfc && name) {
             *bsfc = av_bitstream_filter_init(name);
             if (!*bsfc) {
                 LOGE("Cannot open the %s BSF!", name);
@@ -1224,7 +1226,7 @@ void FFmpegExtractor::readerEntry() {
                 stream_component_open(mAudioStreamIdx);
                 if (!mDefersToCreateAudioTrack)
                     LOGI("probe packet counter: %d when create audio track ok", mProbePkts);
-                if (mProbePkts == MAX_PROBE_PACKETS)
+                if (mProbePkts == EXTRACTOR_MAX_PROBE_PACKETS)
                     LOGI("probe packet counter to max: %d, create audio track: %d",
                         mProbePkts, !mDefersToCreateAudioTrack);
             }
