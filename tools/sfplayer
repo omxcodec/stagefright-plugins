@@ -1,0 +1,49 @@
+#!/system/bin/bash
+
+# ref :http://www.ibm.com/developerworks/cn/linux/l-bash-parameters.html
+
+#dir="/data/test"
+#file="pdahd.720X480.mp4"
+
+showopts () {
+  while getopts ":d:" optname
+    do
+      case "$optname" in
+        "d")
+          echo "Option $optname has value $OPTARG"
+	  dir=$OPTARG
+          ;;
+        "?")
+          echo "Unknown option $OPTARG"
+          ;;
+        ":")
+          echo "No argument value for option $OPTARG"
+          ;;
+        *)
+        # Should not occur
+          echo "Unknown error while processing options"
+          ;;
+      esac
+    done
+  return $OPTIND
+}
+
+showargs () {
+  for p in "$@"
+    do
+      echo "$p"
+    done
+}
+
+optinfo=$(showopts "$@")
+argstart=$?
+arginfo=$(showargs "${@:$argstart}")
+echo "Arguments are:"
+echo "$arginfo"
+echo "Options are:"
+echo "$optinfo"
+
+file=$arginfo
+
+#am start -a android.intent.action.VIEW -d file://$dir/$file -t video/*
+am start -a android.intent.action.VIEW -d file://$file -t video/*
