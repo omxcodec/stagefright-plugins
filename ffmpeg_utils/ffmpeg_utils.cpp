@@ -25,7 +25,6 @@ extern "C" {
 #include <stdlib.h>
 #include <inttypes.h>
 #include <math.h>
-#include <limits.h>
 #include <signal.h>
 #include <limits.h> /* INT_MAX */
 
@@ -169,13 +168,18 @@ extern "C" {
 
 #include "cmdutils.h"
 
+const char program_name[] = "dummy";
+const int program_birth_year = 2012;
+
 void av_noreturn exit_program(int ret)
 {
     // do nothing
 }
 
-const char program_name[] = "dummy";
-const int program_birth_year = 2012;
+void show_help_default(const char *opt, const char *arg)
+{
+    // do nothing
+}
 
 #ifdef __cplusplus
 }

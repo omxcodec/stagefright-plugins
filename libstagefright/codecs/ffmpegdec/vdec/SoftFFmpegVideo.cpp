@@ -217,7 +217,7 @@ void SoftFFmpegVideo::deInitFFmpeg() {
 }
 
 
-void SoftFFmpegVideo::setAVCtxToDefault(AVCodecContext *avctx, AVCodec *codec) {
+void SoftFFmpegVideo::setAVCtxToDefault(AVCodecContext *avctx, const AVCodec *codec) {
     int fast = 0;
 
     avctx->workaround_bugs   = 1;

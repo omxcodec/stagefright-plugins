@@ -116,7 +116,7 @@ private:
 
     status_t initFFmpeg();
     void deInitFFmpeg();
-    void setAVCtxToDefault(AVCodecContext *avctx, AVCodec *codec);
+    void setAVCtxToDefault(AVCodecContext *avctx, const AVCodec *codec);
 
     void initPorts();
     status_t initDecoder();
