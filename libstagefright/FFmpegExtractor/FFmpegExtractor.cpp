@@ -1506,6 +1506,7 @@ static extmap FILE_EXTS [] =  {
 #endif
 };
 
+// TODO: check mFormatCtx->iformat->name?
 bool SniffFFMPEG(
         const sp<DataSource> &source, String8 *mimeType, float *confidence,
         sp<AMessage> *meta) {
