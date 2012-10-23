@@ -1,4 +1,4 @@
-#!/system/bin/bash
+#!/system/xbin/bash
 
 # ref :http://www.ibm.com/developerworks/cn/linux/l-bash-parameters.html
 
