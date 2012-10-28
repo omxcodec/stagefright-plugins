@@ -76,14 +76,14 @@ git@github.com:omxcodec/android_external_sdl.git
            endif
 
    ffmpeg:
-   cd android/external/ffmpeg
-   mm ffmpeg  // NOT "mm", plz FIXME!
+       cd android/external/ffmpeg
+       mm ffmpeg  // NOT "mm", plz FIXME!
 
-   cd android/external/sdl
-   mm
+       cd android/external/sdl
+       mm
 
-   cd android/external/stagefright-plugins
-   mm
+       cd android/external/stagefright-plugins
+       mm
 
 3. Install
    adb root
@@ -107,7 +107,7 @@ git@github.com:omxcodec/android_external_sdl.git
        cd android/external/stagefright-plugins/tools folder, run:
        adb root
        ./install // install my scripts
-       adb root && adb shell set-vdec-sw1 // let omxcode choose software decoder
+       adb root && adb shell set-vdec-sw1 // let omxcodec choose software decoder
        adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/apple-ipad-this_good-us-20120307_848x480.mov -t video/*
        adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/apple-ipad-feature-us-20120307_848x480.mp4 -t video/*
 

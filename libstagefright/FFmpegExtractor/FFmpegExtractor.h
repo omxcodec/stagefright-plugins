@@ -29,7 +29,6 @@ extern "C" {
 
 #include <inttypes.h>
 #include <math.h>
-#include <limits.h> /* INT_MAX */
 #include <signal.h>
 #include <limits.h> /* INT_MAX */
 

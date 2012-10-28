@@ -242,7 +242,6 @@ void SoftFFmpegVideo::setAVCtxToDefault(AVCodecContext *avctx, const AVCodec *co
 status_t SoftFFmpegVideo::initDecoder() {
     status_t status;
     
-
     status = initFFmpeg();
     if (status != OK)
         return status;
