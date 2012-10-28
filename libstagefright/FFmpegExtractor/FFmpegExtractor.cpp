@@ -402,6 +402,13 @@ int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
     bool *defersToCreateTrack;
     AVBitStreamFilterContext **bsfc;
 
+    // ignore extradata
+    if (avctx->codec_id == CODEC_ID_MP3 ||
+            avctx->codec_id == CODEC_ID_H263  ||
+            avctx->codec_id == CODEC_ID_H263P ||
+            avctx->codec_id == CODEC_ID_H263I)
+        return 1;
+
     if (avctx->codec_type == AVMEDIA_TYPE_VIDEO) {
         bsfc = &mVideoBsfc;
         defersToCreateTrack = &mDefersToCreateVideoTrack;
@@ -486,7 +493,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
     }
 
     if (!supported) {
-        LOGE("unsupport the codec");
+        LOGE("unsupport the codec, id: 0x%0x", avctx->codec_id);
         return -1;
     }
     LOGV("support the codec");
@@ -529,8 +536,12 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             return ret;
          }
 
-        LOGV("video extradata:");
-        hexdump(avctx->extradata, avctx->extradata_size);
+        if (avctx->extradata) {
+            LOGV("video stream extradata:");
+            hexdump(avctx->extradata, avctx->extradata_size);
+        } else {
+            LOGV("video stream no extradata, but we can ignore it.");
+        }
 
         meta = new MetaData;
 
@@ -586,12 +597,14 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         case CODEC_ID_H263I:
             LOGV("H263");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_H263);
+#if 0
             {
                 sp<ABuffer> csd = new ABuffer(avctx->extradata_size);
                 memcpy(csd->data(), avctx->extradata, avctx->extradata_size);
                 sp<ABuffer> esds = MakeMPEGVideoESDS(csd);
                 meta->setData(kKeyESDS, kTypeESDS, esds->data(), esds->size());
             }
+#endif
             break;
         case CODEC_ID_MPEG2VIDEO:
             LOGV("MPEG2VIDEO");
@@ -651,9 +664,12 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             return ret;
         }
 
-
-        LOGV("audio extradata:");
-        hexdump(avctx->extradata, avctx->extradata_size);
+        if (avctx->extradata) {
+            LOGV("audio stream extradata:");
+            hexdump(avctx->extradata, avctx->extradata_size);
+        } else {
+            LOGV("audio stream no extradata, but we can ignore it.");
+        }
 
         switch(avctx->codec_id) {
         case CODEC_ID_MP3:
@@ -1187,7 +1203,7 @@ void FFmpegExtractor::readerEntry() {
                     //LOGV("ret == AVERROR_EOF");
 		}
                 if (url_feof(mFormatCtx->pb)) {
-                    LOGV("url_feof(mFormatCtx->pb)");
+                    //LOGV("url_feof(mFormatCtx->pb)");
 		}
 
                 eof = 1;
