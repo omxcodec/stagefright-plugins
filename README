@@ -13,7 +13,7 @@ Stagefright Plugins for Android
    but only FFmpegExtractor is implemented now.
 6. FFmpegExtractor is the reference to "ffmpeg/ffplay" to achieve. 
 7. libstagefright_soft_ffmpegvdec plugin is video decoder
-8. libstagefright_soft_ffmpegadec plugin is audio decoder[TODO]
+8. libstagefright_soft_ffmpegadec plugin is audio decoder
 
 ================================================================================
 Why is named nam[NamExtractor]?
