@@ -101,6 +101,7 @@ private:
     AVCodecContext *mCtx;
     struct SwrContext *mSwrCtx;
 
+    bool mCodecOpened;
     bool mExtradataReady;
     bool mIgnoreExtradata;
     bool mFlushComplete;
@@ -117,9 +118,9 @@ private:
     uint8_t *mPAudioBuffer;
     int32_t mAudioBufferSize;
 
-
     int32_t mNumChannels;
     int32_t mSamplingRate;
+    bool mAudioConfigChanged;
 
     enum AVSampleFormat mAudioSrcFmt;
     enum AVSampleFormat mAudioTgtFmt;

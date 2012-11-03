@@ -52,6 +52,7 @@ SoftFFmpegAudio::SoftFFmpegAudio(
       mMode(MODE_MPEG),
       mCtx(NULL),
       mSwrCtx(NULL),
+      mCodecOpened(false),
       mExtradataReady(false),
       mIgnoreExtradata(false),
       mFlushComplete(false),
@@ -64,9 +65,11 @@ SoftFFmpegAudio::SoftFFmpegAudio(
       mAudioBufferSize(0),
       mNumChannels(2),
       mSamplingRate(44100),
+      mAudioConfigChanged(false),
       mOutputPortSettingsChange(NONE) {
     if (!strcmp(name, "OMX.ffmpeg.mp3.decoder")) {
         mMode = MODE_MPEG;
+        mIgnoreExtradata = true;
     } else if (!strcmp(name, "OMX.ffmpeg.mp2.decoder")) {
         mMode = MODE_MPEGL1;
     } else if (!strcmp(name, "OMX.ffmpeg.aac.decoder")) {
@@ -416,6 +419,7 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
             return OMX_ErrorNone;
         }
         default:
+            LOGI("internalSetParameter, index: 0x%x", index);
             return SimpleSoftOMXComponent::internalSetParameter(index, params);
     }
 }
@@ -448,14 +452,20 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
 
         BufferInfo *outInfo = *outQueue.begin();
         OMX_BUFFERHEADERTYPE *outHeader = outInfo->mHeader;
-
-        if (mCtx->channels != mNumChannels || mCtx->sample_rate != mSamplingRate) {
+#if 0
+        if (!mAudioConfigChanged && mMode == MODE_AAC &&
+                (mCtx->channels != mNumChannels || mCtx->sample_rate != mSamplingRate)) {
+            LOGI("audio OMX_EventPortSettingsChanged, mCtx->channels: %d, mNumChannels: %d, mCtx->sample_rate: %d, mSamplingRate: %d",
+                    mCtx->channels, mNumChannels, mCtx->sample_rate, mSamplingRate);
             mCtx->channels = mNumChannels;
             mCtx->sample_rate = mSamplingRate;
+            // AAC only?
+            mAudioConfigChanged = true;
             notify(OMX_EventPortSettingsChanged, 1, 0, NULL);
             mOutputPortSettingsChange = AWAITING_DISABLED;
             return;
         }
+#endif
 
         if (inHeader && inHeader->nFlags & OMX_BUFFERFLAG_EOS) {
             inQueue.erase(inQueue.begin());
@@ -513,11 +523,13 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
             }
         }
 
-        if (!mExtradataReady) {
-            LOGI("extradata is ready");
-            hexdump(mCtx->extradata, mCtx->extradata_size);
+        if (!mCodecOpened) {
+            if (!mExtradataReady && !mIgnoreExtradata) {
+                LOGI("extradata is ready");
+                hexdump(mCtx->extradata, mCtx->extradata_size);
+                mExtradataReady = true;
+            }
             LOGI("open ffmpeg decoder now");
-            mExtradataReady = true;
 
             err = avcodec_open2(mCtx, mCtx->codec, NULL);
             if (err < 0) {
@@ -526,6 +538,7 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
                 mSignalledError = true;
                 return;
             }
+            mCodecOpened = true;
         }
 
         /* update the audio clock with the pts */
@@ -565,7 +578,7 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
             inputBufferUsedLength = 0;
             len = avcodec_decode_audio4(mCtx, mFrame, &gotFrm, &pkt);
 	    if (len < 0) {
-                LOGE("ffmpeg audio decoder failed to decode frame. (%d)", len);
+                LOGE("ffmpeg audio decoder failed to decode frame. (0x%x)", len);
                 inputBufferUsedLength = inHeader->nFilledLen;
                 /* if error, we skip the frame and play silence instead */
                 mPAudioBuffer = mSilenceBuffer;
@@ -577,6 +590,26 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
                     mFlushComplete = true;
                 continue;
             } else {
+                /**
+                 * FIXME, check mAudioConfigChanged when the first time you call the audio4!
+                 * mCtx->sample_rate and mCtx->channels may be changed by audio decoder later, why???
+                 */
+                if (!mAudioConfigChanged) {
+                    if (mCtx->channels != mNumChannels || mCtx->sample_rate != mSamplingRate) {
+                        LOGI("audio OMX_EventPortSettingsChanged, mCtx->channels: %d, mNumChannels: %d, mCtx->sample_rate: %d, mSamplingRate: %d",
+                                mCtx->channels, mNumChannels, mCtx->sample_rate, mSamplingRate);
+                        mNumChannels = mCtx->channels;
+                        mSamplingRate = mCtx->sample_rate;
+                        mAudioConfigChanged = true;
+                        notify(OMX_EventPortSettingsChanged, 1, 0, NULL);
+                        mOutputPortSettingsChange = AWAITING_DISABLED;
+                        return;
+                    } else {
+                        // match with the default, set mAudioConfigChanged true anyway!
+                        mAudioConfigChanged = true;
+                    }
+                }
+
                 inputBufferUsedLength = len;
                 mPAudioBuffer = mFrame->data[0];
                 mAudioBufferSize = av_samples_get_buffer_size(NULL, mCtx->channels,
