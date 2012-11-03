@@ -597,14 +597,6 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         case CODEC_ID_H263I:
             LOGV("H263");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_H263);
-#if 0
-            {
-                sp<ABuffer> csd = new ABuffer(avctx->extradata_size);
-                memcpy(csd->data(), avctx->extradata, avctx->extradata_size);
-                sp<ABuffer> esds = MakeMPEGVideoESDS(csd);
-                meta->setData(kKeyESDS, kTypeESDS, esds->data(), esds->size());
-            }
-#endif
             break;
         case CODEC_ID_MPEG2VIDEO:
             LOGV("MPEG2VIDEO");
