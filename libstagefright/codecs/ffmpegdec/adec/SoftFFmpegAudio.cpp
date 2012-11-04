@@ -593,6 +593,17 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
             len = avcodec_decode_audio4(mCtx, mFrame, &gotFrm, &pkt);
 	    if (len < 0) {
                 LOGE("ffmpeg audio decoder failed to decode frame. (0x%x)", len);
+
+                /* if !mAudioConfigChanged, Don't fill the out buffer */
+                if (!mAudioConfigChanged) {
+                    inInfo->mOwnedByUs = false;
+                    inQueue.erase(inQueue.begin());
+                    inInfo = NULL;
+                    notifyEmptyBufferDone(inHeader);
+                    inHeader = NULL;
+                    continue;
+                }
+
                 inputBufferUsedLength = inHeader->nFilledLen;
                 /* if error, we skip the frame and play silence instead */
                 mPAudioBuffer = mSilenceBuffer;
