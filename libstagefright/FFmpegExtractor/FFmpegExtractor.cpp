@@ -404,6 +404,8 @@ int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
 
     // ignore extradata
     if (avctx->codec_id == CODEC_ID_MP3 ||
+            avctx->codec_id == CODEC_ID_MP1  ||
+            avctx->codec_id == CODEC_ID_MP2  ||
             avctx->codec_id == CODEC_ID_H263  ||
             avctx->codec_id == CODEC_ID_H263P ||
             avctx->codec_id == CODEC_ID_H263I)
@@ -421,14 +423,8 @@ int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
     switch(avctx->codec_id) {
     case CODEC_ID_H264:
     case CODEC_ID_MPEG4:
-    case CODEC_ID_H263:
-    case CODEC_ID_H263P:
-    case CODEC_ID_H263I:
-        break;
     case CODEC_ID_AAC:
         name = "aac_adtstoasc";
-        break;
-    case CODEC_ID_MP3:
         break;
     default:
         break;
@@ -480,6 +476,8 @@ int FFmpegExtractor::stream_component_open(int stream_index)
     case CODEC_ID_H263P:
     case CODEC_ID_H263I:
     case CODEC_ID_AAC:
+    case CODEC_ID_MP1:
+    case CODEC_ID_MP2:
     case CODEC_ID_MP3:
     case CODEC_ID_MPEG2VIDEO:
 #if 0
@@ -664,6 +662,18 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         }
 
         switch(avctx->codec_id) {
+        case CODEC_ID_MP1:
+            LOGV("MP1");
+            meta = new MetaData;
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_MPEG_LAYER_I);
+            //meta->setData(kKeyESDS, kTypeESDS, avctx->extradata, avctx->extradata_size);
+            break;
+        case CODEC_ID_MP2:
+            LOGV("MP2");
+            meta = new MetaData;
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_MPEG_LAYER_II);
+            //meta->setData(kKeyESDS, kTypeESDS, avctx->extradata, avctx->extradata_size);
+            break;
         case CODEC_ID_MP3:
             LOGV("MP3");
             meta = new MetaData;
@@ -710,7 +720,9 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         if (mFormatCtx->duration != AV_NOPTS_VALUE)
             meta->setInt64(kKeyDuration, mFormatCtx->duration);
 
-        if (avctx->codec_id != CODEC_ID_MP3) {
+        if (avctx->codec_id != CODEC_ID_MP3 &&
+                avctx->codec_id != CODEC_ID_MP1 &&
+                avctx->codec_id != CODEC_ID_MP2) {
             LOGV("audio meta esds:");
             CHECK(meta->findData(kKeyESDS, &type, &data, &size));
             hexdump(data, size);

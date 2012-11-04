@@ -70,8 +70,10 @@ SoftFFmpegAudio::SoftFFmpegAudio(
     if (!strcmp(name, "OMX.ffmpeg.mp3.decoder")) {
         mMode = MODE_MPEG;
         mIgnoreExtradata = true;
-    } else if (!strcmp(name, "OMX.ffmpeg.mp2.decoder")) {
+    } else if (!strcmp(name, "OMX.ffmpeg.mp1.decoder")) {
         mMode = MODE_MPEGL1;
+    } else if (!strcmp(name, "OMX.ffmpeg.mp2.decoder")) {
+        mMode = MODE_MPEGL2;
     } else if (!strcmp(name, "OMX.ffmpeg.aac.decoder")) {
         mMode = MODE_AAC;
     } else {
@@ -247,6 +249,8 @@ status_t SoftFFmpegAudio::initDecoder() {
         mCtx->codec_id = CODEC_ID_MP3;
         break;
     case MODE_MPEGL1:
+        mCtx->codec_id = CODEC_ID_MP1;
+        break;
     case MODE_MPEGL2:
         mCtx->codec_id = CODEC_ID_MP2;
         break;
@@ -378,6 +382,16 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
             case MODE_MPEG:
                 if (strncmp((const char *)roleParams->cRole,
                         "audio_decoder.mp3", OMX_MAX_STRINGNAME_SIZE - 1))
+                    supported =  false;
+                break;
+            case MODE_MPEGL1:
+                if (strncmp((const char *)roleParams->cRole,
+                        "audio_decoder.mp1", OMX_MAX_STRINGNAME_SIZE - 1))
+                    supported =  false;
+                break;
+            case MODE_MPEGL2:
+                if (strncmp((const char *)roleParams->cRole,
+                        "audio_decoder.mp2", OMX_MAX_STRINGNAME_SIZE - 1))
                     supported =  false;
                 break;
             case MODE_AAC:
