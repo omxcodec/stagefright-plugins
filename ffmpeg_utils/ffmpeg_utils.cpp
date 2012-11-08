@@ -160,6 +160,98 @@ const struct { const char *name; int level; } log_levels[] = {
 #endif
 
 //////////////////////////////////////////////////////////////////////////////////
+// parser
+//////////////////////////////////////////////////////////////////////////////////
+/* H.264 bitstream with start codes, NOT AVC1! ref: libavcodec/h264_parser.c */
+static int h264_split(AVCodecContext *avctx,
+                      const uint8_t *buf, int buf_size, int check_compatible_only)
+{
+    int i;
+    uint32_t state = -1;
+    int has_sps= 0;
+    int has_pps= 0;
+
+    //av_hex_dump(stderr, buf, 100);
+
+    for(i=0; i<=buf_size; i++){
+        if((state&0xFFFFFF1F) == 0x107) {
+            LOGI("found NAL_SPS");
+            has_sps=1;
+        }
+        if((state&0xFFFFFF1F) == 0x108) {
+            LOGI("found NAL_PPS");
+            has_pps=1;
+            if (check_compatible_only)
+                return (has_sps & has_pps);
+        }
+        if((state&0xFFFFFF00) == 0x100 && ((state&0xFFFFFF1F) == 0x101 || (state&0xFFFFFF1F) == 0x102 || (state&0xFFFFFF1F) == 0x105)){
+            if(has_pps){
+                while(i>4 && buf[i-5]==0) i--;
+                return i-4;
+            }
+        }
+        if (i<buf_size)
+            state= (state<<8) | buf[i];
+    }
+    return 0;
+}
+
+/* ref: libavcodec/mpegvideo_parser.c */
+static int mpegvideo_split(AVCodecContext *avctx,
+                           const uint8_t *buf, int buf_size, int check_compatible_only)
+{
+    int i;
+    uint32_t state= -1;
+    int found=0;
+
+    for(i=0; i<buf_size; i++){
+        state= (state<<8) | buf[i];
+        if(state == 0x1B3){
+            found=1;
+        }else if(found && state != 0x1B5 && state < 0x200 && state >= 0x100)
+            return i-3;
+    }
+    return 0;
+}
+
+/* split extradata from buf for Android OMXCodec */
+int parser_split(AVCodecContext *avctx,
+                      const uint8_t *buf, int buf_size)
+{
+    if (!avctx || !buf || buf_size <= 0) {
+        LOGE("parser split, valid params");
+        return 0;
+    }
+
+    if (avctx->codec_id == CODEC_ID_H264) {
+        return h264_split(avctx, buf, buf_size, 0);
+    } else if (avctx->codec_id == CODEC_ID_MPEG2VIDEO ||
+            avctx->codec_id == CODEC_ID_MPEG4) {
+        return mpegvideo_split(avctx, buf, buf_size, 0);
+    } else {
+        LOGE("parser split, unsupport the codec, id: 0x%0x", avctx->codec_id);
+    }
+
+    return 0;
+}
+
+int is_extradata_compatible_with_android(AVCodecContext *avctx)
+{
+    if (avctx->extradata_size <= 0) {
+        LOGI("extradata_size <= 0, extradata is not compatible with android decoder, the codec id: 0x%0x", avctx->codec_id);
+        return 0;
+    }
+
+    if (avctx->codec_id == CODEC_ID_H264 && avctx->extradata[0] != 1 /* configurationVersion */) {
+        // SPS + PPS
+        return !!(h264_split(avctx, avctx->extradata, avctx->extradata_size, 1) > 0);
+    } else {
+        // default, FIXME
+        return !!(avctx->extradata_size > 0);
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////////
 // dummy
 //////////////////////////////////////////////////////////////////////////////////
 #ifdef __cplusplus

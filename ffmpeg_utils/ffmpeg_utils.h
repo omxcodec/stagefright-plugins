@@ -21,10 +21,25 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "config.h"
+#include "libavcodec/avcodec.h"
+
+#ifdef __cplusplus
+}
+#endif
+
+
 namespace android {
 
 void nam_av_log_callback(void* ptr, int level, const char* fmt, va_list vl);
 void nam_av_log_set_flags(int arg);
+
+int is_extradata_compatible_with_android(AVCodecContext *avctx);
+int parser_split(AVCodecContext *avctx, const uint8_t *buf, int buf_size);
 
 }  // namespace android
 

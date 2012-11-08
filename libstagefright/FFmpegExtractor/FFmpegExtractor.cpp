@@ -51,6 +51,8 @@
 #define MIN_FRAMES 5
 #define EXTRACTOR_MAX_PROBE_PACKETS 200
 
+#define FF_MAX_EXTRADATA_SIZE ((1 << 28) - FF_INPUT_BUFFER_PADDING_SIZE)
+
 enum {
     NO_SEEK = 0,
     SEEK,
@@ -402,6 +404,15 @@ int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
     bool *defersToCreateTrack;
     AVBitStreamFilterContext **bsfc;
 
+    // init
+    if (avctx->codec_type == AVMEDIA_TYPE_VIDEO) {
+        bsfc = &mVideoBsfc;
+        defersToCreateTrack = &mDefersToCreateVideoTrack;
+    } else if (avctx->codec_type == AVMEDIA_TYPE_AUDIO){
+        bsfc = &mAudioBsfc;
+        defersToCreateTrack = &mDefersToCreateAudioTrack;
+    }
+
     // ignore extradata
     if (avctx->codec_id == CODEC_ID_MP3 ||
             avctx->codec_id == CODEC_ID_MP1  ||
@@ -411,28 +422,26 @@ int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
             avctx->codec_id == CODEC_ID_H263I)
         return 1;
 
-    if (avctx->codec_type == AVMEDIA_TYPE_VIDEO) {
-        bsfc = &mVideoBsfc;
-        defersToCreateTrack = &mDefersToCreateVideoTrack;
-    } else if (avctx->codec_type == AVMEDIA_TYPE_AUDIO){
-        bsfc = &mAudioBsfc;
-        defersToCreateTrack = &mDefersToCreateAudioTrack;
+    // is extradata compatible with android?
+    if (avctx->codec_id != CODEC_ID_AAC) {
+        int is_compatible = is_extradata_compatible_with_android(avctx);
+        if (!is_compatible) {
+            LOGI("%s extradata is not compatible with android, should to extract it from bitstream",
+                    av_get_media_type_string(avctx->codec_type));
+            *defersToCreateTrack = true;
+            *bsfc = NULL; // H264 don't need bsfc, only AAC?
+            return 0;
+        }
+        return 1;
     }
 
-    name = NULL;
-    switch(avctx->codec_id) {
-    case CODEC_ID_H264:
-    case CODEC_ID_MPEG4:
-    case CODEC_ID_AAC:
+    if (avctx->codec_id == CODEC_ID_AAC) {
         name = "aac_adtstoasc";
-        break;
-    default:
-        break;
     }
 
     if (avctx->extradata_size <= 0) {
         LOGI("No %s extradata found, should to extract it from bitstream",
-            av_get_media_type_string(avctx->codec_type));
+                av_get_media_type_string(avctx->codec_type));
         *defersToCreateTrack = true;
          //CHECK(name != NULL);
         if (!*bsfc && name) {
@@ -944,7 +953,6 @@ int FFmpegExtractor::initFFmpeg()
     mFormatCtx = avformat_alloc_context();
     mFormatCtx->interrupt_callback.callback = decode_interrupt_cb;
     mFormatCtx->interrupt_callback.opaque = this;
-    LOGV("1");
     LOGV("mFilename: %s", mFilename);
     err = avformat_open_input(&mFormatCtx, mFilename, NULL, &format_opts);
     if (err < 0) {
@@ -1220,7 +1228,36 @@ void FFmpegExtractor::readerEntry() {
             continue;
         }
 
-        if (pkt->stream_index == mAudioStreamIdx) {
+        if (pkt->stream_index == mVideoStreamIdx) {
+             if (mDefersToCreateVideoTrack) {
+                AVCodecContext *avctx = mFormatCtx->streams[mVideoStreamIdx]->codec;
+
+                int i = parser_split(avctx, pkt->data, pkt->size);
+                if (i > 0 && i < FF_MAX_EXTRADATA_SIZE) {
+                    if (avctx->extradata)
+                        av_freep(&avctx->extradata);
+                    avctx->extradata_size= i;
+                    avctx->extradata = (uint8_t *)av_malloc(avctx->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
+                    if (!avctx->extradata) {
+                        //return AVERROR(ENOMEM);
+                        ret = AVERROR(ENOMEM);
+                        goto fail;
+                    }
+                    memcpy(avctx->extradata, pkt->data, avctx->extradata_size);
+                    memset(avctx->extradata + i, 0, FF_INPUT_BUFFER_PADDING_SIZE);
+                } else {
+                    av_free_packet(pkt);
+                    continue;
+                }
+
+                stream_component_open(mVideoStreamIdx);
+                if (!mDefersToCreateVideoTrack)
+                    LOGI("probe packet counter: %d when create video track ok", mProbePkts);
+                if (mProbePkts == EXTRACTOR_MAX_PROBE_PACKETS)
+                    LOGI("probe packet counter to max: %d, create video track: %d",
+                        mProbePkts, !mDefersToCreateVideoTrack);
+            }
+        } else if (pkt->stream_index == mAudioStreamIdx) {
             int ret;
             uint8_t *outbuf;
             int   outbuf_size;
