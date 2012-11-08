@@ -1243,6 +1243,7 @@ void FFmpegExtractor::readerEntry() {
                         ret = AVERROR(ENOMEM);
                         goto fail;
                     }
+                    // sps + pps(there may be sei in it)
                     memcpy(avctx->extradata, pkt->data, avctx->extradata_size);
                     memset(avctx->extradata + i, 0, FF_INPUT_BUFFER_PADDING_SIZE);
                 } else {
