@@ -115,11 +115,13 @@ private:
     int32_t mInputBufferSize;
 
     uint8_t mSilenceBuffer[kOutputBufferSize];
+    DECLARE_ALIGNED(16, uint8_t, mAudioBuf2)[AVCODEC_MAX_AUDIO_FRAME_SIZE * 4];
     uint8_t *mPAudioBuffer;
     int32_t mAudioBufferSize;
 
     int32_t mNumChannels;
     int32_t mSamplingRate;
+    AVSampleFormat mSamplingFmt;
     bool mAudioConfigChanged;
 
     enum AVSampleFormat mAudioSrcFmt;

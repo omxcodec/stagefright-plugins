@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-//#define LOG_NDEBUG 0
+#define LOG_NDEBUG 0
 #define LOG_TAG "SoftFFmpegAudio"
 #include <utils/Log.h>
 
@@ -29,7 +29,7 @@
 #undef realloc
 #include <stdlib.h>
 
-#define DEBUG_PKT 1
+#define DEBUG_PKT 0
 #define DEBUG_FRM 0
 
 namespace android {
@@ -65,6 +65,7 @@ SoftFFmpegAudio::SoftFFmpegAudio(
       mAudioBufferSize(0),
       mNumChannels(2),
       mSamplingRate(44100),
+      mSamplingFmt(AV_SAMPLE_FMT_S16),
       mAudioConfigChanged(false),
       mOutputPortSettingsChange(NONE) {
     if (!strcmp(name, "OMX.ffmpeg.mp3.decoder")) {
@@ -319,6 +320,9 @@ void SoftFFmpegAudio::deInitDecoder() {
 
 OMX_ERRORTYPE SoftFFmpegAudio::internalGetParameter(
         OMX_INDEXTYPE index, OMX_PTR params) {
+    int32_t channels = 0;
+    int32_t sampling_rate = 0;
+
     switch (index) {
         case OMX_IndexParamAudioAac:
         {
@@ -359,8 +363,23 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalGetParameter(
             pcmParams->eChannelMapping[0] = OMX_AUDIO_ChannelLF;
             pcmParams->eChannelMapping[1] = OMX_AUDIO_ChannelRF;
 
-            pcmParams->nChannels = mNumChannels;
-            pcmParams->nSamplingRate = mSamplingRate;
+            channels = mNumChannels >= 2 ? 2 : 1;
+            sampling_rate = mSamplingRate;
+            // 4000 <= nSamplingRate <= 48000
+            if (mSamplingRate < 4000) {
+                sampling_rate = 4000;
+            } else if (mSamplingRate > 48000) {
+                sampling_rate = 48000;
+            }
+
+            // update target channel and sampling rate etc
+            mAudioTgtChannels =  channels;
+            mAudioTgtFreq = sampling_rate;
+            mAudioTgtFmt = AV_SAMPLE_FMT_S16;
+            mAudioTgtChannelLayout = av_get_default_channel_layout(channels);
+
+            pcmParams->nChannels = channels;
+            pcmParams->nSamplingRate = sampling_rate;
 
             return OMX_ErrorNone;
         }
@@ -442,7 +461,7 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
 void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
     int len = 0;
     int err = 0;
-    size_t resampledDataSize = 0;
+    size_t dataSize = 0;
     int64_t decChannelLayout;
     int32_t inputBufferUsedLength = 0;
     BufferInfo *inInfo = NULL;
@@ -467,20 +486,6 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
 
         BufferInfo *outInfo = *outQueue.begin();
         OMX_BUFFERHEADERTYPE *outHeader = outInfo->mHeader;
-#if 0
-        if (!mAudioConfigChanged && mMode == MODE_AAC &&
-                (mCtx->channels != mNumChannels || mCtx->sample_rate != mSamplingRate)) {
-            LOGI("audio OMX_EventPortSettingsChanged, mCtx->channels: %d, mNumChannels: %d, mCtx->sample_rate: %d, mSamplingRate: %d",
-                    mCtx->channels, mNumChannels, mCtx->sample_rate, mSamplingRate);
-            mCtx->channels = mNumChannels;
-            mCtx->sample_rate = mSamplingRate;
-            // AAC only?
-            mAudioConfigChanged = true;
-            notify(OMX_EventPortSettingsChanged, 1, 0, NULL);
-            mOutputPortSettingsChange = AWAITING_DISABLED;
-            return;
-        }
-#endif
 
         if (inHeader && inHeader->nFlags & OMX_BUFFERFLAG_EOS) {
             inQueue.erase(inQueue.begin());
@@ -626,6 +631,7 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
                                 mCtx->channels, mNumChannels, mCtx->sample_rate, mSamplingRate);
                         mNumChannels = mCtx->channels;
                         mSamplingRate = mCtx->sample_rate;
+                        mSamplingFmt = mCtx->sample_fmt;
                         mAudioConfigChanged = true;
                         notify(OMX_EventPortSettingsChanged, 1, 0, NULL);
                         mOutputPortSettingsChange = AWAITING_DISABLED;
@@ -636,12 +642,60 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
                     }
                 }
 
+                dataSize = av_samples_get_buffer_size(NULL, mNumChannels, mSamplingRate, mSamplingFmt, 1);
+
+                decChannelLayout = av_get_default_channel_layout(mNumChannels);
+                if (mSamplingFmt != mAudioSrcFmt ||
+                        decChannelLayout != mAudioSrcChannelLayout ||
+                        mSamplingRate != mAudioSrcFreq ) {
+                    if (mSwrCtx)
+                        swr_free(&mSwrCtx);
+                    mSwrCtx = swr_alloc_set_opts(NULL,
+                                                 mAudioTgtChannelLayout, mAudioTgtFmt, mAudioTgtFreq,
+                                                 decChannelLayout,       mSamplingFmt, mSamplingRate,
+                                                 0, NULL);
+                    if (!mSwrCtx || swr_init(mSwrCtx) < 0) {
+                        LOGE("Cannot create sample rate converter for conversion of %d Hz %s %d channels to %d Hz %s %d channels!\n",
+                                mSamplingRate,
+                                av_get_sample_fmt_name(mSamplingFmt),
+                                mNumChannels,
+                                mAudioTgtFreq,
+                                av_get_sample_fmt_name(mAudioTgtFmt),
+                                mAudioTgtChannels);
+                        notify(OMX_EventError, OMX_ErrorUndefined, 0, NULL);
+                        mSignalledError = true;
+                        return;
+                    }
+                    mAudioSrcChannelLayout = decChannelLayout;
+                    mAudioSrcChannels = mNumChannels;
+                    mAudioSrcFreq = mSamplingRate;
+                    mAudioSrcFmt = mSamplingFmt;
+                }
+
+                if (mSwrCtx) {
+                    const uint8_t *in[] = { mFrame->data[0] };
+                    uint8_t *out[] = {mAudioBuf2};
+                    int len2 = swr_convert(mSwrCtx, out, sizeof(mAudioBuf2) / mAudioTgtChannels / av_get_bytes_per_sample(mAudioTgtFmt),
+                                       in, mFrame->nb_samples);
+                    if (len2 < 0) {
+                        LOGE("audio_resample() failed\n");
+                        break;
+                    }
+                    if (len2 == sizeof(mAudioBuf2) / mAudioTgtChannels / av_get_bytes_per_sample(mAudioTgtFmt)) {
+                        LOGE("warning: audio buffer is probably too small");
+                        swr_init(mSwrCtx);
+                    }
+                    mPAudioBuffer = mAudioBuf2;
+                    mAudioBufferSize = len2 * mAudioTgtChannels * av_get_bytes_per_sample(mAudioTgtFmt);
+                } else {
+                    mPAudioBuffer = mFrame->data[0];
+                    mAudioBufferSize = dataSize;
+                }
+
                 inputBufferUsedLength = len;
-                mPAudioBuffer = mFrame->data[0];
-                mAudioBufferSize = av_samples_get_buffer_size(NULL, mCtx->channels,
-                                                       mFrame->nb_samples,
-                                                       mCtx->sample_fmt, 1);
+#if DEBUG_FRM
                 LOGV("ffmpeg audio decoder get frame. (%d), mAudioBufferSize: %d", len, mAudioBufferSize);
+#endif
             }
         }
 
