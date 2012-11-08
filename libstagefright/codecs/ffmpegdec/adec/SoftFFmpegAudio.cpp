@@ -130,6 +130,7 @@ void SoftFFmpegAudio::initPorts() {
         def.format.audio.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_AUDIO_AC3);
         // TODO
         //def.format.audio.eEncoding = OMX_AUDIO_CodingAC3;
+        def.format.audio.eEncoding = OMX_AUDIO_CodingAutoDetect; // right?? orz
         break;
     default:
         CHECK(!"Should not be here. Unsupported mime type and compression format");
