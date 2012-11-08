@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_NDEBUG 0
+//#define LOG_NDEBUG 0
 #define LOG_TAG "SoftFFmpegVideo"
 #include <utils/Log.h>
 
@@ -189,7 +189,7 @@ static int lockmgr(void **mtx, enum AVLockOp op) {
 
 status_t SoftFFmpegVideo::initFFmpeg() {
     //nam_av_log_set_flags(AV_LOG_SKIP_REPEATED);
-    av_log_set_level(AV_LOG_DEBUG);
+    //av_log_set_level(AV_LOG_DEBUG);
     av_log_set_callback(nam_av_log_callback);
 
     /* register all codecs, demux and protocols */
