@@ -244,13 +244,13 @@ status_t SoftFFmpegVideo::initDecoder() {
     
     status = initFFmpeg();
     if (status != OK)
-        return status;
+        return NO_INIT;
 
     mCtx = avcodec_alloc_context3(NULL);
     if (!mCtx)
     {
         LOGE("avcodec_alloc_context failed.");
-        return OMX_ErrorInsufficientResources;
+        return NO_MEMORY;
     }
 
     mCtx->codec_type = AVMEDIA_TYPE_VIDEO;
@@ -282,7 +282,7 @@ status_t SoftFFmpegVideo::initDecoder() {
     if (!mCtx->codec)
     {
         LOGE("find codec failed");
-        return OMX_ErrorNotImplemented;
+        return BAD_TYPE;
     }
 
     setAVCtxToDefault(mCtx, mCtx->codec);
@@ -292,16 +292,7 @@ status_t SoftFFmpegVideo::initDecoder() {
     mCtx->width = mWidth;
     mCtx->height = mHeight;
 
-#if 0
-    // FIXME, defer to open? ref: OMXCodec.cpp:setVideoOutputFormat
-    err = avcodec_open2(mCtx, mCtx->codec, NULL);
-    if (err < 0) {
-        LOGE("ffmpeg video decoder failed to  initialize. (%d)", err);
-        return OMX_ErrorUndefined;
-    }
-#endif
-
-    return OMX_ErrorNone;
+    return OK;
 }
 
 void SoftFFmpegVideo::deInitDecoder() {
