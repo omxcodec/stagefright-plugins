@@ -642,7 +642,7 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
                     }
                 }
 
-                dataSize = av_samples_get_buffer_size(NULL, mNumChannels, mSamplingRate, mSamplingFmt, 1);
+                dataSize = av_samples_get_buffer_size(NULL, mNumChannels, mFrame->nb_samples, mSamplingFmt, 1);
 
                 decChannelLayout = av_get_default_channel_layout(mNumChannels);
                 if (mSamplingFmt != mAudioSrcFmt ||
