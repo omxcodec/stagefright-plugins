@@ -291,7 +291,7 @@ status_t SoftFFmpegAudio::initDecoder() {
 
 void SoftFFmpegAudio::deInitDecoder() {
     if (mCtx) {
-        avcodec_flush_buffers(mCtx);
+        //avcodec_flush_buffers(mCtx); // is it necessary? crash sometimes if call it
         if (!mCtx->extradata) {
             av_free(mCtx->extradata);
             mCtx->extradata = NULL;
