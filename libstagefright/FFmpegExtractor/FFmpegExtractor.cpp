@@ -118,7 +118,7 @@ FFmpegExtractor::FFmpegExtractor(const sp<DataSource> &source)
     }
     LOGI("url: %s, mFilename: %s", url, mFilename);
 
-    err = initFFmpeg();
+    err = initStreams();
     if (err < 0) {
         LOGE("failed to init ffmpeg");
         return;
@@ -146,7 +146,7 @@ FFmpegExtractor::~FFmpegExtractor() {
     // stop reader here if no track!
     stopReaderThread();
 
-    deInitFFmpeg();
+    deInitStreams();
 }
 
 size_t FFmpegExtractor::countTracks() {
@@ -916,9 +916,10 @@ void FFmpegExtractor::setFFmpegDefaultOpts()
     mEOF          = false;
 }
 
-int FFmpegExtractor::initFFmpeg()
+int FFmpegExtractor::initStreams()
 {
     int err, i;
+    status_t status;
     int eof = 0;
     int ret = 0, audio_ret = 0, video_ret = 0;
     int pkt_in_play_range = 0;
@@ -933,23 +934,11 @@ int FFmpegExtractor::initFFmpeg()
     wanted_stream[AVMEDIA_TYPE_VIDEO]  = -1;
 
     setFFmpegDefaultOpts();
- 
-    //nam_av_log_set_flags(AV_LOG_SKIP_REPEATED);
-    //av_log_set_level(AV_LOG_DEBUG);
-    av_log_set_callback(nam_av_log_callback);
 
-    /* register all codecs, demux and protocols */
-    avcodec_register_all();
-#if CONFIG_AVDEVICE
-    avdevice_register_all();
-#endif
-    av_register_all();
-    avformat_network_init();
-
-    init_opts();
-
-    if (av_lockmgr_register(lockmgr)) {
-        LOGE("could not initialize lock manager!");
+    status = initFFmpeg();
+    if (status != OK) {
+        ret = -1;
+        goto fail;
     }
 
     av_init_packet(&flush_pkt);
@@ -1058,17 +1047,13 @@ fail:
     return ret;
 }
 
-void FFmpegExtractor::deInitFFmpeg()
+void FFmpegExtractor::deInitStreams()
 {
     if (mFormatCtx) {
         avformat_close_input(&mFormatCtx);
     }
-        
-    av_lockmgr_register(NULL);
-    uninit_opts();
-    avformat_network_deinit();
 
-    av_log(NULL, AV_LOG_QUIET, "%s", "");
+    deInitFFmpeg();
 }
 
 status_t FFmpegExtractor::startReaderThread() {

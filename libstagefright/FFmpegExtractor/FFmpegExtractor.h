@@ -138,8 +138,8 @@ private:
     AVBitStreamFilterContext *mAudioBsfc;
     static int decode_interrupt_cb(void *ctx);
     void print_error_ex(const char *filename, int err);
-    int initFFmpeg();
-    void deInitFFmpeg();
+    int initStreams();
+    void deInitStreams();
     void setFFmpegDefaultOpts();
     int stream_component_open(int stream_index);
     void stream_component_close(int stream_index);

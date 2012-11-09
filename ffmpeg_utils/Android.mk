@@ -10,11 +10,16 @@ LOCAL_SRC_FILES := \
 	../../../external/ffmpeg/cmdutils.c
 
 LOCAL_C_INCLUDES := \
+	$(TOP)/frameworks/base/include \
+	$(TOP)/external/sdl/include
+
+LOCAL_C_INCLUDES += \
 	$(FFMPEG_SRC_DIR) \
 	$(FFMPEG_BUILD_DIR)
 
 LOCAL_SHARED_LIBRARIES := \
-	libutils
+	libutils          \
+	libSDL
 
 FFMPEG_BUILD_LIBS := \
         -L$(FFMPEG_BUILD_DIR)/libavutil         \

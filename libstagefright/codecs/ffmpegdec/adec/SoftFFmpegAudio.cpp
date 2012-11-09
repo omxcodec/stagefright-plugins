@@ -180,35 +180,6 @@ static int lockmgr(void **mtx, enum AVLockOp op) {
    return 1;
 }
 
-status_t SoftFFmpegAudio::initFFmpeg() {
-    //nam_av_log_set_flags(AV_LOG_SKIP_REPEATED);
-    //av_log_set_level(AV_LOG_DEBUG);
-    av_log_set_callback(nam_av_log_callback);
-
-    /* register all codecs, demux and protocols */
-    avcodec_register_all();
-#if CONFIG_AVDEVICE
-    avdevice_register_all();
-#endif
-    av_register_all();
-    avformat_network_init();
-
-    init_opts();
-
-    if (av_lockmgr_register(lockmgr)) {
-        LOGE("could not initialize lock manager!");
-        return NO_INIT;
-    }
-
-    return OK;
-}
-
-void SoftFFmpegAudio::deInitFFmpeg() {
-    av_lockmgr_register(NULL);
-    uninit_opts();
-    avformat_network_deinit();
-}
-
 void SoftFFmpegAudio::setAVCtxToDefault(AVCodecContext *avctx, const AVCodec *codec) {
     int fast = 0;
 

@@ -113,9 +113,6 @@ private:
         AWAITING_ENABLED
     } mOutputPortSettingsChange;
 
-
-    status_t initFFmpeg();
-    void deInitFFmpeg();
     void setAVCtxToDefault(AVCodecContext *avctx, const AVCodec *codec);
 
     void initPorts();

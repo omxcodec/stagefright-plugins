@@ -17,6 +17,8 @@
 #define LOG_TAG "FFMPEG"
 #include <utils/Log.h>
 
+#include <utils/Errors.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -48,8 +50,47 @@ extern "C" {
 #include "libavcodec/avfft.h"
 #include "libswresample/swresample.h"
 
+#include "cmdutils.h"
+
+#include <SDL.h>
+#include <SDL_thread.h>
+
 #undef strncpy
 #include <string.h>
+
+#ifdef __cplusplus
+}
+#endif
+
+// log
+static int flags;
+
+// dummy
+const char program_name[] = "dummy";
+const int program_birth_year = 2012;
+
+// init ffmpeg
+static pthread_mutex_t init_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int ref_count = 0;
+
+namespace android {
+
+//////////////////////////////////////////////////////////////////////////////////
+// dummy
+//////////////////////////////////////////////////////////////////////////////////
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void av_noreturn exit_program(int ret)
+{
+    // do nothing
+}
+
+void show_help_default(const char *opt, const char *arg)
+{
+    // do nothing
+}
 
 #ifdef __cplusplus
 }
@@ -58,10 +99,6 @@ extern "C" {
 //////////////////////////////////////////////////////////////////////////////////
 // log
 //////////////////////////////////////////////////////////////////////////////////
-static int flags;
-
-namespace android {
-
 static void sanitize(uint8_t *line){
     while(*line){
         if(*line < 0x08 || (*line > 0x0D && *line < 0x20))
@@ -136,7 +173,6 @@ void nam_av_log_set_flags(int arg)
 }
 
 #if 0
-
 const struct { const char *name; int level; } log_levels[] = {
     { "quiet"  , AV_LOG_QUIET   },
     { "panic"  , AV_LOG_PANIC   },
@@ -156,8 +192,80 @@ const struct { const char *name; int level; } log_levels[] = {
 #define AV_LOG_INFO     32
 #define AV_LOG_VERBOSE  40
 #define AV_LOG_DEBUG    48
-
 #endif
+
+//////////////////////////////////////////////////////////////////////////////////
+// constructor and destructor
+//////////////////////////////////////////////////////////////////////////////////
+static int lockmgr(void **mtx, enum AVLockOp op)
+{
+   switch(op) {
+      case AV_LOCK_CREATE:
+          *mtx = (void *)SDL_CreateMutex();
+          if(!*mtx)
+              return 1;
+          return 0;
+      case AV_LOCK_OBTAIN:
+          return !!SDL_LockMutex((SDL_mutex *)*mtx);
+      case AV_LOCK_RELEASE:
+          return !!SDL_UnlockMutex((SDL_mutex *)*mtx);
+      case AV_LOCK_DESTROY:
+          SDL_DestroyMutex((SDL_mutex *)*mtx);
+          return 0;
+   }
+   return 1;
+}
+
+status_t initFFmpeg() 
+{
+    status_t ret = OK;
+
+    pthread_mutex_lock(&init_mutex);
+
+    if(ref_count == 0) {
+        nam_av_log_set_flags(AV_LOG_SKIP_REPEATED);
+        //av_log_set_level(AV_LOG_DEBUG);
+        av_log_set_callback(nam_av_log_callback);
+
+        /* register all codecs, demux and protocols */
+        avcodec_register_all();
+#if CONFIG_AVDEVICE
+        avdevice_register_all();
+#endif
+        av_register_all();
+        avformat_network_init();
+
+        init_opts();
+
+        if (av_lockmgr_register(lockmgr)) {
+            LOGE("could not initialize lock manager!");
+            ret = NO_INIT;
+        }
+    }
+
+    // update counter
+    ref_count++;
+
+    pthread_mutex_unlock(&init_mutex);
+
+    return ret;
+}
+
+void deInitFFmpeg()
+{
+    pthread_mutex_lock(&init_mutex);
+
+    // update counter
+    ref_count--;
+
+    if(ref_count == 0) {
+        av_lockmgr_register(NULL);
+        uninit_opts();
+        avformat_network_deinit();
+    }
+
+    pthread_mutex_unlock(&init_mutex);
+}
 
 //////////////////////////////////////////////////////////////////////////////////
 // parser
@@ -250,33 +358,6 @@ int is_extradata_compatible_with_android(AVCodecContext *avctx)
         return !!(avctx->extradata_size > 0);
     }
 }
-
-//////////////////////////////////////////////////////////////////////////////////
-// dummy
-//////////////////////////////////////////////////////////////////////////////////
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include "cmdutils.h"
-
-const char program_name[] = "dummy";
-const int program_birth_year = 2012;
-
-void av_noreturn exit_program(int ret)
-{
-    // do nothing
-}
-
-void show_help_default(const char *opt, const char *arg)
-{
-    // do nothing
-}
-
-#ifdef __cplusplus
-}
-#endif
-
 
 }  // namespace android
 

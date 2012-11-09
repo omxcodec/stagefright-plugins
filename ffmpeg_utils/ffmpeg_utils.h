@@ -21,6 +21,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#include <utils/Errors.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -32,8 +34,10 @@ extern "C" {
 }
 #endif
 
-
 namespace android {
+
+status_t initFFmpeg();
+void deInitFFmpeg();
 
 void nam_av_log_callback(void* ptr, int level, const char* fmt, va_list vl);
 void nam_av_log_set_flags(int arg);
