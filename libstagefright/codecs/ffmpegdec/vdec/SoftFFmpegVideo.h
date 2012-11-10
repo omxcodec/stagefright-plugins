@@ -105,6 +105,7 @@ private:
     bool mExtradataReady;
     bool mIgnoreExtradata;
     bool mSignalledError;
+    bool mDoDeinterlace;
     int32_t mWidth, mHeight, mStride;
 
     enum {
@@ -114,6 +115,7 @@ private:
     } mOutputPortSettingsChange;
 
     void setAVCtxToDefault(AVCodecContext *avctx, const AVCodec *codec);
+    void preProcessVideoFrame(AVPicture *picture, void **bufp);
 
     void initPorts();
     status_t initDecoder();

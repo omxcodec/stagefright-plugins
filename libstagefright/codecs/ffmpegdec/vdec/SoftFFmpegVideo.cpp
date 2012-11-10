@@ -57,6 +57,7 @@ SoftFFmpegVideo::SoftFFmpegVideo(
       mExtradataReady(false),
       mIgnoreExtradata(false),
       mSignalledError(false),
+      mDoDeinterlace(true),
       mWidth(320),
       mHeight(240),
       mStride(320),
@@ -282,6 +283,42 @@ void SoftFFmpegVideo::deInitDecoder() {
         sws_freeContext(mImgConvertCtx);
         mImgConvertCtx = NULL;
     }
+}
+
+void SoftFFmpegVideo::preProcessVideoFrame(AVPicture *picture, void **bufp)
+{
+    AVPicture *picture2;
+    AVPicture picture_tmp;
+    uint8_t *buf = NULL;
+
+    /* deinterlace : must be done before any resize */
+    if (mDoDeinterlace) {
+        int size;
+
+        /* create temporary picture */
+        size = avpicture_get_size(mCtx->pix_fmt, mCtx->width, mCtx->height);
+        buf  = (uint8_t *)av_malloc(size);
+        if (!buf)
+            return;
+
+        picture2 = &picture_tmp;
+        avpicture_fill(picture2, buf, mCtx->pix_fmt, mCtx->width, mCtx->height);
+
+        if (avpicture_deinterlace(picture2, picture,
+                                 mCtx->pix_fmt, mCtx->width, mCtx->height) < 0) {
+            /* if error, do not deinterlace */
+            LOGE("Deinterlacing failed");
+            av_free(buf);
+            buf = NULL;
+            picture2 = picture;
+        }
+    } else {
+        picture2 = picture;
+    }
+
+    if (picture != picture2)
+        *picture = *picture2;
+    *bufp = buf;
 }
 
 OMX_ERRORTYPE SoftFFmpegVideo::internalGetParameter(
@@ -552,8 +589,12 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
 
         if (gotPic) {
             AVPicture pict;
+            void *buffer_to_free = NULL;
             int64_t pts = AV_NOPTS_VALUE;
             uint8_t *dst = outHeader->pBuffer;
+
+            // do deinterlace if necessary. for example, your TV is progressive
+            preProcessVideoFrame((AVPicture *)frame, &buffer_to_free);
 
             memset(&pict, 0, sizeof(AVPicture));
             pict.data[0] = dst;
@@ -583,7 +624,7 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
             if (frame->key_frame)
                 outHeader->nFlags |= OMX_BUFFERFLAG_SYNCFRAME;
 
-            //  process timestamps
+            // process timestamps
             if (decoder_reorder_pts == -1) {
                 pts = *(int64_t*)av_opt_ptr(avcodec_get_frame_class(),
                         frame, "best_effort_timestamp");
@@ -607,6 +648,8 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
             outInfo = NULL;
             notifyFillBufferDone(outHeader);
             outHeader = NULL;
+
+            av_free(buffer_to_free);
         }
 
         inInfo->mOwnedByUs = false;
