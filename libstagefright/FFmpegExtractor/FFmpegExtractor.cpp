@@ -1533,7 +1533,7 @@ typedef struct {
     const char *container;
 } extmap;
 
-static extmap FILE_EXTS [] =  {
+static extmap FILE_EXTS[] = {
         {".mp4", MEDIA_MIMETYPE_CONTAINER_MPEG4},
         {".3gp", MEDIA_MIMETYPE_CONTAINER_MPEG4},
         {".mp3", MEDIA_MIMETYPE_AUDIO_MPEG},
@@ -1573,7 +1573,7 @@ const char *LegacySniffFFMPEG(const char * uri)
         int start = lenURI - len;
         if (start > 0) {
             if (!av_strncasecmp(uri + start, FILE_EXTS[i].extension, len)) {
-                container =  FILE_EXTS[i].container;
+                container = FILE_EXTS[i].container;
                 break;
             }
         }
@@ -1588,7 +1588,7 @@ typedef struct {
     const char *container;
 } formatmap;
 
-static formatmap FORMAT_NAMES [] =  {
+static formatmap FILE_FORMATS[] = {
         {"mpegts",                  MEDIA_MIMETYPE_CONTAINER_TS},
         {"mov,mp4,m4a,3gp,3g2,mj2", MEDIA_MIMETYPE_CONTAINER_MOV},
 };
@@ -1614,15 +1614,15 @@ const char *BetterSniffFFMPEG(const char * uri)
 
     LOGI("list the format suppoted by ffmpeg: ");
     LOGI("========================================");
-    for (i = 0; i < NELEM(FORMAT_NAMES); ++i) {
-            LOGV("format_names[%02d]: %s", i, FORMAT_NAMES[i].format);
+    for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
+            LOGV("format_names[%02d]: %s", i, FILE_FORMATS[i].format);
     }
     LOGI("========================================");
 
-    for (i = 0; i < NELEM(FORMAT_NAMES); ++i) {
-        int len = strlen(FORMAT_NAMES[i].format);
-        if (!av_strncasecmp(ic->iformat->name, FORMAT_NAMES[i].format, len)) {
-            container = FORMAT_NAMES[i].container;
+    for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
+        int len = strlen(FILE_FORMATS[i].format);
+        if (!av_strncasecmp(ic->iformat->name, FILE_FORMATS[i].format, len)) {
+            container = FILE_FORMATS[i].container;
             break;
         }
     }
