@@ -1610,7 +1610,7 @@ const char *BetterSniffFFMPEG(const char * uri)
 
     av_dump_format(ic, 0, uri, 0);
 
-    LOGI("FFmpegExtrator, uri: %s, format: %s", uri, ic->iformat->name);
+    LOGI("FFmpegExtrator, uri: %s, format_name: %s, format_long_name: %s", uri, ic->iformat->name, ic->iformat->long_name);
 
     LOGI("list the format suppoted by ffmpeg: ");
     LOGI("========================================");
