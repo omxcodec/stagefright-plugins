@@ -1527,7 +1527,7 @@ retry:
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO: Temp hack
+// LegacySniffFFMPEG
 typedef struct {
     const char *extension;
     const char *container;
@@ -1555,21 +1555,10 @@ static extmap FILE_EXTS [] =  {
 #endif
 };
 
-// TODO: check mFormatCtx->iformat->name?
-bool SniffFFMPEG(
-        const sp<DataSource> &source, String8 *mimeType, float *confidence,
-        sp<AMessage> *meta) {
-    LOGV("SniffFFMPEG");
+const char *LegacySniffFFMPEG(const char * uri)
+{
     size_t i;
-    const char *uri, *container = NULL;
-
-    //av_find_input_format()??
-    uri = source->getNamURI();
-
-    if (!uri)
-        return false;
-
-    LOGI("ffmpeg uri: %s", uri);
+    const char *container = NULL;
 
     LOGI("list the file extensions suppoted by ffmpeg: ");
     LOGI("========================================");
@@ -1584,10 +1573,83 @@ bool SniffFFMPEG(
         int start = lenURI - len;
         if (start > 0) {
             if (!av_strncasecmp(uri + start, FILE_EXTS[i].extension, len)) {
-                container = FILE_EXTS[i].container;
+                container =  FILE_EXTS[i].container;
                 break;
             }
         }
+    }
+
+    return container;
+}
+
+// BetterSniffFFMPEG
+typedef struct {
+    const char *format;
+    const char *container;
+} formatmap;
+
+static formatmap FORMAT_NAMES [] =  {
+        {"mpegts",                  MEDIA_MIMETYPE_CONTAINER_TS},
+        {"mov,mp4,m4a,3gp,3g2,mj2", MEDIA_MIMETYPE_CONTAINER_MOV},
+};
+
+const char *BetterSniffFFMPEG(const char * uri)
+{
+    size_t i;
+    const char *container = NULL;
+    AVFormatContext *ic = NULL;
+
+    status_t status = initFFmpeg();
+    if (status != OK) {
+        LOGE("could not init ffmpeg");
+        return false;
+    }
+
+    ic = avformat_alloc_context();
+    avformat_open_input(&ic, uri, NULL, NULL);
+
+    av_dump_format(ic, 0, uri, 0);
+
+    LOGI("FFmpegExtrator, uri: %s, format: %s", uri, ic->iformat->name);
+
+    LOGI("list the format suppoted by ffmpeg: ");
+    LOGI("========================================");
+    for (i = 0; i < NELEM(FORMAT_NAMES); ++i) {
+            LOGV("format_names[%02d]: %s", i, FORMAT_NAMES[i].format);
+    }
+    LOGI("========================================");
+
+    for (i = 0; i < NELEM(FORMAT_NAMES); ++i) {
+        int len = strlen(FORMAT_NAMES[i].format);
+        if (!av_strncasecmp(ic->iformat->name, FORMAT_NAMES[i].format, len)) {
+            container = FORMAT_NAMES[i].container;
+            break;
+        }
+    }
+
+    avformat_close_input(&ic);
+    av_free(ic);
+
+    return container;
+}
+
+bool SniffFFMPEG(
+        const sp<DataSource> &source, String8 *mimeType, float *confidence,
+        sp<AMessage> *meta) {
+    LOGV("SniffFFMPEG");
+    const char *uri, *container = NULL;
+
+    uri = source->getNamURI();
+
+    if (!uri)
+        return false;
+
+    LOGI("ffmpeg uri: %s", uri);
+
+    container = BetterSniffFFMPEG(uri);
+    if (!container) {
+        LOGW("sniff through LegacySniffFFMPEG, only check the file extension");
+        container = LegacySniffFFMPEG(uri);
     }
 
     if (container == NULL)
