@@ -91,7 +91,12 @@ private:
         MODE_MPEG4,
         MODE_MPEG2,
         MODE_H263,
-        MODE_VC1
+        MODE_VPX,
+        MODE_VC1,
+        MODE_DIVX,
+        MODE_WMV12,
+        MODE_FLV,
+        MODE_RV
     } mMode;
 
     enum {

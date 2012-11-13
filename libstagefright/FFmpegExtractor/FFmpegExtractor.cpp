@@ -420,7 +420,8 @@ int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
             avctx->codec_id == CODEC_ID_AC3  ||
             avctx->codec_id == CODEC_ID_H263  ||
             avctx->codec_id == CODEC_ID_H263P ||
-            avctx->codec_id == CODEC_ID_H263I)
+            avctx->codec_id == CODEC_ID_H263I ||
+            avctx->codec_id == CODEC_ID_WMV1)
         return 1;
 
     // is extradata compatible with android?
@@ -491,6 +492,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
     case CODEC_ID_MP2:
     case CODEC_ID_MP3:
     case CODEC_ID_MPEG2VIDEO:
+    case CODEC_ID_WMV1:
 #if 0
     case CODEC_ID_VC1:
 #endif
@@ -619,6 +621,15 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             break;
         case CODEC_ID_VC1:
             LOGV("VC1");
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV12);
+            meta->setData(kKeyESDS, kTypeESDS, avctx->extradata, avctx->extradata_size);
+            break;
+        case CODEC_ID_WMV1:
+            LOGV("WMV1");
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV12);
+            break;
+        case CODEC_ID_WMV2:
+            LOGV("WMV2");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV12);
             meta->setData(kKeyESDS, kTypeESDS, avctx->extradata, avctx->extradata_size);
             break;
@@ -1541,8 +1552,8 @@ static extmap FILE_EXTS[] = {
         {".mkv", MEDIA_MIMETYPE_CONTAINER_MATROSKA},
         {".ts",  MEDIA_MIMETYPE_CONTAINER_TS},
         {".avi", MEDIA_MIMETYPE_CONTAINER_AVI},
-#if 0
         {".asf", MEDIA_MIMETYPE_CONTAINER_ASF},
+#if 0
         {".wmv", MEDIA_MIMETYPE_CONTAINER_WMV},
         {".wma", MEDIA_MIMETYPE_CONTAINER_WMA},
         {".mpg", MEDIA_MIMETYPE_CONTAINER_MPG},
@@ -1591,6 +1602,7 @@ typedef struct {
 static formatmap FILE_FORMATS[] = {
         {"mpegts",                  MEDIA_MIMETYPE_CONTAINER_TS},
         {"mov,mp4,m4a,3gp,3g2,mj2", MEDIA_MIMETYPE_CONTAINER_MOV},
+        {"asf",                     MEDIA_MIMETYPE_CONTAINER_ASF},
 };
 
 const char *BetterSniffFFMPEG(const char * uri)

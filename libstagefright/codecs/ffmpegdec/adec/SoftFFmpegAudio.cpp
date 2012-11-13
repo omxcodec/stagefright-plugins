@@ -77,6 +77,14 @@ SoftFFmpegAudio::SoftFFmpegAudio(
         mMode = MODE_MPEGL2;
     } else if (!strcmp(name, "OMX.ffmpeg.aac.decoder")) {
         mMode = MODE_AAC;
+    } else if (!strcmp(name, "OMX.ffmpeg.ape.decoder")) {
+        mMode = MODE_APE;
+    } else if (!strcmp(name, "OMX.ffmpeg.wma.decoder")) {
+        mMode = MODE_WMA;
+    } else if (!strcmp(name, "OMX.ffmpeg.dts.decoder")) {
+        mMode = MODE_DTS;
+    } else if (!strcmp(name, "OMX.ffmpeg.ra.decoder")) {
+        mMode = MODE_RA;
     } else {
         CHECK(!strcmp(name, "OMX.ffmpeg.ac3.decoder"));
         mMode = MODE_AC3;
