@@ -170,24 +170,6 @@ void SoftFFmpegAudio::initPorts() {
     addPort(def);
 }
 
-static int lockmgr(void **mtx, enum AVLockOp op) {
-   switch(op) {
-      case AV_LOCK_CREATE:
-          *mtx = (void *)SDL_CreateMutex();
-          if(!*mtx)
-              return 1;
-          return 0;
-      case AV_LOCK_OBTAIN:
-          return !!SDL_LockMutex((SDL_mutex *)*mtx);
-      case AV_LOCK_RELEASE:
-          return !!SDL_UnlockMutex((SDL_mutex *)*mtx);
-      case AV_LOCK_DESTROY:
-          SDL_DestroyMutex((SDL_mutex *)*mtx);
-          return 0;
-   }
-   return 1;
-}
-
 void SoftFFmpegAudio::setAVCtxToDefault(AVCodecContext *avctx, const AVCodec *codec) {
     int fast = 0;
 

@@ -323,25 +323,6 @@ int FFmpegExtractor::packet_queue_get(PacketQueue *q, AVPacket *pkt, int block)
     return ret;
 }
 
-static int lockmgr(void **mtx, enum AVLockOp op)
-{
-   switch(op) {
-      case AV_LOCK_CREATE:
-          *mtx = (void *)SDL_CreateMutex();
-          if(!*mtx)
-              return 1;
-          return 0;
-      case AV_LOCK_OBTAIN:
-          return !!SDL_LockMutex((SDL_mutex *)*mtx);
-      case AV_LOCK_RELEASE:
-          return !!SDL_UnlockMutex((SDL_mutex *)*mtx);
-      case AV_LOCK_DESTROY:
-          SDL_DestroyMutex((SDL_mutex *)*mtx);
-          return 0;
-   }
-   return 1;
-}
-
 static void EncodeSize14(uint8_t **_ptr, size_t size) {
     CHECK_LE(size, 0x3fff);
 
