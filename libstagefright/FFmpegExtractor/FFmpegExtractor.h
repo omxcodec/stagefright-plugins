@@ -54,9 +54,6 @@ extern "C" {
 
 #include "cmdutils.h"
 
-#include <SDL.h>
-#include <SDL_thread.h>
-
 #ifdef __cplusplus
 }
 #endif
@@ -66,8 +63,8 @@ typedef struct PacketQueue {
     int nb_packets;
     int size;
     int abort_request;
-    SDL_mutex *mutex;
-    SDL_cond *cond;
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
 } PacketQueue;
 
 namespace android {

@@ -37,7 +37,8 @@
 #include <utils/misc.h>
 
 #include "include/avc_utils.h"
-#include "ffmpeg_utils/ffmpeg_utils.h"
+#include "utils/common_utils.h"
+#include "utils/ffmpeg_utils.h"
 #include "FFmpegExtractor.h"
 
 #define DEBUG_READ_ENTRY 0
@@ -131,7 +132,7 @@ FFmpegExtractor::FFmpegExtractor(const sp<DataSource> &source)
         (mFormatCtx->pb ? !mFormatCtx->pb->error : 1) &&
         (mDefersToCreateVideoTrack || mDefersToCreateAudioTrack)) {
         // FIXME, i am so lazy! Should use pthread_cond_wait to wait conditions
-        SDL_Delay(5);
+        NamDelay(5);
     }
 
     LOGV("mProbePkts: %d, mEOF: %d, pb->error(if has): %d, mDefersToCreateVideoTrack: %d, mDefersToCreateAudioTrack: %d",
@@ -214,8 +215,8 @@ uint32_t FFmpegExtractor::flags() const {
 void FFmpegExtractor::packet_queue_init(PacketQueue *q)
 {
     memset(q, 0, sizeof(PacketQueue));
-    q->mutex = SDL_CreateMutex();
-    q->cond = SDL_CreateCond();
+    pthread_mutex_init(&q->mutex, NULL);
+    pthread_cond_init(&q->cond, NULL);
     packet_queue_put(q, &flush_pkt);
 }
 
@@ -223,7 +224,7 @@ void FFmpegExtractor::packet_queue_flush(PacketQueue *q)
 {
     AVPacketList *pkt, *pkt1;
 
-    SDL_LockMutex(q->mutex);
+    pthread_mutex_lock(&q->mutex);
     for (pkt = q->first_pkt; pkt != NULL; pkt = pkt1) {
         pkt1 = pkt->next;
         av_free_packet(&pkt->pkt);
@@ -233,25 +234,23 @@ void FFmpegExtractor::packet_queue_flush(PacketQueue *q)
     q->first_pkt = NULL;
     q->nb_packets = 0;
     q->size = 0;
-    SDL_UnlockMutex(q->mutex);
+    pthread_mutex_unlock(&q->mutex);
 }
 
 void FFmpegExtractor::packet_queue_end(PacketQueue *q)
 {
     packet_queue_flush(q);
-    SDL_DestroyMutex(q->mutex);
-    SDL_DestroyCond(q->cond);
 }
 
 void FFmpegExtractor::packet_queue_abort(PacketQueue *q)
 {
-    SDL_LockMutex(q->mutex);
+    pthread_mutex_lock(&q->mutex);
 
     q->abort_request = 1;
 
-    SDL_CondSignal(q->cond);
+    pthread_cond_signal(&q->cond);
 
-    SDL_UnlockMutex(q->mutex);
+    pthread_mutex_unlock(&q->mutex);
 }
 
 int FFmpegExtractor::packet_queue_put(PacketQueue *q, AVPacket *pkt)
@@ -268,7 +267,7 @@ int FFmpegExtractor::packet_queue_put(PacketQueue *q, AVPacket *pkt)
     pkt1->pkt = *pkt;
     pkt1->next = NULL;
 
-    SDL_LockMutex(q->mutex);
+    pthread_mutex_lock(&q->mutex);
 
     if (!q->last_pkt)
 
@@ -279,9 +278,9 @@ int FFmpegExtractor::packet_queue_put(PacketQueue *q, AVPacket *pkt)
     q->nb_packets++;
     //q->size += pkt1->pkt.size + sizeof(*pkt1);
     q->size += pkt1->pkt.size;
-    SDL_CondSignal(q->cond);
+    pthread_cond_signal(&q->cond);
 
-    SDL_UnlockMutex(q->mutex);
+    pthread_mutex_unlock(&q->mutex);
     return 0;
 }
 
@@ -292,7 +291,7 @@ int FFmpegExtractor::packet_queue_get(PacketQueue *q, AVPacket *pkt, int block)
     AVPacketList *pkt1;
     int ret;
 
-    SDL_LockMutex(q->mutex);
+    pthread_mutex_lock(&q->mutex);
 
     for (;;) {
         if (q->abort_request) {
@@ -316,10 +315,10 @@ int FFmpegExtractor::packet_queue_get(PacketQueue *q, AVPacket *pkt, int block)
             ret = 0;
             break;
         } else {
-            SDL_CondWait(q->cond, q->mutex);
+            pthread_cond_wait(&q->cond, &q->mutex);
         }
     }
-    SDL_UnlockMutex(q->mutex);
+    pthread_mutex_unlock(&q->mutex);
     return ret;
 }
 
@@ -816,7 +815,7 @@ void FFmpegExtractor::stream_component_close(int stream_index)
         /* wait until the end */
         while (!mAbortRequest && !mVideoEOSReceived) {
             LOGV("wait for video received");
-            SDL_Delay(10);
+            NamDelay(10);
         }
         LOGV("packet_queue_end videoq");
         packet_queue_end(&mVideoQ);
@@ -826,7 +825,7 @@ void FFmpegExtractor::stream_component_close(int stream_index)
         packet_queue_abort(&mAudioQ);
         while (!mAbortRequest && !mAudioEOSReceived) {
             LOGV("wait for audio received");
-            SDL_Delay(10);
+            NamDelay(10);
         }
         LOGV("packet_queue_end audioq");
         packet_queue_end(&mAudioQ);
@@ -1166,7 +1165,7 @@ void FFmpegExtractor::readerEntry() {
                  (mFormatCtx->pb && !strncmp(mFilename, "mmsh:", 5)))) {
             /* wait 10 ms to avoid trying to get another packet */
             /* XXX: horrible */
-            SDL_Delay(10);
+            NamDelay(10);
             continue;
         }
 #endif
@@ -1198,7 +1197,7 @@ void FFmpegExtractor::readerEntry() {
             LOGV("readerEntry, is full, fuck");
 #endif
             /* wait 10 ms */
-            SDL_Delay(10);
+            NamDelay(10);
             continue;
         }
 
@@ -1217,7 +1216,7 @@ void FFmpegExtractor::readerEntry() {
                 pkt->stream_index = mAudioStreamIdx;
                 packet_queue_put(&mAudioQ, pkt);
             }
-            SDL_Delay(10);
+            NamDelay(10);
 #if DEBUG_READ_ENTRY
             LOGV("readerEntry, eof = 1, mVideoQ.size: %d, mVideoQ.nb_packets: %d, mAudioQ.size: %d, mAudioQ.nb_packets: %d",
                     mVideoQ.size, mVideoQ.nb_packets, mAudioQ.size, mAudioQ.nb_packets);
@@ -1255,7 +1254,7 @@ void FFmpegExtractor::readerEntry() {
                 LOGE("mFormatCtx->pb->error: %d", mFormatCtx->pb->error);
                 break;
             }
-            SDL_Delay(100);
+            NamDelay(100);
             continue;
         }
 
@@ -1337,7 +1336,7 @@ void FFmpegExtractor::readerEntry() {
     }
     /* wait until the end */
     while (!mAbortRequest) {
-        SDL_Delay(100);
+        NamDelay(100);
     }
 
     ret = 0;

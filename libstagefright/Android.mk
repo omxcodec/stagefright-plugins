@@ -31,7 +31,6 @@ LOCAL_C_INCLUDES := \
         $(TOP)/frameworks/base/media/libstagefright
 
 LOCAL_C_INCLUDES += \
-	$(TOP)/external/sdl/include \
         $(TOP)/external/stagefright-plugins \
         $(TOP)/external/stagefright-plugins/libstagefright \
 

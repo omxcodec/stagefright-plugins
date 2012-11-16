@@ -51,9 +51,6 @@ extern "C" {
 
 #include "cmdutils.h"
 
-#include <SDL.h>
-#include <SDL_thread.h>
-
 #ifdef __cplusplus
 }
 #endif

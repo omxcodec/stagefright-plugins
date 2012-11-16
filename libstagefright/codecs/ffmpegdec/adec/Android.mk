@@ -12,7 +12,6 @@ LOCAL_C_INCLUDES := \
         frameworks/base/include/media/stagefright/openmax
 
 LOCAL_C_INCLUDES += \
-	$(TOP)/external/sdl/include \
 	$(TOP)/external/stagefright-plugins \
 	$(TOP)/external/stagefright-plugins/libstagefright \
 
@@ -28,8 +27,8 @@ LOCAL_SHARED_LIBRARIES := \
         libstagefright_foundation
 
 LOCAL_SHARED_LIBRARIES +=  \
-        libffmpeg_utils    \
-        libSDL
+        libcommon_utils    \
+        libffmpeg_utils
 
 FFMPEG_BUILD_LIBS := \
 	-L$(FFMPEG_BUILD_DIR)/libavutil         \

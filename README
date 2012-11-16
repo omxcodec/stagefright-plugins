@@ -5,15 +5,13 @@ Stagefright Plugins for Android
 1. Enhance the Android multimedia framework providing additional Plugins for
    user interaction
 2. FFmpeg provides demuxers and av codecs;
-3. SDL provides basic library: thread, mutex, and timer, but all of sdl should 
-   be removed;
-4. NamExtractor is a extractor plugin, it would be loaded by Stagefright when 
+3. NamExtractor is a extractor plugin, it would be loaded by Stagefright when 
    Stagefright started.
-5. NamExtractor will load FFmpegExtractor, MplayerExtractor and VLCExtractor.
+4. NamExtractor will load FFmpegExtractor, MplayerExtractor and VLCExtractor.
    but only FFmpegExtractor is implemented now.
-6. FFmpegExtractor is the reference to "ffmpeg/ffplay" to achieve. 
-7. libstagefright_soft_ffmpegvdec plugin is video decoder
-8. libstagefright_soft_ffmpegadec plugin is audio decoder
+5. FFmpegExtractor is the reference to "ffmpeg/ffplay" to achieve. 
+6. libstagefright_soft_ffmpegvdec plugin is video decoder
+7. libstagefright_soft_ffmpegadec plugin is audio decoder
 
 ================================================================================
 Why is named nam[NamExtractor]?
@@ -36,9 +34,6 @@ FFMPEG-1.0 release
 http://ffmpeg.org
 ref: git://android.git.linaro.org/platform/external/ffmpeg.git
 
-SDL-1.3.0
-git@github.com:omxcodec/android_external_sdl.git
-
 ================================================================================
  How to build
 ================================================================================
@@ -54,8 +49,6 @@ git@github.com:omxcodec/android_external_sdl.git
        git clone git@github.com:omxcodec/stagefright-plugins.git stagefright-plugins
    ffmpeg:
        git clone git@github.com:omxcodec/android_external_ffmpeg.git ffmpeg -b omxcodec-1.0
-   sdl:
-       git clone git@github.com:omxcodec/android_external_sdl.git sdl
 
    in your "android/external" folder, run:
    cp stagefright-plugins/repo/local_manifest.xml ../.repo
@@ -78,9 +71,6 @@ git@github.com:omxcodec/android_external_sdl.git
    ffmpeg:
        cd android/external/ffmpeg
        mm ffmpeg  // NOT "mm", plz FIXME!
-
-       cd android/external/sdl
-       mm
 
        cd android/external/stagefright-plugins
        mm

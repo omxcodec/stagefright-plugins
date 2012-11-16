@@ -52,9 +52,6 @@ extern "C" {
 
 #include "cmdutils.h"
 
-#include <SDL.h>
-#include <SDL_thread.h>
-
 #undef strncpy
 #include <string.h>
 
@@ -197,23 +194,25 @@ const struct { const char *name; int level; } log_levels[] = {
 //////////////////////////////////////////////////////////////////////////////////
 // constructor and destructor
 //////////////////////////////////////////////////////////////////////////////////
+/* Mutex manager callback. */
 static int lockmgr(void **mtx, enum AVLockOp op)
 {
-   switch(op) {
-      case AV_LOCK_CREATE:
-          *mtx = (void *)SDL_CreateMutex();
-          if(!*mtx)
-              return 1;
-          return 0;
-      case AV_LOCK_OBTAIN:
-          return !!SDL_LockMutex((SDL_mutex *)*mtx);
-      case AV_LOCK_RELEASE:
-          return !!SDL_UnlockMutex((SDL_mutex *)*mtx);
-      case AV_LOCK_DESTROY:
-          SDL_DestroyMutex((SDL_mutex *)*mtx);
-          return 0;
-   }
-   return 1;
+    switch (op) {
+    case AV_LOCK_CREATE:
+        *mtx = (void *)av_malloc(sizeof(pthread_mutex_t));
+        if (!*mtx)
+            return 1;
+        return !!pthread_mutex_init((pthread_mutex_t *)(*mtx), NULL);
+    case AV_LOCK_OBTAIN:
+        return !!pthread_mutex_lock((pthread_mutex_t *)(*mtx));
+    case AV_LOCK_RELEASE:
+        return !!pthread_mutex_unlock((pthread_mutex_t *)(*mtx));
+    case AV_LOCK_DESTROY:
+        pthread_mutex_destroy((pthread_mutex_t *)(*mtx));
+        av_freep(mtx);
+        return 0;
+    }
+    return 1;
 }
 
 status_t initFFmpeg() 
