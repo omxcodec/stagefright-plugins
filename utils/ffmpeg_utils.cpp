@@ -223,7 +223,7 @@ status_t initFFmpeg()
 
     if(ref_count == 0) {
         nam_av_log_set_flags(AV_LOG_SKIP_REPEATED);
-        av_log_set_level(AV_LOG_DEBUG);
+        //av_log_set_level(AV_LOG_DEBUG);
         av_log_set_callback(nam_av_log_callback);
 
         /* register all codecs, demux and protocols */
