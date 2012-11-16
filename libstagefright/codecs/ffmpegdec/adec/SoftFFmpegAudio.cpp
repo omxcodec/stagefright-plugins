@@ -65,6 +65,7 @@ SoftFFmpegAudio::SoftFFmpegAudio(
       mAudioBufferSize(0),
       mNumChannels(2),
       mSamplingRate(44100),
+      mBitRate(128040),
       mSamplingFmt(AV_SAMPLE_FMT_S16),
       mAudioConfigChanged(false),
       mOutputPortSettingsChange(NONE) {
@@ -140,6 +141,10 @@ void SoftFFmpegAudio::initPorts() {
         // TODO
         //def.format.audio.eEncoding = OMX_AUDIO_CodingAC3;
         def.format.audio.eEncoding = OMX_AUDIO_CodingAutoDetect; // right?? orz
+        break;
+    case MODE_WMA:
+        def.format.audio.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_AUDIO_WMA);
+        def.format.audio.eEncoding = OMX_AUDIO_CodingWMA;
         break;
     default:
         CHECK(!"Should not be here. Unsupported mime type and compression format");
@@ -223,6 +228,9 @@ status_t SoftFFmpegAudio::initDecoder() {
     case MODE_AC3:
         mCtx->codec_id = CODEC_ID_AC3;
         break;
+    case MODE_WMA:
+        mCtx->codec_id = CODEC_ID_WMAV2; // FIXME, CODEC_ID_WMAV1 or CODEC_ID_WMAV2?
+        break;
     default:
         CHECK(!"Should not be here. Unsupported codec");
         break;
@@ -237,7 +245,10 @@ status_t SoftFFmpegAudio::initDecoder() {
 
     setAVCtxToDefault(mCtx, mCtx->codec);
 
-    mCtx->sample_fmt = AV_SAMPLE_FMT_S16;
+    mCtx->channels = mNumChannels;
+    mCtx->sample_rate = mSamplingRate;
+    mCtx->bit_rate = mBitRate;
+    mCtx->sample_fmt = mSamplingFmt;
 
     mAudioSrcFmt = mAudioTgtFmt = AV_SAMPLE_FMT_S16;
     mAudioSrcFreq = mAudioTgtFreq = mSamplingRate;
@@ -377,6 +388,11 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
             case MODE_AC3:
                 if (strncmp((const char *)roleParams->cRole,
                         "audio_decoder.ac3", OMX_MAX_STRINGNAME_SIZE - 1))
+                    supported =  false;
+                break;
+            case MODE_WMA:
+                if (strncmp((const char *)roleParams->cRole,
+                        "audio_decoder.wma", OMX_MAX_STRINGNAME_SIZE - 1))
                     supported =  false;
                 break;
             default:
@@ -534,7 +550,6 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
         /* update the audio clock with the pts */
         if (inHeader && inHeader->nOffset == 0) {
             mAnchorTimeUs = inHeader->nTimeStamp;
-            mNumFramesOutput = 0;
             mInputBufferSize = inHeader->nFilledLen;
         }
 
@@ -568,7 +583,7 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
             inputBufferUsedLength = 0;
             len = avcodec_decode_audio4(mCtx, mFrame, &gotFrm, &pkt);
 	    if (len < 0) {
-                LOGE("ffmpeg audio decoder failed to decode frame. (0x%x)", len);
+                LOGE("ffmpeg audio decoder failed to decode frame. consume pkt len: %d", len);
 
                 /* if !mAudioConfigChanged, Don't fill the out buffer */
                 if (!mAudioConfigChanged) {
@@ -613,6 +628,8 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
                 }
 
                 dataSize = av_samples_get_buffer_size(NULL, mNumChannels, mFrame->nb_samples, mSamplingFmt, 1);
+
+                //LOGV("audio decoder get buffer size: %d", dataSize);
 
                 decChannelLayout = av_get_default_channel_layout(mNumChannels);
                 if (mSamplingFmt != mAudioSrcFmt ||
@@ -673,7 +690,8 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
 
                 inputBufferUsedLength = len;
 #if DEBUG_FRM
-                LOGV("ffmpeg audio decoder get frame. (%d), mAudioBufferSize: %d", len, mAudioBufferSize);
+                LOGV("ffmpeg audio decoder get frame. consume pkt len: %d, nb_samples(before resample): %d, mAudioBufferSize: %d",
+                        len, mFrame->nb_samples, mAudioBufferSize);
 #endif
             }
         }
@@ -684,14 +702,23 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
 
         outHeader->nOffset = 0;
         outHeader->nFilledLen = copyToOutputBufferLen;
-        outHeader->nTimeStamp = mAnchorTimeUs
-                + (mNumFramesOutput * 1000000ll) / mSamplingRate;
+        outHeader->nTimeStamp = mAnchorTimeUs + (mNumFramesOutput * 1000000ll) / mSamplingRate;
         memcpy(outHeader->pBuffer, mPAudioBuffer, copyToOutputBufferLen);
         outHeader->nFlags = 0;
 
+#if DEBUG_FRM
+        LOGV("ffmpeg audio decoder, fill out buffer, pts: %lld, mNumFramesOutput: %lld", outHeader->nTimeStamp, mNumFramesOutput);
+#endif
+
         mPAudioBuffer += copyToOutputBufferLen;
         mAudioBufferSize -= copyToOutputBufferLen;
-        mNumFramesOutput += copyToOutputBufferLen / av_get_bytes_per_sample(mCtx->sample_fmt) / mNumChannels;
+        mNumFramesOutput += copyToOutputBufferLen / (av_get_bytes_per_sample(mCtx->sample_fmt) * mNumChannels);
+
+
+        // reset mNumFramesOutput
+        if (mAudioBufferSize == 0)
+            mNumFramesOutput = 0;
+
 
         if (inHeader) {
             CHECK_GE(inHeader->nFilledLen, inputBufferUsedLength);

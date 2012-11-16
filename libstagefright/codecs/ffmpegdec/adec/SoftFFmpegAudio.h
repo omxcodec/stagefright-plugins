@@ -125,6 +125,7 @@ private:
 
     int32_t mNumChannels;
     int32_t mSamplingRate;
+    int32_t mBitRate;	// some audio codec need bit rate when init
     AVSampleFormat mSamplingFmt;
     bool mAudioConfigChanged;
 
