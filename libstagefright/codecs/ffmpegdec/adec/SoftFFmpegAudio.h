@@ -125,7 +125,8 @@ private:
 
     int32_t mNumChannels;
     int32_t mSamplingRate;
-    int32_t mBitRate;	// some audio codec need bit rate when init
+    /* some audio codec need bit rate when init, e.g. wma, and should be > 0 */
+    int32_t mBitRate;
     AVSampleFormat mSamplingFmt;
     bool mAudioConfigChanged;
 
