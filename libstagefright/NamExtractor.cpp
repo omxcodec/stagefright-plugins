@@ -51,24 +51,24 @@ void snifferArray(const DataSource::SnifferFunc *snifferArray[], int *count)
 MediaExtractor *createExtractor(const sp<DataSource> &source, const char *mime) {
     MediaExtractor *ret = NULL;
 
-    if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MPEG4)     ||
-        !strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_MPEG)          ||
-        !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MOV)       ||
-        !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MATROSKA)  ||
-        !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_TS)        ||
-        !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_AVI)       ||
-        !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_ASF)       ||
-        !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_WEBM)      ||
-        !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_WMV)       ||
-        !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MPG)       ||
-        !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_FLV)       ||
-        !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_DIVX)      ||
-        !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_RM)        ||
-        !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_FLAC)      ||
-        !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_APE)       ||
-        !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MP2)       ||
-        !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_RA)        ||
-        !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_WMA)) {
+    if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MPEG4)         ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_MPEG)          ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MOV)       ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MATROSKA)  ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_TS)        ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_AVI)       ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_ASF)       ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_WEBM)      ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_WMV)       ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MPG)       ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_FLV)       ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_DIVX)      ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_RM)        ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_FLAC)      ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_APE)       ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MP2)       ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_RA)        ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_WMA)) {
         ret = new FFmpegExtractor(source);
     }
 
