@@ -643,12 +643,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         case CODEC_ID_WMV2:
             LOGV("WMV2");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV12);
-            {
-                sp<ABuffer> csd = new ABuffer(avctx->extradata_size);
-                memcpy(csd->data(), avctx->extradata, avctx->extradata_size);
-                sp<ABuffer> esds = MakeRawCodecSpecificData(csd);
-                meta->setData(kKeyESDS, kTypeESDS, esds->data(), esds->size());
-            }
+            meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
         default:
             CHECK(!"Should not be here. Unsupported codec.");
@@ -753,12 +748,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             LOGV("WMAV2");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_WMA);
-            {
-                sp<ABuffer> csd = new ABuffer(avctx->extradata_size);
-                memcpy(csd->data(), avctx->extradata, avctx->extradata_size);
-                sp<ABuffer> esds = MakeRawCodecSpecificData(csd);
-                meta->setData(kKeyESDS, kTypeESDS, esds->data(), esds->size());
-            }
+            meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
         default:
             CHECK(!"Should not be here. Unsupported codec.");
@@ -772,15 +762,6 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         meta->setInt32(kKeyBitRate, avctx->bit_rate);
         if (mFormatCtx->duration != AV_NOPTS_VALUE)
             meta->setInt64(kKeyDuration, mFormatCtx->duration);
-
-        if (avctx->codec_id != CODEC_ID_MP3 &&
-                avctx->codec_id != CODEC_ID_MP1 &&
-                avctx->codec_id != CODEC_ID_MP2 &&
-                avctx->codec_id != CODEC_ID_AC3) {
-            LOGV("audio meta esds:");
-            CHECK(meta->findData(kKeyESDS, &type, &data, &size));
-            hexdump(data, size);
-        }
 
         LOGV("create a audio track");
         index = mTracks.add(
