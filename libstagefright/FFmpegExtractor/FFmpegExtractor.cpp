@@ -362,36 +362,6 @@ static sp<ABuffer> MakeMPEGVideoESDS(const sp<ABuffer> &csd) {
     return esds;
 }
 
-// the same as MakeMPEGVideoESDS
-static sp<ABuffer> MakeRawCodecSpecificData(const sp<ABuffer> &csd) {
-    sp<ABuffer> esds = new ABuffer(csd->size() + 25);
-
-    uint8_t *ptr = esds->data();
-    *ptr++ = 0x03;
-    EncodeSize14(&ptr, 22 + csd->size());
-
-    *ptr++ = 0x00;  // ES_ID
-    *ptr++ = 0x00;
-
-    *ptr++ = 0x00;  // streamDependenceFlag, URL_Flag, OCRstreamFlag
-
-    *ptr++ = 0x04;
-    EncodeSize14(&ptr, 16 + csd->size());
-
-    *ptr++ = 0x40;  // Audio ISO/IEC 14496-3
-
-    for (size_t i = 0; i < 12; ++i) {
-        *ptr++ = 0x00;
-    }
-
-    *ptr++ = 0x05;
-    EncodeSize14(&ptr, csd->size());
-
-    memcpy(ptr, csd->data(), csd->size());
-
-    return esds;
-}
-
 // Returns the sample rate based on the sampling frequency index
 static uint32_t get_sample_rate(const uint8_t sf_index)
 {
