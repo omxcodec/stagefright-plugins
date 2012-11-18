@@ -13,13 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define LOG_NDEBUG 0
-#define LOG_TAG "COMMON"
-#include <utils/Log.h>
 
 #include <stdio.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <time.h>
 #include <errno.h>
 
 namespace android {
