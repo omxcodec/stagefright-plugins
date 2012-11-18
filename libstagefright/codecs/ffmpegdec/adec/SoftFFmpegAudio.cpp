@@ -66,7 +66,7 @@ SoftFFmpegAudio::SoftFFmpegAudio(
       mAudioBufferSize(0),
       mNumChannels(2),
       mSamplingRate(44100),
-      mBitRate(128040),
+      mBitRate(0),
       mSamplingFmt(AV_SAMPLE_FMT_S16),
       mAudioConfigChanged(false),
       mOutputPortSettingsChange(NONE) {
@@ -310,6 +310,22 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalGetParameter(
 
             return OMX_ErrorNone;
         }
+        case OMX_IndexParamAudioWma:
+        {
+            OMX_AUDIO_PARAM_WMATYPE *wmaParams =
+                (OMX_AUDIO_PARAM_WMATYPE *)params;
+
+            if (wmaParams->nPortIndex != 0) {
+                return OMX_ErrorUndefined;
+            }
+
+            wmaParams->nChannels = 0;
+            wmaParams->nSamplingRate = 0;
+            wmaParams->nBitRate = 0;
+            wmaParams->eFormat = OMX_AUDIO_WMAFormatUnused;
+
+            return OMX_ErrorNone;
+        }
         case OMX_IndexParamAudioPcm:
         {
             OMX_AUDIO_PARAM_PCMMODETYPE *pcmParams =
@@ -439,6 +455,53 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
 
             return OMX_ErrorNone;
         }
+        case OMX_IndexParamAudioWma:
+        {
+            OMX_AUDIO_PARAM_WMATYPE *wmaParams =
+                (OMX_AUDIO_PARAM_WMATYPE *)params;
+
+            if (wmaParams->nPortIndex != 0) {
+                return OMX_ErrorUndefined;
+            }
+
+            if (wmaParams->eFormat == OMX_AUDIO_WMAFormat7) {
+               mCtx->codec_id = CODEC_ID_WMAV2;
+            } else if (wmaParams->eFormat == OMX_AUDIO_WMAFormat8) {
+               mCtx->codec_id = CODEC_ID_WMAPRO;
+            } else if (wmaParams->eFormat == OMX_AUDIO_WMAFormat9) {
+               mCtx->codec_id = CODEC_ID_WMALOSSLESS;
+            } else {
+                LOGE("unsupported wma codec: 0x%x", wmaParams->eFormat);
+                return OMX_ErrorUndefined;
+            }
+
+            mNumChannels = wmaParams->nChannels;
+            mSamplingRate = wmaParams->nSamplingRate;
+            mBitRate = wmaParams->nBitRate;
+
+            // wma need bitrate
+            mCtx->bit_rate = mBitRate;
+
+            channels = mNumChannels >= 2 ? 2 : 1;
+            sampling_rate = mSamplingRate;
+            // 4000 <= nSamplingRate <= 48000
+            if (mSamplingRate < 4000) {
+                sampling_rate = 4000;
+            } else if (mSamplingRate > 48000) {
+                sampling_rate = 48000;
+            }
+
+            // update src and target(only wma), only once!
+            mAudioSrcChannels = mAudioTgtChannels = channels;
+            mAudioSrcFreq = mAudioTgtFreq = sampling_rate;
+            mAudioSrcFmt = mAudioTgtFmt = AV_SAMPLE_FMT_S16;
+            mAudioSrcChannelLayout = mAudioTgtChannelLayout = av_get_default_channel_layout(channels);
+
+            LOGV("got OMX_IndexParamAudioWma, mNumChannels: %d, mSamplingRate: %d, mBitRate: %d",
+                mNumChannels, mSamplingRate, mBitRate);
+
+            return OMX_ErrorNone;
+        }
         default:
             LOGI("internalSetParameter, index: 0x%x", index);
             return SimpleSoftOMXComponent::internalSetParameter(index, params);
@@ -536,8 +599,19 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
                 hexdump(mCtx->extradata, mCtx->extradata_size);
                 mExtradataReady = true;
             }
-            LOGI("open ffmpeg decoder now");
 
+            // find decoder again as codec_id may have changed
+            mCtx->codec = avcodec_find_decoder(mCtx->codec_id);
+            if (!mCtx->codec) {
+                LOGE("ffmpeg audio decoder failed to find codec");
+                notify(OMX_EventError, OMX_ErrorUndefined, 0, NULL);
+                mSignalledError = true;
+                return;
+            }
+
+            setAVCtxToDefault(mCtx, mCtx->codec);
+
+            LOGI("open ffmpeg decoder now");
             err = avcodec_open2(mCtx, mCtx->codec, NULL);
             if (err < 0) {
                 LOGE("ffmpeg audio decoder failed to initialize. (%d)", err);

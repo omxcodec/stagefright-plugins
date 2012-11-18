@@ -474,10 +474,12 @@ int FFmpegExtractor::stream_component_open(int stream_index)
     case CODEC_ID_MPEG2VIDEO:
     case CODEC_ID_WMV1:
     case CODEC_ID_WMV2:
-    case CODEC_ID_WMAV2:
-#if 0
+    case CODEC_ID_WMV3:
     case CODEC_ID_VC1:
-#endif
+    case CODEC_ID_WMAV1:
+    case CODEC_ID_WMAV2:
+    case CODEC_ID_WMAPRO:
+    case CODEC_ID_WMALOSSLESS:
         supported = true;
         break;
     default:
@@ -603,17 +605,26 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             break;
         case CODEC_ID_VC1:
             LOGV("VC1");
-            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV12);
-            meta->setData(kKeyESDS, kTypeESDS, avctx->extradata, avctx->extradata_size);
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV);
+            meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
+            //meta->setInt32(kKeyWMVVersion, kTypeVC1); // TODO
             break;
         case CODEC_ID_WMV1:
             LOGV("WMV1");
-            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV12);
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV);
+            meta->setInt32(kKeyWMVVersion, kTypeWMVVer_7);
             break;
         case CODEC_ID_WMV2:
             LOGV("WMV2");
-            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV12);
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
+            meta->setInt32(kKeyWMVVersion, kTypeWMVVer_8);
+            break;
+        case CODEC_ID_WMV3:
+            LOGV("WMV2");
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV);
+            meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
+            meta->setInt32(kKeyWMVVersion, kTypeWMVVer_9);
             break;
         default:
             CHECK(!"Should not be here. Unsupported codec.");
@@ -714,11 +725,32 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             meta = MakeAACCodecSpecificData(profile, sf_index, channel);
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_AAC);
             break;
+        case CODEC_ID_WMAV1:  // TODO, version?
+            LOGV("WMAV1");
+            meta = new MetaData;
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_WMA);
+            meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
+            break;
         case CODEC_ID_WMAV2:
             LOGV("WMAV2");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_WMA);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
+            meta->setInt32(kKeyWMAVersion, kTypeWMA);
+            break;
+        case CODEC_ID_WMAPRO:
+            LOGV("WMAPRO");
+            meta = new MetaData;
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_WMA);
+            meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
+            meta->setInt32(kKeyWMAVersion, kTypeWMAPro);
+            break;
+        case CODEC_ID_WMALOSSLESS:
+            LOGV("WMALOSSLESS");
+            meta = new MetaData;
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_WMA);
+            meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
+            meta->setInt32(kKeyWMAVersion, kTypeWMALossLess);
             break;
         default:
             CHECK(!"Should not be here. Unsupported codec.");

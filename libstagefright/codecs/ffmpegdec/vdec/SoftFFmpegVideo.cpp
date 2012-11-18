@@ -75,8 +75,8 @@ SoftFFmpegVideo::SoftFFmpegVideo(
         mMode = MODE_VC1;
     } else if (!strcmp(name, "OMX.ffmpeg.divx.decoder")) {
         mMode = MODE_DIVX;
-    } else if (!strcmp(name, "OMX.ffmpeg.wmv12.decoder")) {
-        mMode = MODE_WMV12;
+    } else if (!strcmp(name, "OMX.ffmpeg.wmv.decoder")) {
+        mMode = MODE_WMV;
     } else if (!strcmp(name, "OMX.ffmpeg.flv.decoder")) {
         mMode = MODE_FLV;
     } else if (!strcmp(name, "OMX.ffmpeg.rv.decoder")) {
@@ -133,8 +133,8 @@ void SoftFFmpegVideo::initPorts() {
         def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_VC1);
         def.format.video.eCompressionFormat = OMX_VIDEO_CodingWMV;
         break;
-    case MODE_WMV12:
-        def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_WMV12);
+    case MODE_WMV:
+        def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_WMV);
         def.format.video.eCompressionFormat = OMX_VIDEO_CodingWMV;
         break;
     default:
@@ -240,8 +240,8 @@ status_t SoftFFmpegVideo::initDecoder() {
     case MODE_VC1:
         mCtx->codec_id = CODEC_ID_VC1;
         break;
-    case MODE_WMV12:
-        mCtx->codec_id = CODEC_ID_WMV1;	// CODEC_ID_WMV1 or CODEC_ID_WMV2?
+    case MODE_WMV:
+        mCtx->codec_id = CODEC_ID_WMV2;	// default, adjust in "internalSetParameter" fxn
         break;
     default:
         CHECK(!"Should not be here. Unsupported codec");
@@ -353,7 +353,7 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalGetParameter(
                 case MODE_VC1:
                     formatParams->eCompressionFormat = OMX_VIDEO_CodingWMV;
                     break;
-                case MODE_WMV12:
+                case MODE_WMV:
                     formatParams->eCompressionFormat = OMX_VIDEO_CodingWMV;
                     break;
                 default:
@@ -369,6 +369,20 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalGetParameter(
                 formatParams->eColorFormat = OMX_COLOR_FormatYUV420Planar;
                 formatParams->xFramerate = 0;
             }
+
+            return OMX_ErrorNone;
+        }
+
+        case OMX_IndexParamVideoWmv:
+        {
+            OMX_VIDEO_PARAM_WMVTYPE *wmvParams =
+                (OMX_VIDEO_PARAM_WMVTYPE *)params;
+
+            if (wmvParams->nPortIndex != 0) {
+                return OMX_ErrorUndefined;
+            }
+
+            wmvParams->eFormat = OMX_VIDEO_WMVFormatUnused;
 
             return OMX_ErrorNone;
         }
@@ -413,9 +427,9 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
                         "video_decoder.vc1", OMX_MAX_STRINGNAME_SIZE - 1))
                     supported =  false;
                 break;
-            case MODE_WMV12:
+            case MODE_WMV:
                 if (strncmp((const char *)roleParams->cRole,
-                        "video_decoder.wmv12", OMX_MAX_STRINGNAME_SIZE - 1))
+                        "video_decoder.wmv", OMX_MAX_STRINGNAME_SIZE - 1))
                     supported =  false;
                 break;
             default:
@@ -467,6 +481,31 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
                         mWidth, mHeight);
                 return OMX_ErrorNone;
             }
+
+            return OMX_ErrorNone;
+        }
+
+        case OMX_IndexParamVideoWmv:
+        {
+            OMX_VIDEO_PARAM_WMVTYPE *wmvParams =
+                (OMX_VIDEO_PARAM_WMVTYPE *)params;
+
+            if (wmvParams->nPortIndex != 0) {
+                return OMX_ErrorUndefined;
+            }
+
+            if (wmvParams->eFormat == OMX_VIDEO_WMVFormat7) {
+                mCtx->codec_id = CODEC_ID_WMV1;
+            } else if (wmvParams->eFormat == OMX_VIDEO_WMVFormat8) {
+                mCtx->codec_id = CODEC_ID_WMV2;
+            } else if (wmvParams->eFormat == OMX_VIDEO_WMVFormat9) {
+                mCtx->codec_id = CODEC_ID_WMV3;
+            } else {
+                LOGE("unsupported wmv codec: 0x%x", wmvParams->eFormat);
+                return OMX_ErrorUndefined;
+            }
+
+            return OMX_ErrorNone;
         }
 
         default:
@@ -571,9 +610,20 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
         if (!mExtradataReady) {
             LOGI("extradata is ready");
             hexdump(mCtx->extradata, mCtx->extradata_size);
-            LOGI("open ffmpeg decoder now");
             mExtradataReady = true;
 
+            // find decoder again as codec_id may have changed
+            mCtx->codec = avcodec_find_decoder(mCtx->codec_id);
+            if (!mCtx->codec) {
+                LOGE("ffmpeg video decoder failed to find codec");
+                notify(OMX_EventError, OMX_ErrorUndefined, 0, NULL);
+                mSignalledError = true;
+                return;
+            }
+
+            setAVCtxToDefault(mCtx, mCtx->codec);
+
+            LOGI("open ffmpeg decoder now");
             err = avcodec_open2(mCtx, mCtx->codec, NULL);
             if (err < 0) {
                 LOGE("ffmpeg video decoder failed to initialize. (%d)", err);

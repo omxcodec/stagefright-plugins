@@ -91,7 +91,7 @@ private:
         MODE_VPX,
         MODE_VC1,
         MODE_DIVX,
-        MODE_WMV12,
+        MODE_WMV,
         MODE_FLV,
         MODE_RV
     } mMode;
