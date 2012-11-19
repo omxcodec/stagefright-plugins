@@ -480,6 +480,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
     case CODEC_ID_WMAV2:
     case CODEC_ID_WMAPRO:
     case CODEC_ID_WMALOSSLESS:
+    case CODEC_ID_RV40:
         supported = true;
         break;
     default:
@@ -624,6 +625,11 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             meta->setInt32(kKeyWMVVersion, kTypeWMVVer_9);
+            break;
+        case CODEC_ID_RV40:
+            LOGV("RV40");
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_RV);
+            meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
         default:
             CHECK(!"Should not be here. Unsupported codec.");
@@ -1563,6 +1569,7 @@ static extmap FILE_EXTS[] = {
         {".ts",  MEDIA_MIMETYPE_CONTAINER_TS},
         {".avi", MEDIA_MIMETYPE_CONTAINER_AVI},
         {".asf", MEDIA_MIMETYPE_CONTAINER_ASF},
+        {".rm ", MEDIA_MIMETYPE_CONTAINER_RM},
 #if 0
         {".wmv", MEDIA_MIMETYPE_CONTAINER_WMV},
         {".wma", MEDIA_MIMETYPE_CONTAINER_WMA},
@@ -1571,7 +1578,6 @@ static extmap FILE_EXTS[] = {
         {".divx", MEDIA_MIMETYPE_CONTAINER_DIVX},
         {".mp2", MEDIA_MIMETYPE_CONTAINER_MP2},
         {".ape", MEDIA_MIMETYPE_CONTAINER_APE},
-        {".rm ", MEDIA_MIMETYPE_CONTAINER_RM},
         {".ra",  MEDIA_MIMETYPE_CONTAINER_RA},
 #endif
 };
@@ -1613,6 +1619,7 @@ static formatmap FILE_FORMATS[] = {
         {"mpegts",                  MEDIA_MIMETYPE_CONTAINER_TS},
         {"mov,mp4,m4a,3gp,3g2,mj2", MEDIA_MIMETYPE_CONTAINER_MOV},
         {"asf",                     MEDIA_MIMETYPE_CONTAINER_ASF},
+        {"rm",                      MEDIA_MIMETYPE_CONTAINER_RM},
 };
 
 const char *BetterSniffFFMPEG(const char * uri)

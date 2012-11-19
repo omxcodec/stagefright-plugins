@@ -137,6 +137,10 @@ void SoftFFmpegVideo::initPorts() {
         def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_WMV);
         def.format.video.eCompressionFormat = OMX_VIDEO_CodingWMV;
         break;
+    case MODE_RV:
+        def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_RV);
+        def.format.video.eCompressionFormat = OMX_VIDEO_CodingRV;
+        break;
     default:
         CHECK(!"Should not be here. Unsupported mime type and compression format");
         break;
@@ -242,6 +246,9 @@ status_t SoftFFmpegVideo::initDecoder() {
         break;
     case MODE_WMV:
         mCtx->codec_id = CODEC_ID_WMV2;	// default, adjust in "internalSetParameter" fxn
+        break;
+    case MODE_RV:
+        mCtx->codec_id = CODEC_ID_RV40;	// default, adjust in "internalSetParameter" fxn
         break;
     default:
         CHECK(!"Should not be here. Unsupported codec");
@@ -356,6 +363,9 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalGetParameter(
                 case MODE_WMV:
                     formatParams->eCompressionFormat = OMX_VIDEO_CodingWMV;
                     break;
+                case MODE_RV:
+                    formatParams->eCompressionFormat = OMX_VIDEO_CodingRV;
+                    break;
                 default:
                     CHECK(!"Should not be here. Unsupported compression format.");
                     break;
@@ -430,6 +440,11 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
             case MODE_WMV:
                 if (strncmp((const char *)roleParams->cRole,
                         "video_decoder.wmv", OMX_MAX_STRINGNAME_SIZE - 1))
+                    supported =  false;
+                break;
+            case MODE_RV:
+                if (strncmp((const char *)roleParams->cRole,
+                        "video_decoder.rv", OMX_MAX_STRINGNAME_SIZE - 1))
                     supported =  false;
                 break;
             default:
