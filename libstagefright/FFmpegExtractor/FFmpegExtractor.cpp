@@ -621,7 +621,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             meta->setInt32(kKeyWMVVersion, kTypeWMVVer_8);
             break;
         case CODEC_ID_WMV3:
-            LOGV("WMV2");
+            LOGV("WMV3");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             meta->setInt32(kKeyWMVVersion, kTypeWMVVer_9);
