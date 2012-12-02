@@ -32,7 +32,8 @@ LOCAL_C_INCLUDES += \
 	$(FFMPEG_BUILD_DIR)
 
 LOCAL_SHARED_LIBRARIES := \
-	libutils
+	libutils \
+	libcutils
 
 FFMPEG_BUILD_LIBS := \
         -L$(FFMPEG_BUILD_DIR)/libavutil         \

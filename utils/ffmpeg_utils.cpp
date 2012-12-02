@@ -59,6 +59,8 @@ extern "C" {
 }
 #endif
 
+#include <cutils/properties.h>
+
 // log
 static int flags;
 
@@ -215,15 +217,32 @@ static int lockmgr(void **mtx, enum AVLockOp op)
     return 1;
 }
 
+/**
+ * To debug ffmpeg", type this command on the console before starting playback:
+ *     setprop debug.nam.ffmpeg 1
+ * To disable the debug, type:
+ *     setprop debug.nam.ffmpge 0
+*/
 status_t initFFmpeg() 
 {
     status_t ret = OK;
+    bool debug_enabled = false;
+    char value[PROPERTY_VALUE_MAX];
 
     pthread_mutex_lock(&init_mutex);
 
+    if (property_get("debug.nam.ffmpeg", value, NULL)
+        && (!strcmp(value, "1") || !av_strcasecmp(value, "true"))) {
+        LOGI("set ffmpeg debug level to AV_LOG_DEBUG");
+        debug_enabled = true;
+    }
+    if (debug_enabled)
+        av_log_set_level(AV_LOG_DEBUG);
+    else
+        av_log_set_level(AV_LOG_INFO);
+
     if(ref_count == 0) {
         nam_av_log_set_flags(AV_LOG_SKIP_REPEATED);
-        //av_log_set_level(AV_LOG_DEBUG);
         av_log_set_callback(nam_av_log_callback);
 
         /* register all codecs, demux and protocols */

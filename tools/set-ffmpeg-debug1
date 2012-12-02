@@ -1,0 +1,4 @@
+#!/system/bin/sh
+
+setprop debug.nam.ffmpeg 1
+
