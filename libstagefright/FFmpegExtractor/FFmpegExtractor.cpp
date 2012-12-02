@@ -481,6 +481,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
     case CODEC_ID_WMAPRO:
     case CODEC_ID_WMALOSSLESS:
     case CODEC_ID_RV40:
+    case CODEC_ID_COOK:
         supported = true;
         break;
     default:
@@ -756,6 +757,12 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_WMA);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             meta->setInt32(kKeyWMAVersion, kTypeWMALossLess);
+            break;
+        case CODEC_ID_COOK: // audio codec in RMVB
+            LOGV("COOK");
+            meta = new MetaData;
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_RA);
+            meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
         default:
             CHECK(!"Should not be here. Unsupported codec.");

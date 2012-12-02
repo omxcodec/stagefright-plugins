@@ -23,14 +23,14 @@
 extern "C" {
 #endif
 
+#include "config.h"
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <inttypes.h>
 #include <math.h>
-#include <signal.h>
 #include <limits.h> /* INT_MAX */
 
-#include "config.h"
 #include "libavutil/avstring.h"
 #include "libavutil/colorspace.h"
 #include "libavutil/mathematics.h"

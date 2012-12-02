@@ -55,10 +55,6 @@ ifeq ($(TARGET_DEVICE),maguro)
     LOCAL_CFLAGS += -DUSES_NAM
 endif
 
-ifeq ($(TARGET_ARCH),arm)
-    LOCAL_CFLAGS += -Wno-psabi
-endif
-
 LOCAL_CFLAGS += -D__STDC_CONSTANT_MACROS=1
 
 include $(BUILD_SHARED_LIBRARY)

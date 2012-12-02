@@ -27,8 +27,8 @@
 #include "utils/common_utils.h"
 #include "utils/ffmpeg_utils.h"
 
-#undef realloc
-#include <stdlib.h>
+//#undef realloc
+//#include <stdlib.h>
 
 #define DEBUG_PKT 0
 #define DEBUG_FRM 0
@@ -147,6 +147,10 @@ void SoftFFmpegAudio::initPorts() {
         def.format.audio.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_AUDIO_WMA);
         def.format.audio.eEncoding = OMX_AUDIO_CodingWMA;
         break;
+    case MODE_RA:
+        def.format.audio.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_AUDIO_RA);
+        def.format.audio.eEncoding = OMX_AUDIO_CodingRA;
+        break;
     default:
         CHECK(!"Should not be here. Unsupported mime type and compression format");
         break;
@@ -231,6 +235,11 @@ status_t SoftFFmpegAudio::initDecoder() {
         break;
     case MODE_WMA:
         mCtx->codec_id = CODEC_ID_WMAV2; // FIXME, CODEC_ID_WMAV1 or CODEC_ID_WMAV2?
+        break;
+    case MODE_RA:
+        mCtx->codec_id = CODEC_ID_COOK; // FIXME
+        mCtx->block_align = 186;
+        mBitRate = 64082;
         break;
     default:
         CHECK(!"Should not be here. Unsupported codec");
@@ -343,6 +352,8 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalGetParameter(
             pcmParams->eChannelMapping[0] = OMX_AUDIO_ChannelLF;
             pcmParams->eChannelMapping[1] = OMX_AUDIO_ChannelRF;
 
+            LOGI("~~~~~~~~~~~~~ audio config change");
+
             channels = mNumChannels >= 2 ? 2 : 1;
             sampling_rate = mSamplingRate;
             // 4000 <= nSamplingRate <= 48000
@@ -410,6 +421,11 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
             case MODE_WMA:
                 if (strncmp((const char *)roleParams->cRole,
                         "audio_decoder.wma", OMX_MAX_STRINGNAME_SIZE - 1))
+                    supported =  false;
+                break;
+            case MODE_RA:
+                if (strncmp((const char *)roleParams->cRole,
+                        "audio_decoder.ra", OMX_MAX_STRINGNAME_SIZE - 1))
                     supported =  false;
                 break;
             default:
@@ -560,7 +576,7 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
             if (!mExtradataReady && !mIgnoreExtradata) {
                 int orig_extradata_size = mCtx->extradata_size;
                 mCtx->extradata_size += inHeader->nFilledLen;
-                mCtx->extradata = (uint8_t *)realloc(mCtx->extradata,
+                mCtx->extradata = (uint8_t *)av_realloc(mCtx->extradata,
                         mCtx->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
                 if (!mCtx->extradata) {
                     LOGE("ffmpeg audio decoder failed to alloc extradata memory.");
@@ -620,6 +636,8 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
                 return;
             }
             mCodecOpened = true;
+            LOGI("open ffmpeg audio decoder, mCtx sample_rate: %d, channels: %d, channel_layout: %llu, sample_fmt: %s",
+                mCtx->sample_rate, mCtx->channels, mCtx->channel_layout, av_get_sample_fmt_name(mCtx->sample_fmt));
         }
 
         /* update the audio clock with the pts */
@@ -630,6 +648,7 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
 
         if (inHeader && mAudioBufferSize == 0 && !mFlushComplete) {
             AVPacket pkt;
+            memset(&pkt, 0, sizeof(pkt));
             av_init_packet(&pkt);
             if (!mFlushComplete) {
                 pkt.data = (uint8_t *)inHeader->pBuffer + inHeader->nOffset;
@@ -667,109 +686,150 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
                     inInfo = NULL;
                     notifyEmptyBufferDone(inHeader);
                     inHeader = NULL;
+
+                    mInputBufferSize = 0; // need?
                     continue;
                 }
 
-                inputBufferUsedLength = inHeader->nFilledLen;
+                //inputBufferUsedLength = inHeader->nFilledLen;
                 /* if error, we skip the frame and play silence instead */
                 mPAudioBuffer = mSilenceBuffer;
                 mAudioBufferSize = kOutputBufferSize;
-            } else if (!gotFrm) {
+            }
+
+#if DEBUG_PKT
+            LOGV("ffmpeg audio decoder, consume pkt len: %d", len);
+#endif
+
+            if (len < 0)
+                inputBufferUsedLength = inHeader->nFilledLen;
+            else
+                inputBufferUsedLength = len;
+
+            CHECK_GE(inHeader->nFilledLen, inputBufferUsedLength);
+            inHeader->nOffset += inputBufferUsedLength;
+            inHeader->nFilledLen -= inputBufferUsedLength;
+            mInputBufferSize -= inputBufferUsedLength;
+            if (inHeader->nFilledLen == 0) {
+                inInfo->mOwnedByUs = false;
+                inQueue.erase(inQueue.begin());
+                inInfo = NULL;
+                notifyEmptyBufferDone(inHeader);
+                inHeader = NULL;
+
+                mInputBufferSize = 0;
+            }
+
+            if (!gotFrm) {
                 LOGI("ffmpeg audio decoder failed to get frame.");
                 /* stop sending empty packets if the decoder is finished */
                 if (!pkt.data && mCtx->codec->capabilities & CODEC_CAP_DELAY)
                     mFlushComplete = true;
                 continue;
-            } else {
-                /**
-                 * FIXME, check mAudioConfigChanged when the first time you call the audio4!
-                 * mCtx->sample_rate and mCtx->channels may be changed by audio decoder later, why???
-                 */
-                if (!mAudioConfigChanged) {
-                    if (mCtx->channels != mNumChannels || mCtx->sample_rate != mSamplingRate || mCtx->sample_fmt != mSamplingFmt) {
-                        LOGI("audio OMX_EventPortSettingsChanged, mCtx->channels: %d, mNumChannels: %d, mCtx->sample_rate: %d, mSamplingRate: %d",
-                                mCtx->channels, mNumChannels, mCtx->sample_rate, mSamplingRate);
-                        mNumChannels = mCtx->channels;
-                        mSamplingRate = mCtx->sample_rate;
-                        mSamplingFmt = mCtx->sample_fmt;
-                        mAudioConfigChanged = true;
-                        notify(OMX_EventPortSettingsChanged, 1, 0, NULL);
-                        mOutputPortSettingsChange = AWAITING_DISABLED;
-                        return;
-                    } else {
-                        // match with the default, set mAudioConfigChanged true anyway!
-                        mAudioConfigChanged = true;
-                    }
+            }
+
+            /**
+             * FIXME, check mAudioConfigChanged when the first time you call the audio4!
+             * mCtx->sample_rate and mCtx->channels may be changed by audio decoder later, why???
+             */
+            if (!mAudioConfigChanged) {
+                //if (mCtx->channels != mNumChannels || mCtx->sample_rate != mSamplingRate || mCtx->sample_fmt != mSamplingFmt) {
+                if (mCtx->channels != mNumChannels || mCtx->sample_rate != mSamplingRate) {
+                    LOGI("audio OMX_EventPortSettingsChanged, mCtx->channels: %d, mNumChannels: %d, mCtx->sample_rate: %d, mSamplingRate: %d, mCtx->sample_fmt: %s, mSamplingFmt: %s",
+                            mCtx->channels, mNumChannels, mCtx->sample_rate, mSamplingRate,
+                            av_get_sample_fmt_name(mCtx->sample_fmt), av_get_sample_fmt_name(mSamplingFmt));
+                    mNumChannels = mCtx->channels;
+                    mSamplingRate = mCtx->sample_rate;
+                    mSamplingFmt = mCtx->sample_fmt;
+                    mAudioConfigChanged = true;
+                    notify(OMX_EventPortSettingsChanged, 1, 0, NULL);
+                    mOutputPortSettingsChange = AWAITING_DISABLED;
+                    return;
+                } else {
+                    // match with the default, set mAudioConfigChanged true anyway!
+                    mAudioConfigChanged = true;
+                    mSamplingFmt = mCtx->sample_fmt;
+                }
+            }
+
+            dataSize = av_samples_get_buffer_size(NULL, mNumChannels, mFrame->nb_samples, mSamplingFmt, 1);
+
+#if DEBUG_FRM
+            LOGV("audio decoder, nb_samples: %d, get buffer size: %d", mFrame->nb_samples, dataSize);
+            LOGV("audio decoder: mCtx channel_layout: %llu, channels: %d, channels_from_layout: %d\n",
+                mCtx->channel_layout,  mCtx->channels, av_get_channel_layout_nb_channels(mCtx->channel_layout));
+#endif
+
+            decChannelLayout = av_get_default_channel_layout(mNumChannels);
+            if (mSamplingFmt != mAudioSrcFmt ||
+                    decChannelLayout != mAudioSrcChannelLayout ||
+                    mSamplingRate != mAudioSrcFreq ) {
+                if (mSwrCtx)
+                    swr_free(&mSwrCtx);
+                mSwrCtx = swr_alloc_set_opts(NULL,
+                                             mAudioTgtChannelLayout, mAudioTgtFmt, mAudioTgtFreq,
+                                             decChannelLayout,       mSamplingFmt, mSamplingRate,
+                                             0, NULL);
+                if (!mSwrCtx || swr_init(mSwrCtx) < 0) {
+                    LOGE("Cannot create sample rate converter for conversion of %d Hz %s %d channels to %d Hz %s %d channels!",
+                            mSamplingRate,
+                            av_get_sample_fmt_name(mSamplingFmt),
+                            mNumChannels,
+                            mAudioTgtFreq,
+                            av_get_sample_fmt_name(mAudioTgtFmt),
+                            mAudioTgtChannels);
+                    notify(OMX_EventError, OMX_ErrorUndefined, 0, NULL);
+                    mSignalledError = true;
+                    return;
                 }
 
-                dataSize = av_samples_get_buffer_size(NULL, mNumChannels, mFrame->nb_samples, mSamplingFmt, 1);
-
-                //LOGV("audio decoder get buffer size: %d", dataSize);
-
-                decChannelLayout = av_get_default_channel_layout(mNumChannels);
-                if (mSamplingFmt != mAudioSrcFmt ||
-                        decChannelLayout != mAudioSrcChannelLayout ||
-                        mSamplingRate != mAudioSrcFreq ) {
-                    if (mSwrCtx)
-                        swr_free(&mSwrCtx);
-                    mSwrCtx = swr_alloc_set_opts(NULL,
-                                                 mAudioTgtChannelLayout, mAudioTgtFmt, mAudioTgtFreq,
-                                                 decChannelLayout,       mSamplingFmt, mSamplingRate,
-                                                 0, NULL);
-                    if (!mSwrCtx || swr_init(mSwrCtx) < 0) {
-                        LOGE("Cannot create sample rate converter for conversion of %d Hz %s %d channels to %d Hz %s %d channels!",
-                                mSamplingRate,
-                                av_get_sample_fmt_name(mSamplingFmt),
-                                mNumChannels,
-                                mAudioTgtFreq,
-                                av_get_sample_fmt_name(mAudioTgtFmt),
-                                mAudioTgtChannels);
-                        notify(OMX_EventError, OMX_ErrorUndefined, 0, NULL);
-                        mSignalledError = true;
-                        return;
-                    }
-
-                    LOGI("Create sample rate converter for conversion of %d Hz %s %d channels to %d Hz %s %d channels!",
+                LOGI("Create sample rate converter for conversion of %d Hz %s %d channels(%lld channel_layout) to %d Hz %s %d channels(%lld channel_layout)!",
                         mSamplingRate,
                         av_get_sample_fmt_name(mSamplingFmt),
                         mNumChannels,
+                        mAudioTgtChannelLayout,
                         mAudioTgtFreq,
                         av_get_sample_fmt_name(mAudioTgtFmt),
-                        mAudioTgtChannels);
+                        mAudioTgtChannels,
+                        decChannelLayout);
 
-                    mAudioSrcChannelLayout = decChannelLayout;
-                    mAudioSrcChannels = mNumChannels;
-                    mAudioSrcFreq = mSamplingRate;
-                    mAudioSrcFmt = mSamplingFmt;
-                }
-
-                if (mSwrCtx) {
-                    const uint8_t *in[] = { mFrame->data[0] };
-                    uint8_t *out[] = {mAudioBuf2};
-                    int len2 = swr_convert(mSwrCtx, out, sizeof(mAudioBuf2) / mAudioTgtChannels / av_get_bytes_per_sample(mAudioTgtFmt),
-                                       in, mFrame->nb_samples);
-                    if (len2 < 0) {
-                        LOGE("audio_resample() failed");
-                        break;
-                    }
-                    if (len2 == sizeof(mAudioBuf2) / mAudioTgtChannels / av_get_bytes_per_sample(mAudioTgtFmt)) {
-                        LOGE("warning: audio buffer is probably too small");
-                        swr_init(mSwrCtx);
-                    }
-                    mPAudioBuffer = mAudioBuf2;
-                    mAudioBufferSize = len2 * mAudioTgtChannels * av_get_bytes_per_sample(mAudioTgtFmt);
-                } else {
-                    mPAudioBuffer = mFrame->data[0];
-                    mAudioBufferSize = dataSize;
-                }
-
-                inputBufferUsedLength = len;
-#if DEBUG_FRM
-                LOGV("ffmpeg audio decoder get frame. consume pkt len: %d, nb_samples(before resample): %d, mAudioBufferSize: %d",
-                        len, mFrame->nb_samples, mAudioBufferSize);
-#endif
+                mAudioSrcChannelLayout = decChannelLayout;
+                mAudioSrcChannels = mNumChannels;
+                mAudioSrcFreq = mSamplingRate;
+                mAudioSrcFmt = mSamplingFmt;
             }
-        }
+
+            if (mSwrCtx) {
+                //const uint8_t *in[] = { mFrame->data[0] };
+                const uint8_t **in = (const uint8_t **)mFrame->extended_data;
+                uint8_t *out[] = {mAudioBuf2};
+                int out_count = sizeof(mAudioBuf2) / mAudioTgtChannels / av_get_bytes_per_sample(mAudioTgtFmt);
+
+#if DEBUG_FRM
+                LOGV("swr_convert 1, out_count: %d, mFrame->nb_samples: %d, src frm: %s, tgt frm: %s",
+                    out_count, mFrame->nb_samples, av_get_sample_fmt_name(mCtx->sample_fmt), av_get_sample_fmt_name(mAudioTgtFmt));
+#endif
+                int len2 = swr_convert(mSwrCtx, out, out_count, in, mFrame->nb_samples);
+                if (len2 < 0) {
+                    LOGE("audio_resample() failed");
+                    break;
+                }
+                if (len2 == out_count) {
+                    LOGE("warning: audio buffer is probably too small");
+                    swr_init(mSwrCtx);
+                }
+                mPAudioBuffer = mAudioBuf2;
+                mAudioBufferSize = len2 * mAudioTgtChannels * av_get_bytes_per_sample(mAudioTgtFmt);
+            } else {
+                mPAudioBuffer = mFrame->data[0];
+                mAudioBufferSize = dataSize;
+            }
+
+#if DEBUG_FRM
+            LOGV("ffmpeg audio decoder get frame. consume pkt len: %d, nb_samples(before resample): %d, mAudioBufferSize: %d",
+                    len, mFrame->nb_samples, mAudioBufferSize);
+#endif
+        } // if (inHeader && mAudioBufferSize == 0 && !mFlushComplete)
 
         size_t copyToOutputBufferLen = mAudioBufferSize;
         if (mAudioBufferSize > kOutputBufferSize)
@@ -787,28 +847,14 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
 
         mPAudioBuffer += copyToOutputBufferLen;
         mAudioBufferSize -= copyToOutputBufferLen;
-        mNumFramesOutput += copyToOutputBufferLen / (av_get_bytes_per_sample(mCtx->sample_fmt) * mNumChannels);
-
+        mNumFramesOutput += copyToOutputBufferLen / (av_get_bytes_per_sample(mAudioTgtFmt) * mNumChannels);
 
         // reset mNumFramesOutput
-        if (mAudioBufferSize == 0)
+        if (mAudioBufferSize == 0) {
+#if DEBUG_FRM
+            LOGV("~~~~ mAudioBufferSize, set mNumFramesOutput = 0");
+#endif
             mNumFramesOutput = 0;
-
-
-        if (inHeader) {
-            CHECK_GE(inHeader->nFilledLen, inputBufferUsedLength);
-            inHeader->nOffset += inputBufferUsedLength;
-            inHeader->nFilledLen -= inputBufferUsedLength;
-            mInputBufferSize -= inputBufferUsedLength;
-            if (inHeader->nFilledLen == 0) {
-                inInfo->mOwnedByUs = false;
-                inQueue.erase(inQueue.begin());
-                inInfo = NULL;
-                notifyEmptyBufferDone(inHeader);
-                inHeader = NULL;
-
-                mInputBufferSize = 0;
-            }
         }
 
         outInfo->mOwnedByUs = false;
