@@ -774,6 +774,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         meta->setInt32(kKeySampleRate, avctx->sample_rate);
         meta->setInt32(kKeyChannelCount, avctx->channels);
         meta->setInt32(kKeyBitRate, avctx->bit_rate);
+        meta->setInt32(kKeyBlockAlign, avctx->block_align);
         if (mFormatCtx->duration != AV_NOPTS_VALUE)
             meta->setInt64(kKeyDuration, mFormatCtx->duration);
 

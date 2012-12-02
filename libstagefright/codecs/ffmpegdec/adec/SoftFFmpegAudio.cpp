@@ -73,6 +73,7 @@ SoftFFmpegAudio::SoftFFmpegAudio(
       mNumChannels(2),
       mSamplingRate(44100),
       mBitRate(0),
+      mBlockAlign(0),
       mSamplingFmt(AV_SAMPLE_FMT_S16),
       mAudioConfigChanged(false),
       mOutputPortSettingsChange(NONE) {
@@ -244,8 +245,6 @@ status_t SoftFFmpegAudio::initDecoder() {
         break;
     case MODE_RA:
         mCtx->codec_id = CODEC_ID_COOK; // FIXME
-        mCtx->block_align = 186;
-        mBitRate = 64082;
         break;
     default:
         CHECK(!"Should not be here. Unsupported codec");
@@ -341,6 +340,21 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalGetParameter(
 
             return OMX_ErrorNone;
         }
+        case OMX_IndexParamAudioRa:
+        {
+            OMX_AUDIO_PARAM_RATYPE *raParams =
+                (OMX_AUDIO_PARAM_RATYPE *)params;
+
+            if (raParams->nPortIndex != 0) {
+                return OMX_ErrorUndefined;
+            }
+
+            raParams->nChannels = 0;
+            raParams->nSamplingRate = 0;
+            raParams->eFormat = OMX_AUDIO_RAFormatUnused;
+
+            return OMX_ErrorNone;
+        }
         case OMX_IndexParamAudioPcm:
         {
             OMX_AUDIO_PARAM_PCMMODETYPE *pcmParams =
@@ -358,7 +372,7 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalGetParameter(
             pcmParams->eChannelMapping[0] = OMX_AUDIO_ChannelLF;
             pcmParams->eChannelMapping[1] = OMX_AUDIO_ChannelRF;
 
-            LOGI("~~~~~~~~~~~~~ audio config change");
+            LOGV("audio config change");
 
             channels = mNumChannels >= 2 ? 2 : 1;
             sampling_rate = mSamplingRate;
@@ -521,6 +535,46 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
 
             LOGV("got OMX_IndexParamAudioWma, mNumChannels: %d, mSamplingRate: %d, mBitRate: %d",
                 mNumChannels, mSamplingRate, mBitRate);
+
+            return OMX_ErrorNone;
+        }
+        case OMX_IndexParamAudioRa:
+        {
+            OMX_AUDIO_PARAM_RATYPE *raParams =
+                (OMX_AUDIO_PARAM_RATYPE *)params;
+
+            if (raParams->nPortIndex != 0) {
+                return OMX_ErrorUndefined;
+            }
+
+            mCtx->codec_id = CODEC_ID_COOK;
+
+            mNumChannels = raParams->nChannels;
+            mSamplingRate = raParams->nSamplingRate;
+            // FIXME, HACK!!!, I use the nNumRegions parameter pass blockAlign!!!
+            // the cook audio codec need blockAlign!
+            mBlockAlign = raParams->nNumRegions;
+
+            // cook decoder need block_align
+            mCtx->block_align = mBlockAlign;
+
+            channels = mNumChannels >= 2 ? 2 : 1;
+            sampling_rate = mSamplingRate;
+            // 4000 <= nSamplingRate <= 48000
+            if (mSamplingRate < 4000) {
+                sampling_rate = 4000;
+            } else if (mSamplingRate > 48000) {
+                sampling_rate = 48000;
+            }
+
+            // update src and target(only wma), only once!
+            mAudioSrcChannels = mAudioTgtChannels = channels;
+            mAudioSrcFreq = mAudioTgtFreq = sampling_rate;
+            mAudioSrcFmt = mAudioTgtFmt = AV_SAMPLE_FMT_S16;
+            mAudioSrcChannelLayout = mAudioTgtChannelLayout = av_get_default_channel_layout(channels);
+
+            LOGV("got OMX_IndexParamAudioRa, mNumChannels: %d, mSamplingRate: %d, mBlockAlign: %d",
+                mNumChannels, mSamplingRate, mBlockAlign);
 
             return OMX_ErrorNone;
         }
