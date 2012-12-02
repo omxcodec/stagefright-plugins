@@ -653,10 +653,13 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
         err = avcodec_decode_video2(mCtx, frame, &gotPic, &pkt);
         if (err < 0) {
             LOGE("ffmpeg video decoder failed to decode frame. (%d)", err);
+#if 0
+            // Don't send error to OMXCodec, skip!
             notify(OMX_EventError, OMX_ErrorUndefined, 0, NULL);
             mSignalledError = true;
             av_free(frame);
             return;
+#endif
         }
 
         if (gotPic) {
