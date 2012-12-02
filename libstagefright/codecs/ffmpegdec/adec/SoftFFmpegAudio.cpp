@@ -33,6 +33,12 @@
 #define DEBUG_PKT 0
 #define DEBUG_FRM 0
 
+/**
+ * Note: DECLARE_ALIGNED should move from "*.h" to here, otherwise
+ * "Fatal signal 7 (SIGBUS)"!!! SIGBUS is because of an alignment exception
+ */
+DECLARE_ALIGNED(16, uint8_t, mAudioBuf2)[AVCODEC_MAX_AUDIO_FRAME_SIZE * 4];
+
 namespace android {
 
 template<class T>
@@ -804,7 +810,6 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
                 const uint8_t **in = (const uint8_t **)mFrame->extended_data;
                 uint8_t *out[] = {mAudioBuf2};
                 int out_count = sizeof(mAudioBuf2) / mAudioTgtChannels / av_get_bytes_per_sample(mAudioTgtFmt);
-
 #if DEBUG_FRM
                 LOGV("swr_convert 1, out_count: %d, mFrame->nb_samples: %d, src frm: %s, tgt frm: %s",
                     out_count, mFrame->nb_samples, av_get_sample_fmt_name(mCtx->sample_fmt), av_get_sample_fmt_name(mAudioTgtFmt));
