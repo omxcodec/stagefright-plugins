@@ -103,8 +103,8 @@ private:
     int mAudioDisable;
     int mShowStatus;
     int mSeekByBytes;
-    int64_t mStartTime;
     int mAutoExit;
+    int64_t mStartTime;
     int64_t mDuration;
     int mLoop;
     bool mEOF;
@@ -138,6 +138,7 @@ private:
     int initStreams();
     void deInitStreams();
     void setFFmpegDefaultOpts();
+    void printTime(int64_t time);
     int stream_component_open(int stream_index);
     void stream_component_close(int stream_index);
     void packet_queue_init(PacketQueue *q);

@@ -41,11 +41,11 @@
 #include "utils/ffmpeg_utils.h"
 #include "FFmpegExtractor.h"
 
-#define DEBUG_READ_ENTRY 0
-#define DIABLE_VIDEO     0
-#define DIABLE_AUDIO     0
+#define DEBUG_READ_ENTRY           0
+#define DEBUG_DISABLE_VIDEO        0
+#define DEBUG_DISABLE_AUDIO        0
 #define WAIT_KEY_PACKET_AFTER_SEEK 1
-#define DISABLE_NAL_TO_ANNEXB 0
+#define DISABLE_NAL_TO_ANNEXB      0
 
 #define MAX_QUEUE_SIZE (15 * 1024 * 1024)
 #define MIN_AUDIOQ_SIZE (20 * 16 * 1024)
@@ -443,6 +443,22 @@ int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
     return 1;
 }
 
+void FFmpegExtractor::printTime(int64_t time)
+{
+    int hours, mins, secs, us;
+
+    if (time == AV_NOPTS_VALUE)
+        return;
+
+    secs = time / AV_TIME_BASE;
+    us = time % AV_TIME_BASE;
+    mins = secs / 60;
+    secs %= 60;
+    hours = mins / 60;
+    mins %= 60;
+    LOGI("the time is %02d:%02d:%02d.%02d",
+        hours, mins, secs, (100 * us) / AV_TIME_BASE);
+}
 
 int FFmpegExtractor::stream_component_open(int stream_index)
 {
@@ -643,8 +659,15 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         meta->setInt32(kKeyHeight, avctx->height);
         if (avctx->bit_rate > 0)
             meta->setInt32(kKeyBitRate, avctx->bit_rate);
-        if (mFormatCtx->duration != AV_NOPTS_VALUE)
+        if (mVideoStream->duration != AV_NOPTS_VALUE) {
+            int64_t duration = mVideoStream->duration * av_q2d(mVideoStream->time_base) * 1000000;
+            printTime(duration);
+            LOGV("video startTime: %lld", mVideoStream->start_time);
+            meta->setInt64(kKeyDuration, duration);
+        } else {
+            // default when no stream duration
             meta->setInt64(kKeyDuration, mFormatCtx->duration);
+        }
 
         LOGV("create a video track");
         index = mTracks.add(
@@ -775,8 +798,15 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         meta->setInt32(kKeyChannelCount, avctx->channels);
         meta->setInt32(kKeyBitRate, avctx->bit_rate);
         meta->setInt32(kKeyBlockAlign, avctx->block_align);
-        if (mFormatCtx->duration != AV_NOPTS_VALUE)
+        if (mAudioStream->duration != AV_NOPTS_VALUE) {
+            int64_t duration = mAudioStream->duration * av_q2d(mAudioStream->time_base) * 1000000;
+            printTime(duration);
+            LOGV("audio startTime: %lld", mAudioStream->start_time);
+            meta->setInt64(kKeyDuration, duration);
+        } else {
+            // default when no stream duration
             meta->setInt64(kKeyDuration, mFormatCtx->duration);
+        }
 
         LOGV("create a audio track");
         index = mTracks.add(
@@ -913,19 +943,18 @@ void FFmpegExtractor::print_error_ex(const char *filename, int err)
 void FFmpegExtractor::setFFmpegDefaultOpts()
 {
     mGenPTS       = 0;
-#if DIABLE_VIDEO
+#if DEBUG_DISABLE_VIDEO
     mVideoDisable = 1;
 #else
     mVideoDisable = 0;
 #endif
-#if DIABLE_AUDIO
+#if DEBUG_DISABLE_AUDIO
     mAudioDisable = 1;
 #else
     mAudioDisable = 0;
 #endif
     mShowStatus   = 1;
     mSeekByBytes  = 0; /* seek by bytes 0=off 1=on -1=auto" */
-    mStartTime    = AV_NOPTS_VALUE;
     mDuration     = AV_NOPTS_VALUE;
     mSeekPos      = AV_NOPTS_VALUE;
     mAutoExit     = 1;
@@ -1019,22 +1048,6 @@ int FFmpegExtractor::initStreams()
     if (mSeekByBytes < 0)
         mSeekByBytes = !!(mFormatCtx->iformat->flags & AVFMT_TS_DISCONT);
 
-    /* if seeking requested, we execute it */
-    if (mStartTime != AV_NOPTS_VALUE) {
-        int64_t timestamp;
-
-        timestamp = mStartTime;
-        /* add the stream start time */
-        if (mFormatCtx->start_time != AV_NOPTS_VALUE)
-            timestamp += mFormatCtx->start_time;
-        ret = avformat_seek_file(mFormatCtx, -1, INT64_MIN, timestamp, INT64_MAX, 0);
-        if (ret < 0) {
-            LOGE("%s: could not seek to position %0.3f",
-                    mFilename, (double)timestamp / AV_TIME_BASE);
-            goto fail;
-        }
-    }
-
     for (i = 0; i < mFormatCtx->nb_streams; i++)
         mFormatCtx->streams[i]->discard = AVDISCARD_ALL;
     if (!mVideoDisable)
@@ -1051,15 +1064,22 @@ int FFmpegExtractor::initStreams()
         av_dump_format(mFormatCtx, 0, mFilename, 0);
     }
 
-    if (mFormatCtx->duration != AV_NOPTS_VALUE) {
+    if (mFormatCtx->duration != AV_NOPTS_VALUE &&
+            mFormatCtx->start_time != AV_NOPTS_VALUE) {
         int hours, mins, secs, us;
-        secs = mFormatCtx->duration / AV_TIME_BASE;
-        us = mFormatCtx->duration % AV_TIME_BASE;
+
+        LOGV("file startTime: %lld", mFormatCtx->start_time);
+
+        mDuration = mFormatCtx->duration;
+
+        secs = mDuration / AV_TIME_BASE;
+        us = mDuration % AV_TIME_BASE;
         mins = secs / 60;
         secs %= 60;
         hours = mins / 60;
         mins %= 60;
-        LOGI("the duration is %02d:%02d:%02d.%02d", hours, mins, secs, (100 * us) / AV_TIME_BASE);
+        LOGI("the duration is %02d:%02d:%02d.%02d",
+            hours, mins, secs, (100 * us) / AV_TIME_BASE);
     }
 
     if (st_index[AVMEDIA_TYPE_AUDIO] >= 0) {
@@ -1218,13 +1238,7 @@ void FFmpegExtractor::readerEntry() {
                     mVideoQ.size, mVideoQ.nb_packets, mAudioQ.size, mAudioQ.nb_packets);
 #endif
             if (mAudioQ.size + mVideoQ.size  == 0) {
-                if (mLoop != 1 && (!mLoop || --mLoop)) {
-                    if (mVideoStreamIdx >= 0) {
-                        stream_seek(mStartTime != AV_NOPTS_VALUE ? mStartTime : 0, AVMEDIA_TYPE_VIDEO);
-                    } else if (mAudioStreamIdx >= 0) {
-                        stream_seek(mStartTime != AV_NOPTS_VALUE ? mStartTime : 0, AVMEDIA_TYPE_AUDIO);
-                    }
-                } else if (mAutoExit) {
+                if (mAutoExit) {
                     ret = AVERROR_EOF;
                     goto fail;
                 }
@@ -1316,15 +1330,9 @@ void FFmpegExtractor::readerEntry() {
             }
         }
 
-        /* check if packet is in play range specified by user, then queue, otherwise discard */
-        pkt_in_play_range = mDuration == AV_NOPTS_VALUE ||
-                (pkt->pts - mFormatCtx->streams[pkt->stream_index]->start_time) *
-                av_q2d(mFormatCtx->streams[pkt->stream_index]->time_base) -
-                (double)(mStartTime != AV_NOPTS_VALUE ? mStartTime : 0) / 1000000
-                <= ((double)mDuration / 1000000);
-        if (pkt->stream_index == mAudioStreamIdx && pkt_in_play_range) {
+        if (pkt->stream_index == mAudioStreamIdx) {
             packet_queue_put(&mAudioQ, pkt);
-        } else if (pkt->stream_index == mVideoStreamIdx && pkt_in_play_range) {
+        } else if (pkt->stream_index == mVideoStreamIdx) {
             packet_queue_put(&mVideoQ, pkt);
         } else {
             av_free_packet(pkt);
@@ -1427,6 +1435,13 @@ status_t FFmpegExtractor::Track::read(
 
     if (options && options->getSeekTo(&seekTimeUs, &mode)) {
         LOGV("~~~%s seekTimeUs: %lld, mode: %d", av_get_media_type_string(mMediaType), seekTimeUs, mode);
+        /* add the stream start time */
+        if (mStream->start_time != AV_NOPTS_VALUE)
+            seekTimeUs += mStream->start_time * av_q2d(mStream->time_base) * 1000000;
+            //seekTimeUs += 31948238333;
+        LOGV("~~~%s startTime: %lld, mode: %d", av_get_media_type_string(mMediaType), mStream->start_time, mode);
+        LOGV("~~~%s seekTimeUs[+startTime]: %lld, mode: %d", av_get_media_type_string(mMediaType), seekTimeUs, mode);
+
         if (mExtractor->stream_seek(seekTimeUs, mMediaType) == SEEK)
             seeking = true;
     }
@@ -1535,11 +1550,11 @@ retry:
     if (pktTS < 0)
         pktTS = 0;
 #endif
-
-    timeUs = (int64_t)(pktTS * av_q2d(mStream->time_base) * 1000000);
+    int64_t start_time = mStream->start_time != AV_NOPTS_VALUE ? mStream->start_time : 0;
+    timeUs = (int64_t)((pktTS - start_time) * av_q2d(mStream->time_base) * 1000000);
 
 #if 0
-    LOGV("read %s pkt, size: %d, key: %d, pts: %lld, dts: %lld, timeUs: %llu us (%.2f secs)",
+    LOGV("read %s pkt, size: %d, key: %d, pts: %lld, dts: %lld, timeUs[-startTime]: %llu us (%.2f secs)",
         av_get_media_type_string(mMediaType), pkt.size, key, pkt.pts, pkt.dts, timeUs, timeUs/1E6);
 #endif
 
