@@ -94,6 +94,8 @@ private:
     AVStream *mStream;
     PacketQueue *mQueue;
 
+    int64_t mFirstKeyPktTimestamp;
+
     DISALLOW_EVIL_CONSTRUCTORS(Track);
 };
 
@@ -1394,6 +1396,7 @@ FFmpegExtractor::Track::Track(
     }
 
     mMediaType = mStream->codec->codec_type;
+    mFirstKeyPktTimestamp = AV_NOPTS_VALUE;
 }
 
 FFmpegExtractor::Track::~Track() {
@@ -1438,8 +1441,6 @@ status_t FFmpegExtractor::Track::read(
         /* add the stream start time */
         if (mStream->start_time != AV_NOPTS_VALUE)
             seekTimeUs += mStream->start_time * av_q2d(mStream->time_base) * 1000000;
-            //seekTimeUs += 31948238333;
-        LOGV("~~~%s startTime: %lld, mode: %d", av_get_media_type_string(mMediaType), mStream->start_time, mode);
         LOGV("~~~%s seekTimeUs[+startTime]: %lld, mode: %d", av_get_media_type_string(mMediaType), seekTimeUs, mode);
 
         if (mExtractor->stream_seek(seekTimeUs, mMediaType) == SEEK)
@@ -1467,6 +1468,7 @@ retry:
     if (pkt.data == flush_pkt.data) {
         LOGV("read %s flush pkt", av_get_media_type_string(mMediaType));
         av_free_packet(&pkt);
+        mFirstKeyPktTimestamp = AV_NOPTS_VALUE;
         goto retry;
     } else if (pkt.data == NULL && pkt.size == 0) {
         LOGV("read %s eos pkt", av_get_media_type_string(mMediaType));
@@ -1476,6 +1478,10 @@ retry:
     }
 
     key = pkt.flags & AV_PKT_FLAG_KEY ? 1 : 0;
+    pktTS = pkt.pts;
+    // use dts when AVI
+    if (pkt.pts == AV_NOPTS_VALUE)
+        pktTS = pkt.dts;
 
     if (waitKeyPkt) {
         if (!key) {
@@ -1487,7 +1493,18 @@ retry:
             waitKeyPkt = false;
         }
     }
+
+    if (mFirstKeyPktTimestamp == AV_NOPTS_VALUE) {
+        // update the first key timestamp
+        mFirstKeyPktTimestamp = pktTS;
+    }
      
+    if (pktTS < mFirstKeyPktTimestamp) {
+            LOGV("drop the packet with the backward timestamp, maybe them are B-frames after I-frame ^_^");
+            av_free_packet(&pkt);
+            goto retry;
+    }
+
     MediaBuffer *mediaBuffer = new MediaBuffer(pkt.size + FF_INPUT_BUFFER_PADDING_SIZE);
     mediaBuffer->meta_data()->clear();
     mediaBuffer->set_range(0, pkt.size);
@@ -1539,30 +1556,12 @@ retry:
         memcpy(mediaBuffer->data(), pkt.data, pkt.size);
     }
 
-    pktTS = pkt.pts;
-    // use dts when AVI
-    if (pkt.pts == AV_NOPTS_VALUE)
-        pktTS = pkt.dts;
-
-#if 0
-    // TODO, Stagefright can't handle negative timestamps
-    // if needed, work around this by offsetting them manually?
-    if (pktTS < 0)
-        pktTS = 0;
-#endif
     int64_t start_time = mStream->start_time != AV_NOPTS_VALUE ? mStream->start_time : 0;
     timeUs = (int64_t)((pktTS - start_time) * av_q2d(mStream->time_base) * 1000000);
 
 #if 0
     LOGV("read %s pkt, size: %d, key: %d, pts: %lld, dts: %lld, timeUs[-startTime]: %llu us (%.2f secs)",
         av_get_media_type_string(mMediaType), pkt.size, key, pkt.pts, pkt.dts, timeUs, timeUs/1E6);
-#endif
-
-#if 0
-    // TODO, Stagefright can't handle negative timestamps
-    // if needed, work around this by offsetting them manually?
-    if (timeUs < 0)
-        timeUs = 0;
 #endif
 
     mediaBuffer->meta_data()->setInt64(kKeyTime, timeUs);
