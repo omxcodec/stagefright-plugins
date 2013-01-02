@@ -35,7 +35,7 @@ http://ffmpeg.org
 ref: git://android.git.linaro.org/platform/external/ffmpeg.git
 
 ================================================================================
- How to build
+How to build
 ================================================================================
 
 1. Get the Source
@@ -104,7 +104,7 @@ ref: git://android.git.linaro.org/platform/external/ffmpeg.git
    run it and enjoy!
 
 ================================================================================
- Features
+Features
 ================================================================================
 Input formats:
     MP4 / MOV / 3GP
@@ -135,7 +135,7 @@ Audio formats:
     AMR (3GPP)
     
 ================================================================================
- Known issues
+Known issues
 ================================================================================
 1. some .mov movies do not av resync when seeking
 2. some video stream ended while seeking
