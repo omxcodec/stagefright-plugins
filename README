@@ -104,6 +104,37 @@ ref: git://android.git.linaro.org/platform/external/ffmpeg.git
    run it and enjoy!
 
 ================================================================================
+ Features
+================================================================================
+Input formats:
+    MP4 / MOV / 3GP
+    TS / PS
+    AVI
+    ASF / WMV / WMA
+    Matroska (MKV)
+    Real(RM,RMVB)
+    WAV
+
+Video formats:
+    MPEG-1/2
+    MPEG-4
+    H.263
+    H.264 / MPEG-4 AVC
+    WMV 1/2
+    WMV 3 / WMV-9 / VC-1
+    Real Video
+
+Audio formats:
+    MPEG Layer 1/2
+    MP3 - MPEG Layer 3
+    AAC - MPEG-4 part3
+    AC3 - A/52 (Dolby Digital)
+    WMA 1/2
+    WMA 3
+    Real Audio
+    AMR (3GPP)
+    
+================================================================================
  Known issues
 ================================================================================
 1. some .mov movies do not av resync when seeking
