@@ -6,12 +6,10 @@ Stagefright Plugins for Android
    user interaction
 2. FFmpeg provides demuxers and av codecs;
 3. NamExtractor is a extractor plugin, it would be loaded by Stagefright when 
-   Stagefright started.
-4. NamExtractor will load FFmpegExtractor, MplayerExtractor and VLCExtractor.
-   but only FFmpegExtractor is implemented now.
-5. FFmpegExtractor is the reference to "ffmpeg/ffplay" to achieve. 
-6. libstagefright_soft_ffmpegvdec plugin is video decoder
-7. libstagefright_soft_ffmpegadec plugin is audio decoder
+   Stagefright started. NamExtractor will load FFmpegExtractor.FFmpegExtractor
+   is the reference to "ffmpeg/ffplay" to achieve. 
+4. libstagefright_soft_ffmpegvdec plugin is video decoder
+5. libstagefright_soft_ffmpegadec plugin is audio decoder
 
 ================================================================================
 Why is named nam[NamExtractor]?
