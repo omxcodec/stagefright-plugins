@@ -21,6 +21,7 @@ FFMPEG_SRC_DIR   := $(TOP)/external/ffmpeg
 FFMPEG_BUILD_DIR := $(PRODUCT_OUT)/obj/ffmpeg
 
 LOCAL_SRC_FILES := \
+	ffmpeg_source.cpp \
 	ffmpeg_utils.cpp \
 	../../../external/ffmpeg/cmdutils.c
 
@@ -53,7 +54,7 @@ LOCAL_LDFLAGS += $(FFMPEG_BUILD_LIBS) \
 	-lswresample   \
 	-lswscale
 
-LOCAL_MODULE:= libffmpeg_utils
+LOCAL_MODULE := libffmpeg_utils
 
 LOCAL_MODULE_TAGS := optional
 

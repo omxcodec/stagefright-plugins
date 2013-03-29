@@ -61,6 +61,9 @@ extern "C" {
 
 #include <cutils/properties.h>
 
+#include "ffmpeg_utils.h"
+#include "ffmpeg_source.h"
+
 // log
 static int flags;
 
@@ -253,6 +256,9 @@ status_t initFFmpeg()
 #endif
         av_register_all();
         avformat_network_init();
+
+        /* register android source */
+        ffmpeg_register_android_source();
 
         init_opts();
 
