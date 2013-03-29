@@ -106,6 +106,7 @@ static void sanitize(uint8_t *line){
     }
 }
 
+// TODO, remove static variables to support multi-instances
 void nam_av_log_callback(void* ptr, int level, const char* fmt, va_list vl)
 {
     static int print_prefix = 1;
