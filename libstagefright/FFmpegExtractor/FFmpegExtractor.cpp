@@ -1662,13 +1662,14 @@ typedef struct {
 } formatmap;
 
 static formatmap FILE_FORMATS[] = {
-        {"mpegts",                  MEDIA_MIMETYPE_CONTAINER_TS  },
-        {"mov,mp4,m4a,3gp,3g2,mj2", MEDIA_MIMETYPE_CONTAINER_MOV },
-        {"asf",                     MEDIA_MIMETYPE_CONTAINER_ASF },
-        {"rm",                      MEDIA_MIMETYPE_CONTAINER_RM  },
-        {"flv",                     MEDIA_MIMETYPE_CONTAINER_FLV },
-        {"avi",                     MEDIA_MIMETYPE_CONTAINER_AVI },
-        {"ape",                     MEDIA_MIMETYPE_CONTAINER_APE },
+        {"mpeg",                    MEDIA_MIMETYPE_CONTAINER_MPEG2PS  },
+        {"mpegts",                  MEDIA_MIMETYPE_CONTAINER_TS       },
+        {"mov,mp4,m4a,3gp,3g2,mj2", MEDIA_MIMETYPE_CONTAINER_MOV      },
+        {"asf",                     MEDIA_MIMETYPE_CONTAINER_ASF      },
+        {"rm",                      MEDIA_MIMETYPE_CONTAINER_RM       },
+        {"flv",                     MEDIA_MIMETYPE_CONTAINER_FLV      },
+        {"avi",                     MEDIA_MIMETYPE_CONTAINER_AVI      },
+        {"ape",                     MEDIA_MIMETYPE_CONTAINER_APE      },
 };
 
 const char *BetterSniffFFMPEG(const char * uri)
