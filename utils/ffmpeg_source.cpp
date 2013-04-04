@@ -60,8 +60,10 @@ FFSource::~FFSource()
 
 int FFSource::init_check()
 {
-    if (mSource->initCheck() != OK)
+    if (mSource->initCheck() != OK) {
+        LOGI("FFSource initCheck failed");
         return -1;
+    }
 
     return 0;
 }
@@ -71,8 +73,10 @@ int FFSource::read(unsigned char *buf, size_t size)
     ssize_t n = 0;
 
     n = mSource->readAt(mOffset, buf, size);
-    if (n == UNKNOWN_ERROR)
+    if (n == UNKNOWN_ERROR) {
+        LOGI("FFSource readAt failed");
         return AVERROR(errno);
+    }
     assert(n >= 0);
     mOffset += n;
 
@@ -93,8 +97,6 @@ off64_t FFSource::getSize()
          LOGI("FFSource getSize failed");
          return AVERROR(errno);
     }
-
-    LOGI("FFSource getSize, size: %lld", sz);
 
     return sz;
 }

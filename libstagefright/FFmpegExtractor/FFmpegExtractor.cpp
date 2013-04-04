@@ -1648,6 +1648,7 @@ static formatmap FILE_FORMATS[] = {
 const char *BetterSniffFFMPEG(const char * uri)
 {
     size_t i;
+    int err;
     const char *container = NULL;
     AVFormatContext *ic = NULL;
 
@@ -1658,11 +1659,17 @@ const char *BetterSniffFFMPEG(const char * uri)
     }
 
     ic = avformat_alloc_context();
-    avformat_open_input(&ic, uri, NULL, NULL);
+    err = avformat_open_input(&ic, uri, NULL, NULL);
+    if (err < 0) {
+        LOGE("avformat_open_input faild, err: %d", err);
+        print_error(uri, err);
+        return NULL;
+    }
 
     av_dump_format(ic, 0, uri, 0);
 
-    LOGI("FFmpegExtrator, uri: %s, format_name: %s, format_long_name: %s", uri, ic->iformat->name, ic->iformat->long_name);
+    LOGI("FFmpegExtrator, uri: %s, format_name: %s, format_long_name: %s",
+            uri, ic->iformat->name, ic->iformat->long_name);
 
     LOGI("list the format suppoted by ffmpeg: ");
     LOGI("========================================");
@@ -1700,10 +1707,10 @@ const char *Better2SniffFFMPEG(const sp<DataSource> &source)
         return false;
     }
 
+    LOGI("android source: %x", &source);
+
     // pass the addr of smart pointer("source")
     snprintf(url, sizeof(url), "android-source:%x", &source);
-    LOGI("android source: %x", &source);
-    LOGD("android url   : %s", url);
 
     ic = avformat_alloc_context();
     err = avformat_open_input(&ic, url, NULL, NULL);
@@ -1713,7 +1720,9 @@ const char *Better2SniffFFMPEG(const sp<DataSource> &source)
         return NULL;
     }
 
-    LOGI("FFmpegExtrator, uri: %s, format_name: %s, format_long_name: %s",
+    av_dump_format(ic, 0, url, 0);
+
+    LOGI("FFmpegExtrator, url: %s, format_name: %s, format_long_name: %s",
             url, ic->iformat->name, ic->iformat->long_name);
 
     LOGI("list the format suppoted by ffmpeg: ");
@@ -1759,7 +1768,13 @@ bool SniffFFMPEG(
             LOGW("sniff through BetterSniffFFMPEG failed, try LegacySniffFFMPEG");
             //only check the file extension
             container = LegacySniffFFMPEG(uri);
+            if (!container)
+                LOGW("sniff through LegacySniffFFMPEG failed");
+        } else {
+            LOGI("sniff through Better1SniffFFMPEG success");
         }
+    } else {
+        LOGI("sniff through Better2SniffFFMPEG success");
     }
 
     if (container == NULL)
