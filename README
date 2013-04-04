@@ -113,6 +113,7 @@ Input formats:
     Real(RM,RMVB)
     WAV
     FLV(H.264+AAC)
+    APE
 
 Video formats:
     MPEG-1/2

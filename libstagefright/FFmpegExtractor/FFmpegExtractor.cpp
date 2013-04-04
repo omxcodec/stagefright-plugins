@@ -979,7 +979,7 @@ void FFmpegExtractor::setFFmpegDefaultOpts()
 #else
     mAudioDisable = 0;
 #endif
-    mShowStatus   = 1;
+    mShowStatus   = 0;
     mSeekByBytes  = 0; /* seek by bytes 0=off 1=on -1=auto" */
     mDuration     = AV_NOPTS_VALUE;
     mSeekPos      = AV_NOPTS_VALUE;
