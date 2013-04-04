@@ -19,6 +19,7 @@
 #include <utils/Log.h>
 
 #include <limits.h> /* INT_MAX */
+#include <inttypes.h>
 
 #include <media/stagefright/foundation/ABitReader.h>
 #include <media/stagefright/foundation/ABuffer.h>
@@ -1684,11 +1685,64 @@ const char *BetterSniffFFMPEG(const char * uri)
     return container;
 }
 
+const char *Better2SniffFFMPEG(const sp<DataSource> &source)
+{
+    size_t i;
+    int err;
+    size_t len = 0;
+    char url[128] = {0};
+    const char *container = NULL;
+    AVFormatContext *ic = NULL;
+
+    status_t status = initFFmpeg();
+    if (status != OK) {
+        LOGE("could not init ffmpeg");
+        return false;
+    }
+
+    // pass the addr of smart pointer("source")
+    snprintf(url, sizeof(url), "android-source:%x", &source);
+    LOGI("android source: %x", &source);
+    LOGD("android url   : %s", url);
+
+    ic = avformat_alloc_context();
+    err = avformat_open_input(&ic, url, NULL, NULL);
+    if (err < 0) {
+        LOGE("avformat_open_input faild, err: %d", err);
+        print_error(url, err);
+        return NULL;
+    }
+
+    LOGI("FFmpegExtrator, uri: %s, format_name: %s, format_long_name: %s",
+            url, ic->iformat->name, ic->iformat->long_name);
+
+    LOGI("list the format suppoted by ffmpeg: ");
+    LOGI("========================================");
+    for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
+            LOGV("format_names[%02d]: %s", i, FILE_FORMATS[i].format);
+    }
+    LOGI("========================================");
+
+    for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
+        int len = strlen(FILE_FORMATS[i].format);
+        if (!av_strncasecmp(ic->iformat->name, FILE_FORMATS[i].format, len)) {
+            container = FILE_FORMATS[i].container;
+            break;
+        }
+    }
+
+    avformat_close_input(&ic);
+    av_free(ic);
+
+    return container;
+}
+
 bool SniffFFMPEG(
         const sp<DataSource> &source, String8 *mimeType, float *confidence,
         sp<AMessage> *meta) {
     LOGV("SniffFFMPEG");
-    const char *uri, *container = NULL;
+    const char *uri = NULL;
+    const char *container = NULL;
 
     uri = source->getNamURI();
 
@@ -1697,10 +1751,15 @@ bool SniffFFMPEG(
 
     LOGI("ffmpeg uri: %s", uri);
 
-    container = BetterSniffFFMPEG(uri);
+    container = Better2SniffFFMPEG(source);
     if (!container) {
-        LOGW("sniff through LegacySniffFFMPEG, only check the file extension");
-        container = LegacySniffFFMPEG(uri);
+        LOGW("sniff through Better2SniffFFMPEG failed, try BetterSniffFFMPEG");
+        //container = BetterSniffFFMPEG(uri);
+        if (!container) {
+            LOGW("sniff through BetterSniffFFMPEG failed, try LegacySniffFFMPEG");
+            //only check the file extension
+            container = LegacySniffFFMPEG(uri);
+        }
     }
 
     if (container == NULL)

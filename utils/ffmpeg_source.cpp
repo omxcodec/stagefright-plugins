@@ -17,6 +17,8 @@
 #define LOG_TAG "FFMPEG"
 #include <utils/Log.h>
 
+#include <stdlib.h>
+
 #include <media/stagefright/DataSource.h>
 
 #ifdef __cplusplus
@@ -25,12 +27,6 @@ extern "C" {
 
 #include "config.h"
 #include "libavformat/url.h"
-
-#include <unistd.h>
-#include <stdlib.h>
-#include <inttypes.h>
-#include <math.h>
-#include <limits.h> /* INT_MAX */
 
 #ifdef __cplusplus
 }
@@ -72,7 +68,7 @@ int FFSource::init_check()
 
 int FFSource::read(unsigned char *buf, size_t size)
 {
-    ssize_t n  = 0;
+    ssize_t n = 0;
 
     n = mSource->readAt(mOffset, buf, size);
     if (n == UNKNOWN_ERROR)
@@ -93,8 +89,12 @@ off64_t FFSource::getSize()
 {
     off64_t sz = -1;
 
-    if (mSource->getSize(&sz) != OK)
+    if (mSource->getSize(&sz) != OK) {
+         LOGI("FFSource getSize failed");
          return AVERROR(errno);
+    }
+
+    LOGI("FFSource getSize, size: %lld", sz);
 
     return sz;
 }
@@ -107,13 +107,25 @@ static int android_open(URLContext *h, const char *url, int flags)
     // the DataSource Pointer passed by the ffmpeg extractor
     sp<DataSource>* source = NULL;
 
-    sscanf(url + strlen("android:"), "%x", &source);
+    LOGD("android source begin open");
+
+    if (!url) {
+        LOGE("android url is null!");
+        return -1;
+    }
+
+    LOGI("android open, url: %s", url);
+    sscanf(url + strlen("android-source:"), "%x", &source);
     if(source == NULL){
         LOGE("ffmpeg open data source error!");
         return -1;
     }
+    LOGI("ffmpeg open android data source success, source ptr: %p", source);
+
     FFSource *ffs = new FFSource(*source);
     h->priv_data = (void *)ffs;
+
+    LOGD("android source open success");
 
     return 0;
 }
@@ -143,6 +155,7 @@ static int64_t android_seek(URLContext *h, int64_t pos, int whence)
 static int android_close(URLContext *h)
 {
     FFSource* ffs = (FFSource*)h->priv_data;
+    LOGD("android source close");
     delete ffs;
     return 0;
 }
@@ -167,7 +180,7 @@ static URLProtocol ff_android_protocol;
 void ffmpeg_register_android_source()
 {
     memset(&ff_android_protocol, 0, sizeof(URLProtocol));
-    ff_android_protocol.name                = "android";
+    ff_android_protocol.name                = "android-source";
     ff_android_protocol.url_open            = android_open;
     ff_android_protocol.url_read            = android_read;
     ff_android_protocol.url_write           = android_write;
@@ -176,7 +189,7 @@ void ffmpeg_register_android_source()
     ff_android_protocol.url_get_file_handle = android_get_handle;
     ff_android_protocol.url_check           = android_check;
     
-    //ffurl_register_protocol(&ff_android_protocol, sizeof(URLProtocol));
+    ffurl_register_protocol(&ff_android_protocol, sizeof(URLProtocol));
 }
 
 }  // namespace android
