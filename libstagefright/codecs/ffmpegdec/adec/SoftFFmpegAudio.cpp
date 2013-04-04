@@ -123,9 +123,9 @@ void SoftFFmpegAudio::initPorts() {
     def.eDir = OMX_DirInput;
     def.nBufferCountMin = kNumBuffers;
     def.nBufferCountActual = def.nBufferCountMin;
-    def.nBufferSize = 8192;
+    def.nBufferSize = 20480; // 8192 is too small
     if (mMode == MODE_APE)
-        def.nBufferSize = 200000; // large!
+        def.nBufferSize = 204800; // large!
     def.bEnabled = OMX_TRUE;
     def.bPopulated = OMX_FALSE;
     def.eDomain = OMX_PortDomainAudio;
