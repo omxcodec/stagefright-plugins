@@ -491,6 +491,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
     case CODEC_ID_WMALOSSLESS:
     case CODEC_ID_RV40:
     case CODEC_ID_COOK:
+    case CODEC_ID_APE:
         supported = true;
         break;
     default:
@@ -646,7 +647,8 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             break;
         }
 
-        LOGI("width: %d, height: %d, bit_rate: %d", avctx->width, avctx->height, avctx->bit_rate);
+        LOGI("width: %d, height: %d, bit_rate: %d",
+             avctx->width, avctx->height, avctx->bit_rate);
 
         meta->setInt32(kKeyWidth, avctx->width);
         meta->setInt32(kKeyHeight, avctx->height);
@@ -780,15 +782,23 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_RA);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
+        case CODEC_ID_APE:
+            LOGV("APE");
+            meta = new MetaData;
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_APE);
+            meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
+            break;
         default:
             CHECK(!"Should not be here. Unsupported codec.");
             break;
         }
 
-        LOGI("bit_rate: %d, sample_rate: %d, channels: %d", avctx->bit_rate, avctx->sample_rate, avctx->channels);
+        LOGI("bit_rate: %d, sample_rate: %d, channels: %d, bits_per_coded_sample: %d",
+             avctx->bit_rate, avctx->sample_rate, avctx->channels, avctx->bits_per_coded_sample);
 
         meta->setInt32(kKeySampleRate, avctx->sample_rate);
         meta->setInt32(kKeyChannelCount, avctx->channels);
+        meta->setInt32(kKeyBitspersample, avctx->bits_per_coded_sample);
         meta->setInt32(kKeyBitRate, avctx->bit_rate);
         meta->setInt32(kKeyBlockAlign, avctx->block_align);
         if (mAudioStream->duration != AV_NOPTS_VALUE) {
@@ -1658,6 +1668,7 @@ static formatmap FILE_FORMATS[] = {
         {"rm",                      MEDIA_MIMETYPE_CONTAINER_RM  },
         {"flv",                     MEDIA_MIMETYPE_CONTAINER_FLV },
         {"avi",                     MEDIA_MIMETYPE_CONTAINER_AVI },
+        {"ape",                     MEDIA_MIMETYPE_CONTAINER_APE },
 };
 
 const char *BetterSniffFFMPEG(const char * uri)

@@ -94,9 +94,12 @@ SoftFFmpegAudio::SoftFFmpegAudio(
         mMode = MODE_DTS;
     } else if (!strcmp(name, "OMX.ffmpeg.ra.decoder")) {
         mMode = MODE_RA;
-    } else {
-        CHECK(!strcmp(name, "OMX.ffmpeg.ac3.decoder"));
+    } else if (strcmp(name, "OMX.ffmpeg.ac3.decoder")) {
         mMode = MODE_AC3;
+    } else if (!strcmp(name, "OMX.ffmpeg.ape.decoder")) {
+        mMode = MODE_APE;
+    } else {
+        TRESPASS();
     }
 
     LOGV("SoftFFmpegAudio component: %s", name);
@@ -121,6 +124,8 @@ void SoftFFmpegAudio::initPorts() {
     def.nBufferCountMin = kNumBuffers;
     def.nBufferCountActual = def.nBufferCountMin;
     def.nBufferSize = 8192;
+    if (mMode == MODE_APE)
+        def.nBufferSize = 200000; // large!
     def.bEnabled = OMX_TRUE;
     def.bPopulated = OMX_FALSE;
     def.eDomain = OMX_PortDomainAudio;
@@ -157,6 +162,10 @@ void SoftFFmpegAudio::initPorts() {
     case MODE_RA:
         def.format.audio.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_AUDIO_RA);
         def.format.audio.eEncoding = OMX_AUDIO_CodingRA;
+        break;
+    case MODE_APE:
+        def.format.audio.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_AUDIO_APE);
+        def.format.audio.eEncoding = OMX_AUDIO_CodingAPE;
         break;
     default:
         CHECK(!"Should not be here. Unsupported mime type and compression format");
@@ -245,6 +254,9 @@ status_t SoftFFmpegAudio::initDecoder() {
         break;
     case MODE_RA:
         mCtx->codec_id = CODEC_ID_COOK; // FIXME
+        break;
+    case MODE_APE:
+        mCtx->codec_id = CODEC_ID_APE;
         break;
     default:
         CHECK(!"Should not be here. Unsupported codec");
@@ -355,6 +367,20 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalGetParameter(
 
             return OMX_ErrorNone;
         }
+        case OMX_IndexParamAudioApe:
+        {
+            OMX_AUDIO_PARAM_APETYPE *apeParams =
+                (OMX_AUDIO_PARAM_APETYPE *)params;
+
+            if (apeParams->nPortIndex != 0) {
+                return OMX_ErrorUndefined;
+            }
+
+            apeParams->nChannels = 0;
+            apeParams->nSamplingRate = 0;
+
+            return OMX_ErrorNone;
+        }
         case OMX_IndexParamAudioPcm:
         {
             OMX_AUDIO_PARAM_PCMMODETYPE *pcmParams =
@@ -446,6 +472,11 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
             case MODE_RA:
                 if (strncmp((const char *)roleParams->cRole,
                         "audio_decoder.ra", OMX_MAX_STRINGNAME_SIZE - 1))
+                    supported =  false;
+                break;
+            case MODE_APE:
+                if (strncmp((const char *)roleParams->cRole,
+                        "audio_decoder.ape", OMX_MAX_STRINGNAME_SIZE - 1))
                     supported =  false;
                 break;
             default:
@@ -578,6 +609,43 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
 
             return OMX_ErrorNone;
         }
+        case OMX_IndexParamAudioApe:
+        {
+            OMX_AUDIO_PARAM_APETYPE *apeParams =
+                (OMX_AUDIO_PARAM_APETYPE *)params;
+
+            if (apeParams->nPortIndex != 0) {
+                return OMX_ErrorUndefined;
+            }
+
+            mCtx->codec_id = CODEC_ID_APE;
+
+            mNumChannels = apeParams->nChannels;
+            mSamplingRate = apeParams->nSamplingRate;
+
+            // ape decoder need bits_per_coded_sample
+            mCtx->bits_per_coded_sample = apeParams->nBitsPerSample;
+
+            channels = mNumChannels >= 2 ? 2 : 1;
+            sampling_rate = mSamplingRate;
+            // 4000 <= nSamplingRate <= 48000
+            if (mSamplingRate < 4000) {
+                sampling_rate = 4000;
+            } else if (mSamplingRate > 48000) {
+                sampling_rate = 48000;
+            }
+
+            // update src and target(only wma), only once!
+            mAudioSrcChannels = mAudioTgtChannels = channels;
+            mAudioSrcFreq = mAudioTgtFreq = sampling_rate;
+            mAudioSrcFmt = mAudioTgtFmt = AV_SAMPLE_FMT_S16;
+            mAudioSrcChannelLayout = mAudioTgtChannelLayout = av_get_default_channel_layout(channels);
+
+            LOGV("got OMX_IndexParamAudioApe, mNumChannels: %d, mSamplingRate: %d, nBitsPerSample: %d",
+                mNumChannels, mSamplingRate, apeParams->nBitsPerSample);
+
+            return OMX_ErrorNone;
+        }
         default:
             LOGI("internalSetParameter, index: 0x%x", index);
             return SimpleSoftOMXComponent::internalSetParameter(index, params);
@@ -690,6 +758,7 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
             LOGI("open ffmpeg decoder now");
             err = avcodec_open2(mCtx, mCtx->codec, NULL);
             if (err < 0) {
+                print_error("avcodec_open2", err);
                 LOGE("ffmpeg audio decoder failed to initialize. (%d)", err);
                 notify(OMX_EventError, OMX_ErrorUndefined, 0, NULL);
                 mSignalledError = true;
