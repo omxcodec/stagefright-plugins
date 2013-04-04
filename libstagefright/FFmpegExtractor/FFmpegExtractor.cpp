@@ -108,19 +108,9 @@ FFmpegExtractor::FFmpegExtractor(const sp<DataSource> &source)
       mInitCheck(NO_INIT) {
     LOGV("FFmpegExtractor::FFmpegExtractor");
 
-    int err;
-    const char *url = mDataSource->getNamURI();
-    if (url == NULL) {
-        LOGI("url is error!");
-        return;
-    }
-    // is it right?
-    if (!strcmp(url, "-")) {
-        av_strlcpy(mFilename, "pipe:", strlen("pipe:") + 1);
-    } else {
-        av_strlcpy(mFilename, url, strlen(url) + 1);
-    }
-    LOGI("url: %s, mFilename: %s", url, mFilename);
+    int err = 0;
+
+    buildFileName(source);
 
     err = initStreams();
     if (err < 0) {
@@ -941,6 +931,29 @@ void FFmpegExtractor::print_error_ex(const char *filename, int err)
     if (av_strerror(err, errbuf, sizeof(errbuf)) < 0)
         errbuf_ptr = strerror(AVUNERROR(err));
     LOGI("%s: %s\n", filename, errbuf_ptr);
+}
+
+void FFmpegExtractor::buildFileName(const sp<DataSource> &source)
+{
+#if 1
+    LOGI("android source: %x", &source);
+    // pass the addr of smart pointer("source")
+    snprintf(mFilename, sizeof(mFilename), "android-source:%x", &source);
+    LOGI("build mFilename: %s", mFilename);
+#else
+    const char *url = mDataSource->getNamURI();
+    if (url == NULL) {
+        LOGI("url is error!");
+        return;
+    }
+    // is it right?
+    if (!strcmp(url, "-")) {
+        av_strlcpy(mFilename, "pipe:", strlen("pipe:") + 1);
+    } else {
+        av_strlcpy(mFilename, url, strlen(url) + 1);
+    }
+    LOGI("build url: %s, mFilename: %s", url, mFilename);
+#endif
 }
 
 void FFmpegExtractor::setFFmpegDefaultOpts()

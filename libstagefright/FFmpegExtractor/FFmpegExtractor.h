@@ -137,6 +137,7 @@ private:
     void print_error_ex(const char *filename, int err);
     int initStreams();
     void deInitStreams();
+    void buildFileName(const sp<DataSource> &source);
     void setFFmpegDefaultOpts();
     void printTime(int64_t time);
     int stream_component_open(int stream_index);
