@@ -1657,6 +1657,7 @@ static formatmap FILE_FORMATS[] = {
         {"asf",                     MEDIA_MIMETYPE_CONTAINER_ASF },
         {"rm",                      MEDIA_MIMETYPE_CONTAINER_RM  },
         {"flv",                     MEDIA_MIMETYPE_CONTAINER_FLV },
+        {"avi",                     MEDIA_MIMETYPE_CONTAINER_AVI },
 };
 
 const char *BetterSniffFFMPEG(const char * uri)
