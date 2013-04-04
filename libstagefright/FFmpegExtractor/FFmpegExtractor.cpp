@@ -1776,7 +1776,7 @@ bool SniffFFMPEG(
     container = Better2SniffFFMPEG(source);
     if (!container) {
         LOGW("sniff through Better2SniffFFMPEG failed, try BetterSniffFFMPEG");
-        //container = BetterSniffFFMPEG(uri);
+        container = BetterSniffFFMPEG(uri);
         if (!container) {
             LOGW("sniff through BetterSniffFFMPEG failed, try LegacySniffFFMPEG");
             //only check the file extension
