@@ -391,6 +391,7 @@ int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
             avctx->codec_id == CODEC_ID_MP1  ||
             avctx->codec_id == CODEC_ID_MP2  ||
             avctx->codec_id == CODEC_ID_AC3  ||
+            avctx->codec_id == CODEC_ID_DTS  ||
             avctx->codec_id == CODEC_ID_H263  ||
             avctx->codec_id == CODEC_ID_H263P ||
             avctx->codec_id == CODEC_ID_H263I ||
@@ -492,6 +493,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
     case CODEC_ID_RV40:
     case CODEC_ID_COOK:
     case CODEC_ID_APE:
+    case CODEC_ID_DTS:
         supported = true;
         break;
     default:
@@ -786,6 +788,12 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             LOGV("APE");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_APE);
+            meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
+            break;
+        case CODEC_ID_DTS:
+            LOGV("DTS");
+            meta = new MetaData;
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_DTS);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
         default:
@@ -1669,7 +1677,8 @@ static formatmap FILE_FORMATS[] = {
         {"rm",                      MEDIA_MIMETYPE_CONTAINER_RM       },
         {"flv",                     MEDIA_MIMETYPE_CONTAINER_FLV      },
         {"avi",                     MEDIA_MIMETYPE_CONTAINER_AVI      },
-        {"ape",                     MEDIA_MIMETYPE_CONTAINER_APE      },
+	{"ape",                     MEDIA_MIMETYPE_CONTAINER_APE      },
+        {"dts",                     MEDIA_MIMETYPE_AUDIO_DTS          },
 };
 
 const char *BetterSniffFFMPEG(const char * uri)

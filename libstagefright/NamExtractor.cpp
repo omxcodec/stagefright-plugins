@@ -53,6 +53,7 @@ MediaExtractor *createExtractor(const sp<DataSource> &source, const char *mime) 
 
     if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MPEG4)         ||
             !strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_MPEG)          ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_DTS)           ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MOV)       ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MATROSKA)  ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_TS)        ||
