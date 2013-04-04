@@ -112,6 +112,7 @@ Input formats:
     Matroska (MKV)
     Real(RM,RMVB)
     WAV
+    FLV(H.264+AAC)
 
 Video formats:
     MPEG-1/2
