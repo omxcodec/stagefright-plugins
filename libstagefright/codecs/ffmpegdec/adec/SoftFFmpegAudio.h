@@ -116,6 +116,7 @@ private:
     int32_t mInputBufferSize;
 
     //"Fatal signal 7 (SIGBUS)"!!! SIGBUS is because of an alignment exception
+    //LOCAL_CFLAGS += -D__GNUC__=1 in *.cpp file
     DECLARE_ALIGNED(16, uint8_t, mAudioBuf2)[AVCODEC_MAX_AUDIO_FRAME_SIZE * 4];
 
     uint8_t mSilenceBuffer[kOutputBufferSize];
