@@ -86,11 +86,12 @@ private:
 	MODE_MPEGL1,
 	MODE_MPEGL2,
         MODE_AAC,
+        MODE_WMA,
+        MODE_RA,
         MODE_AC3,
         MODE_APE,
-        MODE_WMA,
         MODE_DTS,
-        MODE_RA
+        MODE_FLAC
     } mMode;
 
     enum {

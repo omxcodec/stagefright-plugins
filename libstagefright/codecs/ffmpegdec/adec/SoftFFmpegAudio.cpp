@@ -88,19 +88,22 @@ SoftFFmpegAudio::SoftFFmpegAudio(
         mMode = MODE_AAC;
     } else if (!strcmp(name, "OMX.ffmpeg.wma.decoder")) {
         mMode = MODE_WMA;
-    } else if (!strcmp(name, "OMX.ffmpeg.dts.decoder")) {
-        mMode = MODE_DTS;
     } else if (!strcmp(name, "OMX.ffmpeg.ra.decoder")) {
         mMode = MODE_RA;
-    } else if (strcmp(name, "OMX.ffmpeg.ac3.decoder")) {
+    } else if (!strcmp(name, "OMX.ffmpeg.ac3.decoder")) {
         mMode = MODE_AC3;
     } else if (!strcmp(name, "OMX.ffmpeg.ape.decoder")) {
         mMode = MODE_APE;
+    } else if (!strcmp(name, "OMX.ffmpeg.dts.decoder")) {
+        mMode = MODE_DTS;
+    } else if (!strcmp(name, "OMX.ffmpeg.flac.decoder")) {
+        mMode = MODE_FLAC;
     } else {
         TRESPASS();
     }
 
     LOGV("SoftFFmpegAudio component: %s", name);
+    LOGV("SoftFFmpegAudio mMode: %d", mMode);
 
     initPorts();
     CHECK_EQ(initDecoder(), (status_t)OK);
@@ -172,6 +175,10 @@ void SoftFFmpegAudio::initPorts() {
     case MODE_DTS:
         def.format.audio.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_AUDIO_DTS);
         def.format.audio.eEncoding = OMX_AUDIO_CodingDTS;
+        break;
+    case MODE_FLAC:
+        def.format.audio.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_AUDIO_FLAC);
+        def.format.audio.eEncoding = OMX_AUDIO_CodingFLAC;
         break;
     default:
         CHECK(!"Should not be here. Unsupported mime type and compression format");
@@ -265,6 +272,8 @@ status_t SoftFFmpegAudio::initDecoder() {
         mCtx->codec_id = CODEC_ID_APE;
     case MODE_DTS:
         mCtx->codec_id = CODEC_ID_DTS;
+    case MODE_FLAC:
+        mCtx->codec_id = CODEC_ID_FLAC;
         break;
     default:
         CHECK(!"Should not be here. Unsupported codec");
@@ -403,6 +412,20 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalGetParameter(
 
             return OMX_ErrorNone;
         }
+        case OMX_IndexParamAudioFlac:
+        {
+            OMX_AUDIO_PARAM_FLACTYPE *flacParams =
+                (OMX_AUDIO_PARAM_FLACTYPE *)params;
+
+            if (flacParams->nPortIndex != 0) {
+                return OMX_ErrorUndefined;
+            }
+
+            flacParams->nChannels = 0;
+            flacParams->nSamplingRate = 0;
+
+            return OMX_ErrorNone;
+        }
         case OMX_IndexParamAudioPcm:
         {
             OMX_AUDIO_PARAM_PCMMODETYPE *pcmParams =
@@ -504,6 +527,11 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
             case MODE_DTS:
                 if (strncmp((const char *)roleParams->cRole,
                         "audio_decoder.dts", OMX_MAX_STRINGNAME_SIZE - 1))
+                    supported =  false;
+                break;
+            case MODE_FLAC:
+                if (strncmp((const char *)roleParams->cRole,
+                        "audio_decoder.flac", OMX_MAX_STRINGNAME_SIZE - 1))
                     supported =  false;
                 break;
             default:
@@ -703,6 +731,40 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
             mAudioSrcChannelLayout = mAudioTgtChannelLayout = av_get_default_channel_layout(channels);
 
             LOGV("got OMX_IndexParamAudioDts, mNumChannels: %d, mSamplingRate: %d",
+                mNumChannels, mSamplingRate);
+
+            return OMX_ErrorNone;
+        }
+        case OMX_IndexParamAudioFlac:
+        {
+            OMX_AUDIO_PARAM_FLACTYPE *flacParams =
+                (OMX_AUDIO_PARAM_FLACTYPE *)params;
+
+            if (flacParams->nPortIndex != 0) {
+                return OMX_ErrorUndefined;
+            }
+
+            mCtx->codec_id = CODEC_ID_FLAC;
+
+            mNumChannels = flacParams->nChannels;
+            mSamplingRate = flacParams->nSamplingRate;
+
+            channels = mNumChannels >= 2 ? 2 : 1;
+            sampling_rate = mSamplingRate;
+            // 4000 <= nSamplingRate <= 48000
+            if (mSamplingRate < 4000) {
+                sampling_rate = 4000;
+            } else if (mSamplingRate > 48000) {
+                sampling_rate = 48000;
+            }
+
+            // update src and target, only once!
+            mAudioSrcChannels = mAudioTgtChannels = channels;
+            mAudioSrcFreq = mAudioTgtFreq = sampling_rate;
+            mAudioSrcFmt = mAudioTgtFmt = AV_SAMPLE_FMT_S16;
+            mAudioSrcChannelLayout = mAudioTgtChannelLayout = av_get_default_channel_layout(channels);
+
+            LOGV("got OMX_IndexParamAudioFlac, mNumChannels: %d, mSamplingRate: %d",
                 mNumChannels, mSamplingRate);
 
             return OMX_ErrorNone;
