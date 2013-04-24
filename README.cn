@@ -145,7 +145,7 @@ ref: git://android.git.linaro.org/platform/external/ffmpeg.git
 1. 一些mov文件，当seek后，音视频不能迅速同步
 2. 一些文件正在seek时，退出程序
 3. 需要集成更多的音视频编解码器
-4. 更多集成更多的文件格式解析器
+4. 需要集成更多的文件格式解析器
 
 如果这个项目对您有帮助，或者您想讨论跟此相关相关的话题，请联系本人：
 Michael Chen (omxcodec@gmail.com)
