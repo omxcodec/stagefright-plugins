@@ -61,7 +61,7 @@ FFSource::~FFSource()
 int FFSource::init_check()
 {
     if (mSource->initCheck() != OK) {
-        LOGE("FFSource initCheck failed");
+        ALOGE("FFSource initCheck failed");
         return -1;
     }
 
@@ -74,7 +74,7 @@ int FFSource::read(unsigned char *buf, size_t size)
 
     n = mSource->readAt(mOffset, buf, size);
     if (n == UNKNOWN_ERROR) {
-        LOGE("FFSource readAt failed");
+        ALOGE("FFSource readAt failed");
         return AVERROR(errno);
     }
     assert(n >= 0);
@@ -94,7 +94,7 @@ off64_t FFSource::getSize()
     off64_t sz = -1;
 
     if (mSource->getSize(&sz) != OK) {
-         LOGE("FFSource getSize failed");
+         ALOGE("FFSource getSize failed");
          return AVERROR(errno);
     }
 
@@ -109,25 +109,25 @@ static int android_open(URLContext *h, const char *url, int flags)
     // the DataSource Pointer passed by the ffmpeg extractor
     sp<DataSource>* source = NULL;
 
-    LOGD("android source begin open");
+    ALOGD("android source begin open");
 
     if (!url) {
-        LOGE("android url is null!");
+        ALOGE("android url is null!");
         return -1;
     }
 
-    LOGD("android open, url: %s", url);
+    ALOGD("android open, url: %s", url);
     sscanf(url + strlen("android-source:"), "%x", &source);
     if(source == NULL){
-        LOGE("ffmpeg open data source error!");
+        ALOGE("ffmpeg open data source error!");
         return -1;
     }
-    LOGD("ffmpeg open android data source success, source ptr: %p", source);
+    ALOGD("ffmpeg open android data source success, source ptr: %p", source);
 
     FFSource *ffs = new FFSource(*source);
     h->priv_data = (void *)ffs;
 
-    LOGD("android source open success");
+    ALOGD("android source open success");
 
     return 0;
 }
@@ -157,7 +157,7 @@ static int64_t android_seek(URLContext *h, int64_t pos, int whence)
 static int android_close(URLContext *h)
 {
     FFSource* ffs = (FFSource*)h->priv_data;
-    LOGD("android source close");
+    ALOGD("android source close");
     delete ffs;
     return 0;
 }

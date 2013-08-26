@@ -85,14 +85,14 @@ SoftFFmpegVideo::SoftFFmpegVideo(
         CHECK(!strcmp(name, "OMX.ffmpeg.h264.decoder"));
     }
 
-    LOGV("SoftFFmpegVideo component: %s", name);
+    ALOGV("SoftFFmpegVideo component: %s", name);
 
     initPorts();
     CHECK_EQ(initDecoder(), (status_t)OK);
 }
 
 SoftFFmpegVideo::~SoftFFmpegVideo() {
-    LOGV("~SoftFFmpegVideo");
+    ALOGV("~SoftFFmpegVideo");
     deInitDecoder();
     deInitFFmpeg();
 }
@@ -194,7 +194,7 @@ void SoftFFmpegVideo::setAVCtxToDefault(AVCodecContext *avctx, const AVCodec *co
     avctx->workaround_bugs   = 1;
     avctx->lowres            = 0;
     if(avctx->lowres > codec->max_lowres){
-        LOGW("The maximum value for lowres supported by the decoder is %d",
+        ALOGW("The maximum value for lowres supported by the decoder is %d",
                 codec->max_lowres);
         avctx->lowres= codec->max_lowres;
     }
@@ -220,7 +220,7 @@ status_t SoftFFmpegVideo::initDecoder() {
     mCtx = avcodec_alloc_context3(NULL);
     if (!mCtx)
     {
-        LOGE("avcodec_alloc_context failed.");
+        ALOGE("avcodec_alloc_context failed.");
         return NO_MEMORY;
     }
 
@@ -258,7 +258,7 @@ status_t SoftFFmpegVideo::initDecoder() {
     mCtx->codec = avcodec_find_decoder(mCtx->codec_id);
     if (!mCtx->codec)
     {
-        LOGE("find codec failed");
+        ALOGE("find codec failed");
         return BAD_TYPE;
     }
 
@@ -313,7 +313,7 @@ void SoftFFmpegVideo::preProcessVideoFrame(AVPicture *picture, void **bufp)
         if (avpicture_deinterlace(picture2, picture,
                                  mCtx->pix_fmt, mCtx->width, mCtx->height) < 0) {
             /* if error, do not deinterlace */
-            LOGE("Deinterlacing failed");
+            ALOGE("Deinterlacing failed");
             av_free(buf);
             buf = NULL;
             picture2 = picture;
@@ -452,7 +452,7 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
                 break;
             }
             if (!supported) {
-                LOGE("unsupported role: %s", (const char *)roleParams->cRole);
+                ALOGE("unsupported role: %s", (const char *)roleParams->cRole);
                 return OMX_ErrorUndefined;
             }
 
@@ -492,7 +492,7 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
                 OMX_VIDEO_PORTDEFINITIONTYPE *video_def = &defParams->format.video;
                 mWidth = video_def->nFrameWidth;
                 mHeight = video_def->nFrameHeight;
-                LOGV("got OMX_IndexParamPortDefinition, mWidth: %d, mHeight: %d",
+                ALOGV("got OMX_IndexParamPortDefinition, mWidth: %d, mHeight: %d",
                         mWidth, mHeight);
                 return OMX_ErrorNone;
             }
@@ -516,7 +516,7 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
             } else if (wmvParams->eFormat == OMX_VIDEO_WMVFormat9) {
                 mCtx->codec_id = CODEC_ID_WMV3;
             } else {
-                LOGE("unsupported wmv codec: 0x%x", wmvParams->eFormat);
+                ALOGE("unsupported wmv codec: 0x%x", wmvParams->eFormat);
                 return OMX_ErrorUndefined;
             }
 
@@ -572,7 +572,7 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
         }
 
         if (inHeader->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
-            LOGI("got extradata, ignore: %d, size: %lu", mIgnoreExtradata, inHeader->nFilledLen);
+            ALOGI("got extradata, ignore: %d, size: %lu", mIgnoreExtradata, inHeader->nFilledLen);
             hexdump(inHeader->pBuffer + inHeader->nOffset, inHeader->nFilledLen);
             if (!mExtradataReady && !mIgnoreExtradata) {
                 //if (mMode == MODE_H264)
@@ -583,7 +583,7 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
                 mCtx->extradata = (uint8_t *)realloc(mCtx->extradata,
                         mCtx->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
                 if (!mCtx->extradata) {
-                    LOGE("ffmpeg video decoder failed to alloc extradata memory.");
+                    ALOGE("ffmpeg video decoder failed to alloc extradata memory.");
                     notify(OMX_EventError, OMX_ErrorInsufficientResources, 0, NULL);
                     mSignalledError = true;
                     return;
@@ -603,7 +603,7 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
             }
 
             if (mIgnoreExtradata) {
-                LOGI("got extradata, size: %lu, but ignore it", inHeader->nFilledLen);
+                ALOGI("got extradata, size: %lu, but ignore it", inHeader->nFilledLen);
                 inInfo->mOwnedByUs = false;
                 inQueue.erase(inQueue.begin());
                 inInfo = NULL;
@@ -620,17 +620,17 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
         pkt.size = inHeader->nFilledLen;
         pkt.pts = inHeader->nTimeStamp;
 #if DEBUG_PKT
-        LOGV("pkt size: %d, pts: %lld", pkt.size, pkt.pts);
+        ALOGV("pkt size: %d, pts: %lld", pkt.size, pkt.pts);
 #endif
         if (!mExtradataReady) {
-            LOGI("extradata is ready");
+            ALOGI("extradata is ready");
             hexdump(mCtx->extradata, mCtx->extradata_size);
             mExtradataReady = true;
 
             // find decoder again as codec_id may have changed
             mCtx->codec = avcodec_find_decoder(mCtx->codec_id);
             if (!mCtx->codec) {
-                LOGE("ffmpeg video decoder failed to find codec");
+                ALOGE("ffmpeg video decoder failed to find codec");
                 notify(OMX_EventError, OMX_ErrorUndefined, 0, NULL);
                 mSignalledError = true;
                 return;
@@ -638,10 +638,10 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
 
             setAVCtxToDefault(mCtx, mCtx->codec);
 
-            LOGI("open ffmpeg decoder now");
+            ALOGI("open ffmpeg decoder now");
             err = avcodec_open2(mCtx, mCtx->codec, NULL);
             if (err < 0) {
-                LOGE("ffmpeg video decoder failed to initialize. (%d)", err);
+                ALOGE("ffmpeg video decoder failed to initialize. (%d)", err);
                 notify(OMX_EventError, OMX_ErrorUndefined, 0, NULL);
                 mSignalledError = true;
                 return;
@@ -652,7 +652,7 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
         AVFrame *frame = avcodec_alloc_frame();
         err = avcodec_decode_video2(mCtx, frame, &gotPic, &pkt);
         if (err < 0) {
-            LOGE("ffmpeg video decoder failed to decode frame. (%d)", err);
+            ALOGE("ffmpeg video decoder failed to decode frame. (%d)", err);
 #if 0
             // Don't send error to OMXCodec, skip!
             notify(OMX_EventError, OMX_ErrorUndefined, 0, NULL);
@@ -684,7 +684,7 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
                    mWidth, mHeight, mCtx->pix_fmt, mWidth, mHeight,
                    PIX_FMT_YUV420P, sws_flags, NULL, NULL, NULL);
             if (mImgConvertCtx == NULL) {
-                LOGE("Cannot initialize the conversion context");
+                ALOGE("Cannot initialize the conversion context");
                 notify(OMX_EventError, OMX_ErrorUndefined, 0, NULL);
                 mSignalledError = true;
                 av_free(frame);
@@ -715,7 +715,7 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
             outHeader->nTimeStamp = pts;
 
 #if DEBUG_FRM
-            LOGV("frame pts: %lld", pts);
+            ALOGV("frame pts: %lld", pts);
 #endif
 
             outInfo->mOwnedByUs = false;

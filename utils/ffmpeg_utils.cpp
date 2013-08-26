@@ -127,14 +127,14 @@ void nam_av_log_callback(void* ptr, int level, const char* fmt, va_list vl)
         return;
     }
     if (count > 0) {
-        LOGI("Last message repeated %d times\n", count);
+        ALOGI("Last message repeated %d times\n", count);
         count = 0;
     }
     strcpy(prev, line);
     sanitize((uint8_t *)line);
 
 #if 0
-    LOGI("%s", line);
+    ALOGI("%s", line);
 #else
 #define LOG_BUF_SIZE 1024
     static char g_msg[LOG_BUF_SIZE];
@@ -162,7 +162,7 @@ void nam_av_log_callback(void* ptr, int level, const char* fmt, va_list vl)
             g_msg_len += 1;
             g_msg[g_msg_len] = '\n';
         }
-        LOGI("%s", g_msg);
+        ALOGI("%s", g_msg);
         /* reset g_msg and g_msg_len */
         memset(g_msg, 0, LOG_BUF_SIZE);
         g_msg_len = 0;
@@ -237,7 +237,7 @@ status_t initFFmpeg()
 
     if (property_get("debug.nam.ffmpeg", value, NULL)
         && (!strcmp(value, "1") || !av_strcasecmp(value, "true"))) {
-        LOGI("set ffmpeg debug level to AV_LOG_DEBUG");
+        ALOGI("set ffmpeg debug level to AV_LOG_DEBUG");
         debug_enabled = true;
     }
     if (debug_enabled)
@@ -263,7 +263,7 @@ status_t initFFmpeg()
         init_opts();
 
         if (av_lockmgr_register(lockmgr)) {
-            LOGE("could not initialize lock manager!");
+            ALOGE("could not initialize lock manager!");
             ret = NO_INIT;
         }
     }
@@ -308,11 +308,11 @@ static int h264_split(AVCodecContext *avctx,
 
     for(i=0; i<=buf_size; i++){
         if((state&0xFFFFFF1F) == 0x107) {
-            LOGI("found NAL_SPS");
+            ALOGI("found NAL_SPS");
             has_sps=1;
         }
         if((state&0xFFFFFF1F) == 0x108) {
-            LOGI("found NAL_PPS");
+            ALOGI("found NAL_PPS");
             has_pps=1;
             if (check_compatible_only)
                 return (has_sps & has_pps);
@@ -352,7 +352,7 @@ int parser_split(AVCodecContext *avctx,
                       const uint8_t *buf, int buf_size)
 {
     if (!avctx || !buf || buf_size <= 0) {
-        LOGE("parser split, valid params");
+        ALOGE("parser split, valid params");
         return 0;
     }
 
@@ -362,7 +362,7 @@ int parser_split(AVCodecContext *avctx,
             avctx->codec_id == CODEC_ID_MPEG4) {
         return mpegvideo_split(avctx, buf, buf_size, 0);
     } else {
-        LOGE("parser split, unsupport the codec, id: 0x%0x", avctx->codec_id);
+        ALOGE("parser split, unsupport the codec, id: 0x%0x", avctx->codec_id);
     }
 
     return 0;
@@ -371,7 +371,7 @@ int parser_split(AVCodecContext *avctx,
 int is_extradata_compatible_with_android(AVCodecContext *avctx)
 {
     if (avctx->extradata_size <= 0) {
-        LOGI("extradata_size <= 0, extradata is not compatible with android decoder, the codec id: 0x%0x", avctx->codec_id);
+        ALOGI("extradata_size <= 0, extradata is not compatible with android decoder, the codec id: 0x%0x", avctx->codec_id);
         return 0;
     }
 

@@ -106,7 +106,7 @@ FFmpegExtractor::FFmpegExtractor(const sp<DataSource> &source)
     : mDataSource(source),
       mReaderThreadStarted(false),
       mInitCheck(NO_INIT) {
-    LOGV("FFmpegExtractor::FFmpegExtractor");
+    ALOGV("FFmpegExtractor::FFmpegExtractor");
 
     int err = 0;
 
@@ -114,7 +114,7 @@ FFmpegExtractor::FFmpegExtractor(const sp<DataSource> &source)
 
     err = initStreams();
     if (err < 0) {
-        LOGE("failed to init ffmpeg");
+        ALOGE("failed to init ffmpeg");
         return;
     }
 
@@ -128,14 +128,14 @@ FFmpegExtractor::FFmpegExtractor(const sp<DataSource> &source)
         NamDelay(5);
     }
 
-    LOGV("mProbePkts: %d, mEOF: %d, pb->error(if has): %d, mDefersToCreateVideoTrack: %d, mDefersToCreateAudioTrack: %d",
+    ALOGV("mProbePkts: %d, mEOF: %d, pb->error(if has): %d, mDefersToCreateVideoTrack: %d, mDefersToCreateAudioTrack: %d",
         mProbePkts, mEOF, mFormatCtx->pb ? mFormatCtx->pb->error : 0, mDefersToCreateVideoTrack, mDefersToCreateAudioTrack);
 
     mInitCheck = OK;
 }
 
 FFmpegExtractor::~FFmpegExtractor() {
-    LOGV("FFmpegExtractor::~FFmpegExtractor");
+    ALOGV("FFmpegExtractor::~FFmpegExtractor");
 
     // stop reader here if no track!
     stopReaderThread();
@@ -148,7 +148,7 @@ size_t FFmpegExtractor::countTracks() {
 }
 
 sp<MediaSource> FFmpegExtractor::getTrack(size_t index) {
-    LOGV("FFmpegExtractor::getTrack[%d]", index);
+    ALOGV("FFmpegExtractor::getTrack[%d]", index);
 
     if (mInitCheck != OK) {
         return NULL;
@@ -162,7 +162,7 @@ sp<MediaSource> FFmpegExtractor::getTrack(size_t index) {
 }
 
 sp<MetaData> FFmpegExtractor::getTrackMetaData(size_t index, uint32_t flags) {
-    LOGV("FFmpegExtractor::getTrackMetaData[%d]", index);
+    ALOGV("FFmpegExtractor::getTrackMetaData[%d]", index);
 
     if (mInitCheck != OK) {
         return NULL;
@@ -176,7 +176,7 @@ sp<MetaData> FFmpegExtractor::getTrackMetaData(size_t index, uint32_t flags) {
 }
 
 sp<MetaData> FFmpegExtractor::getMetaData() {
-    LOGV("FFmpegExtractor::getMetaData");
+    ALOGV("FFmpegExtractor::getMetaData");
 
     if (mInitCheck != OK) {
         return NULL;
@@ -190,7 +190,7 @@ sp<MetaData> FFmpegExtractor::getMetaData() {
 }
 
 uint32_t FFmpegExtractor::flags() const {
-    LOGV("FFmpegExtractor::flags");
+    ALOGV("FFmpegExtractor::flags");
 
     if (mInitCheck != OK) {
         return NULL;
@@ -402,7 +402,7 @@ int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
     if (avctx->codec_id != CODEC_ID_AAC) {
         int is_compatible = is_extradata_compatible_with_android(avctx);
         if (!is_compatible) {
-            LOGI("%s extradata is not compatible with android, should to extract it from bitstream",
+            ALOGI("%s extradata is not compatible with android, should to extract it from bitstream",
                     av_get_media_type_string(avctx->codec_type));
             *defersToCreateTrack = true;
             *bsfc = NULL; // H264 don't need bsfc, only AAC?
@@ -416,18 +416,18 @@ int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
     }
 
     if (avctx->extradata_size <= 0) {
-        LOGI("No %s extradata found, should to extract it from bitstream",
+        ALOGI("No %s extradata found, should to extract it from bitstream",
                 av_get_media_type_string(avctx->codec_type));
         *defersToCreateTrack = true;
          //CHECK(name != NULL);
         if (!*bsfc && name) {
             *bsfc = av_bitstream_filter_init(name);
             if (!*bsfc) {
-                LOGE("Cannot open the %s BSF!", name);
+                ALOGE("Cannot open the %s BSF!", name);
                 *defersToCreateTrack = false;
                 return -1;
             } else {
-                LOGV("open the %s bsf", name);
+                ALOGV("open the %s bsf", name);
                 return 0;
             }
         } else {
@@ -450,7 +450,7 @@ void FFmpegExtractor::printTime(int64_t time)
     secs %= 60;
     hours = mins / 60;
     mins %= 60;
-    LOGI("the time is %02d:%02d:%02d.%02d",
+    ALOGI("the time is %02d:%02d:%02d.%02d",
         hours, mins, secs, (100 * us) / AV_TIME_BASE);
 }
 
@@ -465,7 +465,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
     size_t size;
     int ret;
 
-    LOGI("stream_index: %d", stream_index);
+    ALOGI("stream_index: %d", stream_index);
     if (stream_index < 0 || stream_index >= mFormatCtx->nb_streams)
         return -1;
     avctx = mFormatCtx->streams[stream_index]->codec;
@@ -503,16 +503,16 @@ int FFmpegExtractor::stream_component_open(int stream_index)
     }
 
     if (!supported) {
-        LOGE("unsupport the codec, id: 0x%0x", avctx->codec_id);
+        ALOGE("unsupport the codec, id: 0x%0x", avctx->codec_id);
         return -1;
     }
-    LOGV("support the codec");
+    ALOGV("support the codec");
 
     unsigned streamType;
     ssize_t index = mTracks.indexOfKey(stream_index);
 
     if (index >= 0) {
-        LOGE("this track already exists");
+        ALOGE("this track already exists");
         return 0;
     }
 
@@ -520,7 +520,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
 
     char tagbuf[32];
     av_get_codec_tag_string(tagbuf, sizeof(tagbuf), avctx->codec_tag);
-    LOGV("Tag %s/0x%08x with codec id '%d'\n", tagbuf, avctx->codec_tag, avctx->codec_id);
+    ALOGV("Tag %s/0x%08x with codec id '%d'\n", tagbuf, avctx->codec_tag, avctx->codec_id);
 
     switch (avctx->codec_type) {
     case AVMEDIA_TYPE_VIDEO:
@@ -547,10 +547,10 @@ int FFmpegExtractor::stream_component_open(int stream_index)
          }
 
         if (avctx->extradata) {
-            LOGV("video stream extradata:");
+            ALOGV("video stream extradata:");
             hexdump(avctx->extradata, avctx->extradata_size);
         } else {
-            LOGV("video stream no extradata, but we can ignore it.");
+            ALOGV("video stream no extradata, but we can ignore it.");
         }
 
         meta = new MetaData;
@@ -565,7 +565,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             if (avctx->extradata[0] == 1 /* configurationVersion */) {
                 // H.264 bitstream without start codes.
                 isAVC = true;
-                LOGV("AVC");
+                ALOGV("AVC");
 
                 if (avctx->width == 0 || avctx->height == 0) {
                     int32_t width, height;
@@ -581,7 +581,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             } else {
                 // H.264 bitstream with start codes.
                 isAVC = false;
-                LOGV("H264");
+                ALOGV("H264");
 
                 /* set NULL to release meta as we will new a meta in MakeAVCCodecSpecificData() fxn */
                 meta->clear();
@@ -593,7 +593,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             }
             break;
         case CODEC_ID_MPEG4:
-            LOGV("MPEG4");
+            ALOGV("MPEG4");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_MPEG4);
             {
                 sp<ABuffer> csd = new ABuffer(avctx->extradata_size);
@@ -605,11 +605,11 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         case CODEC_ID_H263:
         case CODEC_ID_H263P:
         case CODEC_ID_H263I:
-            LOGV("H263");
+            ALOGV("H263");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_H263);
             break;
         case CODEC_ID_MPEG2VIDEO:
-            LOGV("MPEG2VIDEO");
+            ALOGV("MPEG2VIDEO");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_MPEG2);
             {
                 sp<ABuffer> csd = new ABuffer(avctx->extradata_size);
@@ -619,29 +619,29 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             }
             break;
         case CODEC_ID_VC1:
-            LOGV("VC1");
+            ALOGV("VC1");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_VC1);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
         case CODEC_ID_WMV1:
-            LOGV("WMV1");
+            ALOGV("WMV1");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV);
             meta->setInt32(kKeyWMVVersion, kTypeWMVVer_7);
             break;
         case CODEC_ID_WMV2:
-            LOGV("WMV2");
+            ALOGV("WMV2");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             meta->setInt32(kKeyWMVVersion, kTypeWMVVer_8);
             break;
         case CODEC_ID_WMV3:
-            LOGV("WMV3");
+            ALOGV("WMV3");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             meta->setInt32(kKeyWMVVersion, kTypeWMVVer_9);
             break;
         case CODEC_ID_RV40:
-            LOGV("RV40");
+            ALOGV("RV40");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_RV);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
@@ -650,7 +650,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             break;
         }
 
-        LOGI("width: %d, height: %d, bit_rate: %d",
+        ALOGI("width: %d, height: %d, bit_rate: %d",
              avctx->width, avctx->height, avctx->bit_rate);
 
         meta->setInt32(kKeyWidth, avctx->width);
@@ -660,14 +660,14 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         if (mVideoStream->duration != AV_NOPTS_VALUE) {
             int64_t duration = mVideoStream->duration * av_q2d(mVideoStream->time_base) * 1000000;
             printTime(duration);
-            LOGV("video startTime: %lld", mVideoStream->start_time);
+            ALOGV("video startTime: %lld", mVideoStream->start_time);
             meta->setInt64(kKeyDuration, duration);
         } else {
             // default when no stream duration
             meta->setInt64(kKeyDuration, mFormatCtx->duration);
         }
 
-        LOGV("create a video track");
+        ALOGV("create a video track");
         index = mTracks.add(
             stream_index, new Track(this, meta, isAVC, mVideoStream, &mVideoQ));
 
@@ -698,35 +698,35 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         }
 
         if (avctx->extradata) {
-            LOGV("audio stream extradata:");
+            ALOGV("audio stream extradata:");
             hexdump(avctx->extradata, avctx->extradata_size);
         } else {
-            LOGV("audio stream no extradata, but we can ignore it.");
+            ALOGV("audio stream no extradata, but we can ignore it.");
         }
 
         switch(avctx->codec_id) {
         case CODEC_ID_MP1:
-            LOGV("MP1");
+            ALOGV("MP1");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_MPEG_LAYER_I);
             break;
         case CODEC_ID_MP2:
-            LOGV("MP2");
+            ALOGV("MP2");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_MPEG_LAYER_II);
             break;
         case CODEC_ID_MP3:
-            LOGV("MP3");
+            ALOGV("MP3");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_MPEG);
             break;
         case CODEC_ID_AC3:
-            LOGV("AC3");
+            ALOGV("AC3");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_AC3);
             break;
         case CODEC_ID_AAC:
-            LOGV("AAC"); 
+            ALOGV("AAC");
             uint32_t sr;
             const uint8_t *header;
             uint8_t profile, sf_index, channel;
@@ -743,62 +743,62 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             sf_index = (header[0] & 0x07) << 1 | (header[1] & 0x80) >> 7;
             sr = get_sample_rate(sf_index);
             if (sr == 0) {
-                LOGE("unsupport the sample rate");
+                ALOGE("unsupport the sample rate");
                 return -1;
             }
             channel = (header[1] >> 3) & 0xf;
-            LOGV("profile: %d, sf_index: %d, channel: %d", profile, sf_index, channel);
+            ALOGV("profile: %d, sf_index: %d, channel: %d", profile, sf_index, channel);
 
             meta = MakeAACCodecSpecificData(profile, sf_index, channel);
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_AAC);
             break;
         case CODEC_ID_WMAV1:  // TODO, version?
-            LOGV("WMAV1");
+            ALOGV("WMAV1");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_WMA);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
         case CODEC_ID_WMAV2:
-            LOGV("WMAV2");
+            ALOGV("WMAV2");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_WMA);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             meta->setInt32(kKeyWMAVersion, kTypeWMA);
             break;
         case CODEC_ID_WMAPRO:
-            LOGV("WMAPRO");
+            ALOGV("WMAPRO");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_WMA);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             meta->setInt32(kKeyWMAVersion, kTypeWMAPro);
             break;
         case CODEC_ID_WMALOSSLESS:
-            LOGV("WMALOSSLESS");
+            ALOGV("WMALOSSLESS");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_WMA);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             meta->setInt32(kKeyWMAVersion, kTypeWMALossLess);
             break;
         case CODEC_ID_COOK: // audio codec in RMVB
-            LOGV("COOK");
+            ALOGV("COOK");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_RA);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
         case CODEC_ID_APE:
-            LOGV("APE");
+            ALOGV("APE");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_APE);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
         case CODEC_ID_DTS:
-            LOGV("DTS");
+            ALOGV("DTS");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_DTS);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
         case CODEC_ID_FLAC:
-            LOGV("FLAC");
+            ALOGV("FLAC");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_FLAC);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
@@ -808,7 +808,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             break;
         }
 
-        LOGI("bit_rate: %d, sample_rate: %d, channels: %d, bits_per_coded_sample: %d",
+        ALOGI("bit_rate: %d, sample_rate: %d, channels: %d, bits_per_coded_sample: %d",
              avctx->bit_rate, avctx->sample_rate, avctx->channels, avctx->bits_per_coded_sample);
 
         meta->setInt32(kKeySampleRate, avctx->sample_rate);
@@ -819,14 +819,14 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         if (mAudioStream->duration != AV_NOPTS_VALUE) {
             int64_t duration = mAudioStream->duration * av_q2d(mAudioStream->time_base) * 1000000;
             printTime(duration);
-            LOGV("audio startTime: %lld", mAudioStream->start_time);
+            ALOGV("audio startTime: %lld", mAudioStream->start_time);
             meta->setInt64(kKeyDuration, duration);
         } else {
             // default when no stream duration
             meta->setInt64(kKeyDuration, mFormatCtx->duration);
         }
 
-        LOGV("create a audio track");
+        ALOGV("create a audio track");
         index = mTracks.add(
             stream_index, new Track(this, meta, false, mAudioStream, &mAudioQ));
 
@@ -854,24 +854,24 @@ void FFmpegExtractor::stream_component_close(int stream_index)
 
     switch (avctx->codec_type) {
     case AVMEDIA_TYPE_VIDEO:
-        LOGV("packet_queue_abort videoq");
+        ALOGV("packet_queue_abort videoq");
         packet_queue_abort(&mVideoQ);
         /* wait until the end */
         while (!mAbortRequest && !mVideoEOSReceived) {
-            LOGV("wait for video received");
+            ALOGV("wait for video received");
             NamDelay(10);
         }
-        LOGV("packet_queue_end videoq");
+        ALOGV("packet_queue_end videoq");
         packet_queue_end(&mVideoQ);
         break;
     case AVMEDIA_TYPE_AUDIO:
-        LOGV("packet_queue_abort audioq");
+        ALOGV("packet_queue_abort audioq");
         packet_queue_abort(&mAudioQ);
         while (!mAbortRequest && !mAudioEOSReceived) {
-            LOGV("wait for audio received");
+            ALOGV("wait for audio received");
             NamDelay(10);
         }
-        LOGV("packet_queue_end audioq");
+        ALOGV("packet_queue_end audioq");
         packet_queue_end(&mAudioQ);
         break;
     case AVMEDIA_TYPE_SUBTITLE:
@@ -955,20 +955,20 @@ void FFmpegExtractor::print_error_ex(const char *filename, int err)
 
     if (av_strerror(err, errbuf, sizeof(errbuf)) < 0)
         errbuf_ptr = strerror(AVUNERROR(err));
-    LOGI("%s: %s\n", filename, errbuf_ptr);
+    ALOGI("%s: %s\n", filename, errbuf_ptr);
 }
 
 void FFmpegExtractor::buildFileName(const sp<DataSource> &source)
 {
 #if 1
-    LOGI("android source: %x", &source);
+    ALOGI("android source: %x", &source);
     // pass the addr of smart pointer("source")
     snprintf(mFilename, sizeof(mFilename), "android-source:%x", &source);
-    LOGI("build mFilename: %s", mFilename);
+    ALOGI("build mFilename: %s", mFilename);
 #else
     const char *url = mDataSource->getNamURI();
     if (url == NULL) {
-        LOGI("url is error!");
+        ALOGI("url is error!");
         return;
     }
     // is it right?
@@ -977,7 +977,7 @@ void FFmpegExtractor::buildFileName(const sp<DataSource> &source)
     } else {
         av_strlcpy(mFilename, url, strlen(url) + 1);
     }
-    LOGI("build url: %s, mFilename: %s", url, mFilename);
+    ALOGI("build url: %s, mFilename: %s", url, mFilename);
 #endif
 }
 
@@ -1053,7 +1053,7 @@ int FFmpegExtractor::initStreams()
     mFormatCtx = avformat_alloc_context();
     mFormatCtx->interrupt_callback.callback = decode_interrupt_cb;
     mFormatCtx->interrupt_callback.opaque = this;
-    LOGV("mFilename: %s", mFilename);
+    ALOGV("mFilename: %s", mFilename);
     err = avformat_open_input(&mFormatCtx, mFilename, NULL, &format_opts);
     if (err < 0) {
         print_error_ex(mFilename, err);
@@ -1061,7 +1061,7 @@ int FFmpegExtractor::initStreams()
         goto fail;
     }
     if ((t = av_dict_get(format_opts, "", NULL, AV_DICT_IGNORE_SUFFIX))) {
-        LOGE("Option %s not found.\n", t->key);
+        ALOGE("Option %s not found.\n", t->key);
         //ret = AVERROR_OPTION_NOT_FOUND;
         ret = -1;
         goto fail;
@@ -1075,7 +1075,7 @@ int FFmpegExtractor::initStreams()
 
     err = avformat_find_stream_info(mFormatCtx, opts);
     if (err < 0) {
-        LOGE("%s: could not find codec parameters\n", mFilename);
+        ALOGE("%s: could not find codec parameters\n", mFilename);
         ret = -1;
         goto fail;
     }
@@ -1109,7 +1109,7 @@ int FFmpegExtractor::initStreams()
             mFormatCtx->start_time != AV_NOPTS_VALUE) {
         int hours, mins, secs, us;
 
-        LOGV("file startTime: %lld", mFormatCtx->start_time);
+        ALOGV("file startTime: %lld", mFormatCtx->start_time);
 
         mDuration = mFormatCtx->duration;
 
@@ -1119,7 +1119,7 @@ int FFmpegExtractor::initStreams()
         secs %= 60;
         hours = mins / 60;
         mins %= 60;
-        LOGI("the duration is %02d:%02d:%02d.%02d",
+        ALOGI("the duration is %02d:%02d:%02d.%02d",
             hours, mins, secs, (100 * us) / AV_TIME_BASE);
     }
 
@@ -1132,7 +1132,7 @@ int FFmpegExtractor::initStreams()
     }
 
     if ( audio_ret < 0 && video_ret < 0) {
-        LOGE("%s: could not open codecs\n", mFilename);
+        ALOGE("%s: could not open codecs\n", mFilename);
         ret = -1;
         goto fail;
     }
@@ -1153,7 +1153,7 @@ void FFmpegExtractor::deInitStreams()
 }
 
 status_t FFmpegExtractor::startReaderThread() {
-    LOGV("Starting reader thread");
+    ALOGV("Starting reader thread");
     Mutex::Autolock autoLock(mLock);
 
     if (mReaderThreadStarted)
@@ -1165,17 +1165,17 @@ status_t FFmpegExtractor::startReaderThread() {
     pthread_create(&mReaderThread, &attr, ReaderWrapper, this);
     pthread_attr_destroy(&attr);
     mReaderThreadStarted = true;
-    LOGD("Reader thread started");
+    ALOGD("Reader thread started");
 
     return OK;
 }
 
 void FFmpegExtractor::stopReaderThread() {
-    LOGV("Stopping reader thread");
+    ALOGV("Stopping reader thread");
     Mutex::Autolock autoLock(mLock);
 
     if (!mReaderThreadStarted) {
-        LOGD("Reader thread have been stopped");
+        ALOGD("Reader thread have been stopped");
         return;
     }
 
@@ -1184,7 +1184,7 @@ void FFmpegExtractor::stopReaderThread() {
     void *dummy;
     pthread_join(mReaderThread, &dummy);
     mReaderThreadStarted = false;
-    LOGD("Reader thread stopped");
+    ALOGD("Reader thread stopped");
 }
 
 // static
@@ -1200,7 +1200,7 @@ void FFmpegExtractor::readerEntry() {
     int eof = 0;
     int pkt_in_play_range = 0;
 
-    LOGV("FFmpegExtractor::readerEntry");
+    ALOGV("FFmpegExtractor::readerEntry");
 
     mVideoEOSReceived = false;
     mAudioEOSReceived = false;
@@ -1228,10 +1228,10 @@ void FFmpegExtractor::readerEntry() {
 #endif
 
         if (mSeekReq) {
-            LOGV("readerEntry, mSeekReq: %d", mSeekReq);
+            ALOGV("readerEntry, mSeekReq: %d", mSeekReq);
             ret = avformat_seek_file(mFormatCtx, -1, INT64_MIN, mSeekPos, INT64_MAX, mSeekFlags);
             if (ret < 0) {
-                LOGE("%s: error while seeking", mFormatCtx->filename);
+                ALOGE("%s: error while seeking", mFormatCtx->filename);
             } else {
                 if (mAudioStreamIdx >= 0) {
                     packet_queue_flush(&mAudioQ);
@@ -1251,7 +1251,7 @@ void FFmpegExtractor::readerEntry() {
             || (   (mAudioQ   .size  > MIN_AUDIOQ_SIZE || mAudioStreamIdx < 0)
                 && (mVideoQ   .nb_packets > MIN_FRAMES || mVideoStreamIdx < 0))) {
 #if DEBUG_READ_ENTRY
-            LOGV("readerEntry, is full, fuck");
+            ALOGV("readerEntry, is full, fuck");
 #endif
             /* wait 10 ms */
             NamDelay(10);
@@ -1275,7 +1275,7 @@ void FFmpegExtractor::readerEntry() {
             }
             NamDelay(10);
 #if DEBUG_READ_ENTRY
-            LOGV("readerEntry, eof = 1, mVideoQ.size: %d, mVideoQ.nb_packets: %d, mAudioQ.size: %d, mAudioQ.nb_packets: %d",
+            ALOGV("readerEntry, eof = 1, mVideoQ.size: %d, mVideoQ.nb_packets: %d, mAudioQ.size: %d, mAudioQ.nb_packets: %d",
                     mVideoQ.size, mVideoQ.nb_packets, mAudioQ.size, mAudioQ.nb_packets);
 #endif
             if (mAudioQ.size + mVideoQ.size  == 0) {
@@ -1293,16 +1293,16 @@ void FFmpegExtractor::readerEntry() {
         if (ret < 0) {
             if (ret == AVERROR_EOF || url_feof(mFormatCtx->pb))
                 if (ret == AVERROR_EOF) {
-                    //LOGV("ret == AVERROR_EOF");
+                    //ALOGV("ret == AVERROR_EOF");
 		}
                 if (url_feof(mFormatCtx->pb)) {
-                    //LOGV("url_feof(mFormatCtx->pb)");
+                    //ALOGV("url_feof(mFormatCtx->pb)");
 		}
 
                 eof = 1;
                 mEOF = true;
             if (mFormatCtx->pb && mFormatCtx->pb->error) {
-                LOGE("mFormatCtx->pb->error: %d", mFormatCtx->pb->error);
+                ALOGE("mFormatCtx->pb->error: %d", mFormatCtx->pb->error);
                 break;
             }
             NamDelay(100);
@@ -1334,9 +1334,9 @@ void FFmpegExtractor::readerEntry() {
 
                 stream_component_open(mVideoStreamIdx);
                 if (!mDefersToCreateVideoTrack)
-                    LOGI("probe packet counter: %d when create video track ok", mProbePkts);
+                    ALOGI("probe packet counter: %d when create video track ok", mProbePkts);
                 if (mProbePkts == EXTRACTOR_MAX_PROBE_PACKETS)
-                    LOGI("probe packet counter to max: %d, create video track: %d",
+                    ALOGI("probe packet counter to max: %d, create video track: %d",
                         mProbePkts, !mDefersToCreateVideoTrack);
             }
         } else if (pkt->stream_index == mAudioStreamIdx) {
@@ -1364,9 +1364,9 @@ void FFmpegExtractor::readerEntry() {
                 }
                 stream_component_open(mAudioStreamIdx);
                 if (!mDefersToCreateAudioTrack)
-                    LOGI("probe packet counter: %d when create audio track ok", mProbePkts);
+                    ALOGI("probe packet counter: %d when create audio track ok", mProbePkts);
                 if (mProbePkts == EXTRACTOR_MAX_PROBE_PACKETS)
-                    LOGI("probe packet counter to max: %d, create audio track: %d",
+                    ALOGI("probe packet counter to max: %d, create audio track: %d",
                         mProbePkts, !mDefersToCreateAudioTrack);
             }
         }
@@ -1386,7 +1386,7 @@ void FFmpegExtractor::readerEntry() {
 
     ret = 0;
 fail:
-    LOGI("reader thread goto end...");
+    ALOGI("reader thread goto end...");
 
     /* close each stream */
     if (mAudioStreamIdx >= 0)
@@ -1428,7 +1428,7 @@ FFmpegExtractor::Track::Track(
             // The number of bytes used to encode the length of a NAL unit.
             mNALLengthSize = 1 + (ptr[4] & 3);
 
-            LOGV("the stream is AVC, the length of a NAL unit: %d", mNALLengthSize);
+            ALOGV("the stream is AVC, the length of a NAL unit: %d", mNALLengthSize);
 
             mNal2AnnexB = true;
         }
@@ -1476,11 +1476,11 @@ status_t FFmpegExtractor::Track::read(
     status_t status = OK;
 
     if (options && options->getSeekTo(&seekTimeUs, &mode)) {
-        LOGV("~~~%s seekTimeUs: %lld, mode: %d", av_get_media_type_string(mMediaType), seekTimeUs, mode);
+        ALOGV("~~~%s seekTimeUs: %lld, mode: %d", av_get_media_type_string(mMediaType), seekTimeUs, mode);
         /* add the stream start time */
         if (mStream->start_time != AV_NOPTS_VALUE)
             seekTimeUs += mStream->start_time * av_q2d(mStream->time_base) * 1000000;
-        LOGV("~~~%s seekTimeUs[+startTime]: %lld, mode: %d", av_get_media_type_string(mMediaType), seekTimeUs, mode);
+        ALOGV("~~~%s seekTimeUs[+startTime]: %lld, mode: %d", av_get_media_type_string(mMediaType), seekTimeUs, mode);
 
         if (mExtractor->stream_seek(seekTimeUs, mMediaType) == SEEK)
             seeking = true;
@@ -1505,12 +1505,12 @@ retry:
     }
 
     if (pkt.data == flush_pkt.data) {
-        LOGV("read %s flush pkt", av_get_media_type_string(mMediaType));
+        ALOGV("read %s flush pkt", av_get_media_type_string(mMediaType));
         av_free_packet(&pkt);
         mFirstKeyPktTimestamp = AV_NOPTS_VALUE;
         goto retry;
     } else if (pkt.data == NULL && pkt.size == 0) {
-        LOGV("read %s eos pkt", av_get_media_type_string(mMediaType));
+        ALOGV("read %s eos pkt", av_get_media_type_string(mMediaType));
         av_free_packet(&pkt);
         mExtractor->reachedEOS(mMediaType);
 	return ERROR_END_OF_STREAM;
@@ -1524,11 +1524,11 @@ retry:
 
     if (waitKeyPkt) {
         if (!key) {
-            LOGV("drop the no key packet");
+            ALOGV("drop the no key packet");
             av_free_packet(&pkt);
             goto retry;
         } else {
-            LOGV("~~~~~~ got the key packet");
+            ALOGV("~~~~~~ got the key packet");
             waitKeyPkt = false;
         }
     }
@@ -1539,7 +1539,7 @@ retry:
     }
      
     if (pktTS < mFirstKeyPktTimestamp) {
-            LOGV("drop the packet with the backward timestamp, maybe them are B-frames after I-frame ^_^");
+            ALOGV("drop the packet with the backward timestamp, maybe them are B-frames after I-frame ^_^");
             av_free_packet(&pkt);
             goto retry;
     }
@@ -1585,7 +1585,7 @@ retry:
         }
 
         if (status != OK) {
-            LOGV("status != OK");
+            ALOGV("status != OK");
             mediaBuffer->release();
             mediaBuffer = NULL;
             av_free_packet(&pkt);
@@ -1599,7 +1599,7 @@ retry:
     timeUs = (int64_t)((pktTS - start_time) * av_q2d(mStream->time_base) * 1000000);
 
 #if 0
-    LOGV("read %s pkt, size: %d, key: %d, pts: %lld, dts: %lld, timeUs[-startTime]: %llu us (%.2f secs)",
+    ALOGV("read %s pkt, size: %d, key: %d, pts: %lld, dts: %lld, timeUs[-startTime]: %llu us (%.2f secs)",
         av_get_media_type_string(mMediaType), pkt.size, key, pkt.pts, pkt.dts, timeUs, timeUs/1E6);
 #endif
 
@@ -1648,12 +1648,12 @@ const char *LegacySniffFFMPEG(const char * uri)
     size_t i;
     const char *container = NULL;
 
-    LOGI("list the file extensions suppoted by ffmpeg: ");
-    LOGI("========================================");
+    ALOGI("list the file extensions suppoted by ffmpeg: ");
+    ALOGI("========================================");
     for (i = 0; i < NELEM(FILE_EXTS); ++i) {
-            LOGV("file_exts[%02d]: %s", i, FILE_EXTS[i].extension);
+            ALOGV("file_exts[%02d]: %s", i, FILE_EXTS[i].extension);
     }
-    LOGI("========================================");
+    ALOGI("========================================");
 
     int lenURI = strlen(uri);
     for (i = 0; i < NELEM(FILE_EXTS); ++i) {
@@ -1698,29 +1698,29 @@ const char *BetterSniffFFMPEG(const char * uri)
 
     status_t status = initFFmpeg();
     if (status != OK) {
-        LOGE("could not init ffmpeg");
+        ALOGE("could not init ffmpeg");
         return false;
     }
 
     ic = avformat_alloc_context();
     err = avformat_open_input(&ic, uri, NULL, NULL);
     if (err < 0) {
-        LOGE("avformat_open_input faild, err: %d", err);
+        ALOGE("avformat_open_input faild, err: %d", err);
         print_error(uri, err);
         return NULL;
     }
 
     av_dump_format(ic, 0, uri, 0);
 
-    LOGI("FFmpegExtrator, uri: %s, format_name: %s, format_long_name: %s",
+    ALOGI("FFmpegExtrator, uri: %s, format_name: %s, format_long_name: %s",
             uri, ic->iformat->name, ic->iformat->long_name);
 
-    LOGI("list the format suppoted by ffmpeg: ");
-    LOGI("========================================");
+    ALOGI("list the format suppoted by ffmpeg: ");
+    ALOGI("========================================");
     for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
-            LOGV("format_names[%02d]: %s", i, FILE_FORMATS[i].format);
+            ALOGV("format_names[%02d]: %s", i, FILE_FORMATS[i].format);
     }
-    LOGI("========================================");
+    ALOGI("========================================");
 
     for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
         int len = strlen(FILE_FORMATS[i].format);
@@ -1747,11 +1747,11 @@ const char *Better2SniffFFMPEG(const sp<DataSource> &source)
 
     status_t status = initFFmpeg();
     if (status != OK) {
-        LOGE("could not init ffmpeg");
+        ALOGE("could not init ffmpeg");
         return false;
     }
 
-    LOGI("android source: %x", &source);
+    ALOGI("android source: %x", &source);
 
     // pass the addr of smart pointer("source")
     snprintf(url, sizeof(url), "android-source:%x", &source);
@@ -1759,22 +1759,22 @@ const char *Better2SniffFFMPEG(const sp<DataSource> &source)
     ic = avformat_alloc_context();
     err = avformat_open_input(&ic, url, NULL, NULL);
     if (err < 0) {
-        LOGE("avformat_open_input faild, err: %d", err);
+        ALOGE("avformat_open_input faild, err: %d", err);
         print_error(url, err);
         return NULL;
     }
 
     av_dump_format(ic, 0, url, 0);
 
-    LOGI("FFmpegExtrator, url: %s, format_name: %s, format_long_name: %s",
+    ALOGI("FFmpegExtrator, url: %s, format_name: %s, format_long_name: %s",
             url, ic->iformat->name, ic->iformat->long_name);
 
-    LOGI("list the format suppoted by ffmpeg: ");
-    LOGI("========================================");
+    ALOGI("list the format suppoted by ffmpeg: ");
+    ALOGI("========================================");
     for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
-            LOGV("format_names[%02d]: %s", i, FILE_FORMATS[i].format);
+            ALOGV("format_names[%02d]: %s", i, FILE_FORMATS[i].format);
     }
-    LOGI("========================================");
+    ALOGI("========================================");
 
     for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
         int len = strlen(FILE_FORMATS[i].format);
@@ -1793,7 +1793,7 @@ const char *Better2SniffFFMPEG(const sp<DataSource> &source)
 bool SniffFFMPEG(
         const sp<DataSource> &source, String8 *mimeType, float *confidence,
         sp<AMessage> *meta) {
-    LOGV("SniffFFMPEG");
+    ALOGV("SniffFFMPEG");
     const char *uri = NULL;
     const char *container = NULL;
 
@@ -1802,29 +1802,29 @@ bool SniffFFMPEG(
     if (!uri)
         return false;
 
-    LOGI("ffmpeg uri: %s", uri);
+    ALOGI("ffmpeg uri: %s", uri);
 
     container = Better2SniffFFMPEG(source);
     if (!container) {
-        LOGW("sniff through Better2SniffFFMPEG failed, try BetterSniffFFMPEG");
+        ALOGW("sniff through Better2SniffFFMPEG failed, try BetterSniffFFMPEG");
         container = BetterSniffFFMPEG(uri);
         if (!container) {
-            LOGW("sniff through BetterSniffFFMPEG failed, try LegacySniffFFMPEG");
+            ALOGW("sniff through BetterSniffFFMPEG failed, try LegacySniffFFMPEG");
             //only check the file extension
             container = LegacySniffFFMPEG(uri);
             if (!container)
-                LOGW("sniff through LegacySniffFFMPEG failed");
+                ALOGW("sniff through LegacySniffFFMPEG failed");
         } else {
-            LOGI("sniff through Better1SniffFFMPEG success");
+            ALOGI("sniff through Better1SniffFFMPEG success");
         }
     } else {
-        LOGI("sniff through Better2SniffFFMPEG success");
+        ALOGI("sniff through Better2SniffFFMPEG success");
     }
 
     if (container == NULL)
         return false;
 
-    LOGV("found container: %s", container);
+    ALOGV("found container: %s", container);
 
     *confidence = 0.88f;  // Slightly larger than other extractor's confidence
     mimeType->setTo(container);

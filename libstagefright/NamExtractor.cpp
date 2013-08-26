@@ -75,9 +75,9 @@ MediaExtractor *createExtractor(const sp<DataSource> &source, const char *mime) 
     }
 
     if (ret)
-        LOGI("NamExtractor support the mime: %s", mime);
+        ALOGI("NamExtractor support the mime: %s", mime);
     else
-        LOGI("NamExtractor don't support the mime: %s", mime);
+        ALOGI("NamExtractor don't support the mime: %s", mime);
 
     return ret;
 }
