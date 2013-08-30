@@ -14,8 +14,6 @@
 # limitations under the License.
 #
 
-LOCAL_PATH := $(call my-dir)
-
 ifeq ($(USES_NAM),true)
 include $(call all-subdir-makefiles)
 endif

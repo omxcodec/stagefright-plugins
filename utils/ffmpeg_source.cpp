@@ -105,7 +105,7 @@ off64_t FFSource::getSize()
 
 static int android_open(URLContext *h, const char *url, int flags)
 {
-    // the url in form of "android:<DataSource Ptr>",
+    // the url in form of "android-source:<DataSource Ptr>",
     // the DataSource Pointer passed by the ffmpeg extractor
     sp<DataSource>* source = NULL;
 
@@ -117,7 +117,7 @@ static int android_open(URLContext *h, const char *url, int flags)
     }
 
     ALOGD("android open, url: %s", url);
-    sscanf(url + strlen("android-source:"), "%x", &source);
+    sscanf(url + strlen("android-source:"), "%p", &source);
     if(source == NULL){
         ALOGE("ffmpeg open data source error!");
         return -1;

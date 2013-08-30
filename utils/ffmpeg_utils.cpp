@@ -50,8 +50,6 @@ extern "C" {
 #include "libavcodec/avfft.h"
 #include "libswresample/swresample.h"
 
-#include "cmdutils.h"
-
 #undef strncpy
 #include <string.h>
 
@@ -260,8 +258,6 @@ status_t initFFmpeg()
         /* register android source */
         ffmpeg_register_android_source();
 
-        init_opts();
-
         if (av_lockmgr_register(lockmgr)) {
             ALOGE("could not initialize lock manager!");
             ret = NO_INIT;
@@ -285,7 +281,6 @@ void deInitFFmpeg()
 
     if(ref_count == 0) {
         av_lockmgr_register(NULL);
-        uninit_opts();
         avformat_network_deinit();
     }
 

@@ -85,7 +85,7 @@ SoftFFmpegVideo::SoftFFmpegVideo(
         CHECK(!strcmp(name, "OMX.ffmpeg.h264.decoder"));
     }
 
-    ALOGV("SoftFFmpegVideo component: %s", name);
+    ALOGD("SoftFFmpegAudio component: %s mMode: %d", name, mMode);
 
     initPorts();
     CHECK_EQ(initDecoder(), (status_t)OK);
@@ -128,6 +128,10 @@ void SoftFFmpegVideo::initPorts() {
     case MODE_H263:
         def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_H263);
         def.format.video.eCompressionFormat = OMX_VIDEO_CodingH263;
+        break;
+    case MODE_VPX:
+        def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_VPX);
+        def.format.video.eCompressionFormat = OMX_VIDEO_CodingVPX;
         break;
     case MODE_VC1:
         def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_VC1);
@@ -241,6 +245,9 @@ status_t SoftFFmpegVideo::initDecoder() {
         //mCtx->codec_id = CODEC_ID_H263P;
         //mCtx->codec_id = CODEC_ID_H263I;
         break;
+    case MODE_VPX:
+        mCtx->codec_id = CODEC_ID_VP8;
+        break;
     case MODE_VC1:
         mCtx->codec_id = CODEC_ID_VC1;
         break;
@@ -274,8 +281,10 @@ status_t SoftFFmpegVideo::initDecoder() {
 
 void SoftFFmpegVideo::deInitDecoder() {
     if (mCtx) {
-        avcodec_flush_buffers(mCtx);
-        if (!mCtx->extradata) {
+        if (avcodec_is_open(mCtx)) {
+            avcodec_flush_buffers(mCtx);
+        }
+        if (mCtx->extradata) {
             av_free(mCtx->extradata);
             mCtx->extradata = NULL;
             mCtx->extradata_size = 0;
@@ -284,6 +293,7 @@ void SoftFFmpegVideo::deInitDecoder() {
         av_free(mCtx);
         mCtx = NULL;
     }
+else ALOGI("SoftFFmpegVideo(%p)::deInitDecoder: skip flush %p", this, mCtx);
 
     if (mImgConvertCtx) {
         sws_freeContext(mImgConvertCtx);
@@ -356,6 +366,9 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalGetParameter(
                     break;
                 case MODE_H263:
                     formatParams->eCompressionFormat = OMX_VIDEO_CodingH263;
+                    break;
+                case MODE_VPX:
+                    formatParams->eCompressionFormat = OMX_VIDEO_CodingVPX;
                     break;
                 case MODE_VC1:
                     formatParams->eCompressionFormat = OMX_VIDEO_CodingWMV;
@@ -430,6 +443,11 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
             case MODE_H263:
                 if (strncmp((const char *)roleParams->cRole,
                         "video_decoder.h263", OMX_MAX_STRINGNAME_SIZE - 1))
+                    supported =  false;
+                break;
+            case MODE_VPX:
+                if (strncmp((const char *)roleParams->cRole,
+                        "video_decoder.vpx", OMX_MAX_STRINGNAME_SIZE - 1))
                     supported =  false;
                 break;
             case MODE_VC1:
@@ -524,6 +542,7 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
         }
 
         default:
+            ALOGI("internalSetParameter, index: 0x%x", index);
             return SimpleSoftOMXComponent::internalSetParameter(index, params);
     }
 }
@@ -623,7 +642,7 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
         ALOGV("pkt size: %d, pts: %lld", pkt.size, pkt.pts);
 #endif
         if (!mExtradataReady) {
-            ALOGI("extradata is ready");
+            ALOGI("extradata is ready, size: %d", mCtx->extradata_size);
             hexdump(mCtx->extradata, mCtx->extradata_size);
             mExtradataReady = true;
 

@@ -48,11 +48,11 @@ extern "C" {
 #include "libavcodec/avfft.h"
 #include "libswresample/swresample.h"
 
-#include "cmdutils.h"
-
 #ifdef __cplusplus
 }
 #endif
+
+const int AVCODEC_MAX_AUDIO_FRAME_SIZE = 192000; // Deprecated in ffmpeg
 
 namespace android {
 
@@ -91,7 +91,8 @@ private:
         MODE_AC3,
         MODE_APE,
         MODE_DTS,
-        MODE_FLAC
+        MODE_FLAC,
+        MODE_VORBIS,
     } mMode;
 
     enum {

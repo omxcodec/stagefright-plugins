@@ -18,6 +18,7 @@
 #define LOG_TAG "FFmpegExtractor"
 #include <utils/Log.h>
 
+#include <stdint.h>
 #include <limits.h> /* INT_MAX */
 #include <inttypes.h>
 
@@ -28,7 +29,7 @@
 #include <media/stagefright/foundation/hexdump.h>
 #include <media/stagefright/DataSource.h>
 #include <media/stagefright/MediaBuffer.h>
-#include <media/stagefright/MediaDebug.h>
+#include <media/stagefright/foundation/ADebug.h>
 #include <media/stagefright/MediaDefs.h>
 #include <media/stagefright/MediaErrors.h>
 #include <media/stagefright/MediaSource.h>
@@ -40,6 +41,7 @@
 #include "include/avc_utils.h"
 #include "utils/common_utils.h"
 #include "utils/ffmpeg_utils.h"
+#include "utils/ffmpeg_cmdutils.h"
 #include "FFmpegExtractor.h"
 
 #define DEBUG_READ_ENTRY           0
@@ -104,15 +106,13 @@ private:
 
 FFmpegExtractor::FFmpegExtractor(const sp<DataSource> &source)
     : mDataSource(source),
-      mReaderThreadStarted(false),
-      mInitCheck(NO_INIT) {
+      mInitCheck(NO_INIT),
+      mReaderThreadStarted(false) {
     ALOGV("FFmpegExtractor::FFmpegExtractor");
-
-    int err = 0;
 
     buildFileName(source);
 
-    err = initStreams();
+    int err = initStreams();
     if (err < 0) {
         ALOGE("failed to init ffmpeg");
         return;
@@ -125,7 +125,7 @@ FFmpegExtractor::FFmpegExtractor(const sp<DataSource> &source)
         (mFormatCtx->pb ? !mFormatCtx->pb->error : 1) &&
         (mDefersToCreateVideoTrack || mDefersToCreateAudioTrack)) {
         // FIXME, i am so lazy! Should use pthread_cond_wait to wait conditions
-        NamDelay(5);
+        usleep(5000);
     }
 
     ALOGV("mProbePkts: %d, mEOF: %d, pb->error(if has): %d, mDefersToCreateVideoTrack: %d, mDefersToCreateAudioTrack: %d",
@@ -193,7 +193,7 @@ uint32_t FFmpegExtractor::flags() const {
     ALOGV("FFmpegExtractor::flags");
 
     if (mInitCheck != OK) {
-        return NULL;
+        return 0;
     }
 
     uint32_t flags = CAN_PAUSE;
@@ -859,7 +859,7 @@ void FFmpegExtractor::stream_component_close(int stream_index)
         /* wait until the end */
         while (!mAbortRequest && !mVideoEOSReceived) {
             ALOGV("wait for video received");
-            NamDelay(10);
+            usleep(10000);
         }
         ALOGV("packet_queue_end videoq");
         packet_queue_end(&mVideoQ);
@@ -869,7 +869,7 @@ void FFmpegExtractor::stream_component_close(int stream_index)
         packet_queue_abort(&mAudioQ);
         while (!mAbortRequest && !mAudioEOSReceived) {
             ALOGV("wait for audio received");
-            NamDelay(10);
+            usleep(10000);
         }
         ALOGV("packet_queue_end audioq");
         packet_queue_end(&mAudioQ);
@@ -961,9 +961,9 @@ void FFmpegExtractor::print_error_ex(const char *filename, int err)
 void FFmpegExtractor::buildFileName(const sp<DataSource> &source)
 {
 #if 1
-    ALOGI("android source: %x", &source);
+    ALOGI("android-source:%p", &source);
     // pass the addr of smart pointer("source")
-    snprintf(mFilename, sizeof(mFilename), "android-source:%x", &source);
+    snprintf(mFilename, sizeof(mFilename), "android-source:%p", &source);
     ALOGI("build mFilename: %s", mFilename);
 #else
     const char *url = mDataSource->getNamURI();
@@ -1222,7 +1222,7 @@ void FFmpegExtractor::readerEntry() {
                  (mFormatCtx->pb && !strncmp(mFilename, "mmsh:", 5)))) {
             /* wait 10 ms to avoid trying to get another packet */
             /* XXX: horrible */
-            NamDelay(10);
+            usleep(10000);
             continue;
         }
 #endif
@@ -1254,7 +1254,7 @@ void FFmpegExtractor::readerEntry() {
             ALOGV("readerEntry, is full, fuck");
 #endif
             /* wait 10 ms */
-            NamDelay(10);
+            usleep(10000);
             continue;
         }
 
@@ -1273,7 +1273,7 @@ void FFmpegExtractor::readerEntry() {
                 pkt->stream_index = mAudioStreamIdx;
                 packet_queue_put(&mAudioQ, pkt);
             }
-            NamDelay(10);
+            usleep(10000);
 #if DEBUG_READ_ENTRY
             ALOGV("readerEntry, eof = 1, mVideoQ.size: %d, mVideoQ.nb_packets: %d, mAudioQ.size: %d, mAudioQ.nb_packets: %d",
                     mVideoQ.size, mVideoQ.nb_packets, mAudioQ.size, mAudioQ.nb_packets);
@@ -1305,7 +1305,7 @@ void FFmpegExtractor::readerEntry() {
                 ALOGE("mFormatCtx->pb->error: %d", mFormatCtx->pb->error);
                 break;
             }
-            NamDelay(100);
+            usleep(100000);
             continue;
         }
 
@@ -1381,7 +1381,7 @@ void FFmpegExtractor::readerEntry() {
     }
     /* wait until the end */
     while (!mAbortRequest) {
-        NamDelay(100);
+        usleep(100000);
     }
 
     ret = 0;
@@ -1699,14 +1699,13 @@ const char *BetterSniffFFMPEG(const char * uri)
     status_t status = initFFmpeg();
     if (status != OK) {
         ALOGE("could not init ffmpeg");
-        return false;
+        return NULL;
     }
 
     ic = avformat_alloc_context();
     err = avformat_open_input(&ic, uri, NULL, NULL);
     if (err < 0) {
-        ALOGE("avformat_open_input faild, err: %d", err);
-        print_error(uri, err);
+        ALOGE("avformat_open_input faild, uri: %s err: %d", uri, err);
         return NULL;
     }
 
@@ -1748,19 +1747,18 @@ const char *Better2SniffFFMPEG(const sp<DataSource> &source)
     status_t status = initFFmpeg();
     if (status != OK) {
         ALOGE("could not init ffmpeg");
-        return false;
+        return NULL;
     }
 
-    ALOGI("android source: %x", &source);
+    ALOGI("android-source:%p", &source);
 
     // pass the addr of smart pointer("source")
-    snprintf(url, sizeof(url), "android-source:%x", &source);
+    snprintf(url, sizeof(url), "android-source:%p", &source);
 
     ic = avformat_alloc_context();
     err = avformat_open_input(&ic, url, NULL, NULL);
     if (err < 0) {
-        ALOGE("avformat_open_input faild, err: %d", err);
-        print_error(url, err);
+        ALOGE("avformat_open_input faild, url: %s err: %d", url, err);
         return NULL;
     }
 
@@ -1794,26 +1792,20 @@ bool SniffFFMPEG(
         const sp<DataSource> &source, String8 *mimeType, float *confidence,
         sp<AMessage> *meta) {
     ALOGV("SniffFFMPEG");
-    const char *uri = NULL;
-    const char *container = NULL;
 
-    uri = source->getNamURI();
-
-    if (!uri)
-        return false;
-
-    ALOGI("ffmpeg uri: %s", uri);
-
-    container = Better2SniffFFMPEG(source);
+    const char *container = Better2SniffFFMPEG(source);
     if (!container) {
+        String8 uri = source->getUri();
+        if (uri.empty())
+            return false;
+
         ALOGW("sniff through Better2SniffFFMPEG failed, try BetterSniffFFMPEG");
         container = BetterSniffFFMPEG(uri);
         if (!container) {
             ALOGW("sniff through BetterSniffFFMPEG failed, try LegacySniffFFMPEG");
             //only check the file extension
             container = LegacySniffFFMPEG(uri);
-            if (!container)
-                ALOGW("sniff through LegacySniffFFMPEG failed");
+            ALOGW_IF(!container, "sniff through LegacySniffFFMPEG failed");
         } else {
             ALOGI("sniff through Better1SniffFFMPEG success");
         }
@@ -1826,13 +1818,13 @@ bool SniffFFMPEG(
 
     ALOGV("found container: %s", container);
 
-    *confidence = 0.88f;  // Slightly larger than other extractor's confidence
+    *confidence = 0.08f;  // be the last resort
     mimeType->setTo(container);
 
     /* use MPEG4Extractor(not extended extractor) for HTTP source only */
     if (!av_strcasecmp(container, MEDIA_MIMETYPE_CONTAINER_MPEG4)
             && (source->flags() & DataSource::kIsCachingDataSource)) {
-            return true;
+        return true;
     }
 
     *meta = new AMessage;
@@ -1842,4 +1834,41 @@ bool SniffFFMPEG(
     return true;
 }
 
+MediaExtractor *CreateFFmpegExtractor(const sp<DataSource> &source, const char *mime, const sp<AMessage> &meta) {
+    MediaExtractor *ret = NULL;
+    AString notuse;
+    if (meta.get() && meta->findString("extended-extractor", &notuse) && (
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MPEG4)     ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_MPEG)          ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MOV)       ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MATROSKA)  ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_TS)        ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MPEG2PS)   ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_AVI)       ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_ASF)       ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_WEBM)      ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_WMV)       ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MPG)       ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_FLV)       ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_DIVX)      ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_RM)        ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_FLAC)      ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_APE)       ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_DTS)       ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MP2)       ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_RA)        ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_WMA))) {
+        ret = new FFmpegExtractor(source);
+    }
+
+    ALOGD("%ssupported mime: %s", (ret ? "" : "un"), mime);
+    return ret;
+}
+
 }  // namespace android
+
+extern "C" void getExtractorPlugin(android::MediaExtractor::Plugin *plugin)
+{
+    plugin->sniff = android::SniffFFMPEG;
+    plugin->create = android::CreateFFmpegExtractor;
+}

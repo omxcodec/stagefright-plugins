@@ -15,44 +15,21 @@ LOCAL_MODULE_TAGS := optional
 
 include $(BUILD_SHARED_LIBRARY)
 
-# ffmpeg
+
 include $(CLEAR_VARS)
-FFMPEG_SRC_DIR   := $(TOP)/external/ffmpeg
-FFMPEG_BUILD_DIR := $(PRODUCT_OUT)/obj/ffmpeg
+include external/ffmpeg/android/ffmpeg.mk
 
 LOCAL_SRC_FILES := \
 	ffmpeg_source.cpp \
 	ffmpeg_utils.cpp \
-	../../../external/ffmpeg/cmdutils.c
-
-LOCAL_C_INCLUDES := \
-	$(TOP)/frameworks/base/include
-
-LOCAL_C_INCLUDES += \
-	$(FFMPEG_SRC_DIR) \
-	$(FFMPEG_BUILD_DIR)
+	ffmpeg_cmdutils.c
 
 LOCAL_SHARED_LIBRARIES := \
+	libavcodec \
+	libavformat \
+	libavutil \
 	libutils \
-	libcutils
-
-FFMPEG_BUILD_LIBS := \
-        -L$(FFMPEG_BUILD_DIR)/libavutil         \
-        -L$(FFMPEG_BUILD_DIR)/libavcodec        \
-        -L$(FFMPEG_BUILD_DIR)/libswscale        \
-        -L$(FFMPEG_BUILD_DIR)/libpostproc       \
-        -L$(FFMPEG_BUILD_DIR)/libavformat       \
-        -L$(FFMPEG_BUILD_DIR)/libavfilter       \
-        -L$(FFMPEG_BUILD_DIR)/libswresample
-
-LOCAL_LDFLAGS += $(FFMPEG_BUILD_LIBS) \
-	-lavutil       \
-	-lavcodec      \
-	-lpostproc     \
-	-lavformat     \
-	-lavfilter     \
-	-lswresample   \
-	-lswscale
+	libcutils \
 
 LOCAL_MODULE := libffmpeg_utils
 

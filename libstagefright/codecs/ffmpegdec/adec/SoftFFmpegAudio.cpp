@@ -98,12 +98,13 @@ SoftFFmpegAudio::SoftFFmpegAudio(
         mMode = MODE_DTS;
     } else if (!strcmp(name, "OMX.ffmpeg.flac.decoder")) {
         mMode = MODE_FLAC;
+    } else if (!strcmp(name, "OMX.ffmpeg.vorbis.decoder")) {
+        mMode = MODE_VORBIS;
     } else {
         TRESPASS();
     }
 
-    ALOGV("SoftFFmpegAudio component: %s", name);
-    ALOGV("SoftFFmpegAudio mMode: %d", mMode);
+    ALOGD("SoftFFmpegAudio component: %s mMode: %d", name, mMode);
 
     initPorts();
     CHECK_EQ(initDecoder(), (status_t)OK);
@@ -179,6 +180,10 @@ void SoftFFmpegAudio::initPorts() {
     case MODE_FLAC:
         def.format.audio.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_AUDIO_FLAC);
         def.format.audio.eEncoding = OMX_AUDIO_CodingFLAC;
+        break;
+    case MODE_VORBIS:
+        def.format.audio.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_AUDIO_VORBIS);
+        def.format.audio.eEncoding = OMX_AUDIO_CodingVORBIS;
         break;
     default:
         CHECK(!"Should not be here. Unsupported mime type and compression format");
@@ -274,6 +279,9 @@ status_t SoftFFmpegAudio::initDecoder() {
         mCtx->codec_id = CODEC_ID_DTS;
     case MODE_FLAC:
         mCtx->codec_id = CODEC_ID_FLAC;
+        break;
+    case MODE_VORBIS:
+        mCtx->codec_id = CODEC_ID_VORBIS;
         break;
     default:
         CHECK(!"Should not be here. Unsupported codec");
@@ -422,7 +430,7 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalGetParameter(
             }
 
             flacParams->nChannels = 0;
-            flacParams->nSamplingRate = 0;
+            flacParams->nSampleRate = 0;
 
             return OMX_ErrorNone;
         }
@@ -463,6 +471,39 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalGetParameter(
             pcmParams->nChannels = channels;
             pcmParams->nSamplingRate = sampling_rate;
 
+            return OMX_ErrorNone;
+        }
+        case OMX_IndexParamAudioVorbis:
+        {
+            OMX_AUDIO_PARAM_VORBISTYPE *vorbisParams =
+                (OMX_AUDIO_PARAM_VORBISTYPE *)params;
+
+            if (vorbisParams->nPortIndex != 0) {
+                return OMX_ErrorUndefined;
+            }
+
+            vorbisParams->nBitRate = 0;
+            vorbisParams->nMinBitRate = 0;
+            vorbisParams->nMaxBitRate = 0;
+            vorbisParams->nAudioBandWidth = 0;
+            vorbisParams->nQuality = 3;
+            vorbisParams->bManaged = OMX_FALSE;
+            vorbisParams->bDownmix = OMX_FALSE;
+
+            vorbisParams->nChannels = 1;
+            vorbisParams->nSampleRate = 44100;
+/*
+            if (!isConfigured()) {
+                vorbisParams->nChannels = 1;
+                vorbisParams->nSampleRate = 44100;
+            } else {
+                vorbisParams->nChannels = mVi->channels;
+                vorbisParams->nSampleRate = mVi->rate;
+                vorbisParams->nBitRate = mVi->bitrate_nominal;
+                vorbisParams->nMinBitRate = mVi->bitrate_lower;
+                vorbisParams->nMaxBitRate = mVi->bitrate_upper;
+            }
+*/
             return OMX_ErrorNone;
         }
 
@@ -534,6 +575,11 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
                         "audio_decoder.flac", OMX_MAX_STRINGNAME_SIZE - 1))
                     supported =  false;
                 break;
+            case MODE_VORBIS:
+                if (strncmp((const char *)roleParams->cRole,
+                        "audio_decoder.vorbis", OMX_MAX_STRINGNAME_SIZE - 1))
+                    supported =  false;
+                break;
             default:
                 CHECK(!"Should not be here. Unsupported role.");
                 break;
@@ -542,6 +588,20 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
                 ALOGE("unsupported role: %s", (const char *)roleParams->cRole);
                 return OMX_ErrorUndefined;
             }
+
+            return OMX_ErrorNone;
+        }
+        case OMX_IndexParamAudioPcm:
+        {
+            const OMX_AUDIO_PARAM_PCMMODETYPE *pcmParams =
+                (const OMX_AUDIO_PARAM_PCMMODETYPE *)params;
+
+            if (pcmParams->nPortIndex != 1) {
+                return OMX_ErrorUndefined;
+            }
+
+            mNumChannels = pcmParams->nChannels;
+            mSamplingRate = pcmParams->nSamplingRate;
 
             return OMX_ErrorNone;
         }
@@ -696,7 +756,7 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
             mAudioSrcFmt = mAudioTgtFmt = AV_SAMPLE_FMT_S16;
             mAudioSrcChannelLayout = mAudioTgtChannelLayout = av_get_default_channel_layout(channels);
 
-            ALOGV("got OMX_IndexParamAudioApe, mNumChannels: %d, mSamplingRate: %d, nBitsPerSample: %d",
+            ALOGV("got OMX_IndexParamAudioApe, mNumChannels: %d, mSamplingRate: %d, nBitsPerSample: %lu",
                 mNumChannels, mSamplingRate, apeParams->nBitsPerSample);
 
             return OMX_ErrorNone;
@@ -747,7 +807,7 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
             mCtx->codec_id = CODEC_ID_FLAC;
 
             mNumChannels = flacParams->nChannels;
-            mSamplingRate = flacParams->nSamplingRate;
+            mSamplingRate = flacParams->nSampleRate;
 
             channels = mNumChannels >= 2 ? 2 : 1;
             sampling_rate = mSamplingRate;
@@ -766,6 +826,20 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
 
             ALOGV("got OMX_IndexParamAudioFlac, mNumChannels: %d, mSamplingRate: %d",
                 mNumChannels, mSamplingRate);
+
+            return OMX_ErrorNone;
+        }
+        case OMX_IndexParamAudioVorbis:
+        {
+            const OMX_AUDIO_PARAM_VORBISTYPE *vorbisParams =
+                (const OMX_AUDIO_PARAM_VORBISTYPE *)params;
+
+            if (vorbisParams->nPortIndex != 0) {
+                return OMX_ErrorUndefined;
+            }
+
+            ALOGD("got OMX_IndexParamAudioVorbis, mNumChannels=%lu, mSamplingRate=%lu, nBitRate=%lu, nMinBitRate=%lu, nMaxBitRate=%lu",
+                vorbisParams->nChannels, vorbisParams->nSampleRate, vorbisParams->nBitRate, vorbisParams->nMinBitRate, vorbisParams->nMaxBitRate);
 
             return OMX_ErrorNone;
         }
@@ -862,7 +936,7 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
 
         if (!mCodecOpened) {
             if (!mExtradataReady && !mIgnoreExtradata) {
-                ALOGI("extradata is ready");
+                ALOGI("extradata is ready, size: %d", mCtx->extradata_size);
                 hexdump(mCtx->extradata, mCtx->extradata_size);
                 mExtradataReady = true;
             }
@@ -881,7 +955,6 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
             ALOGI("open ffmpeg decoder now");
             err = avcodec_open2(mCtx, mCtx->codec, NULL);
             if (err < 0) {
-                print_error("avcodec_open2", err);
                 ALOGE("ffmpeg audio decoder failed to initialize. (%d)", err);
                 notify(OMX_EventError, OMX_ErrorUndefined, 0, NULL);
                 mSignalledError = true;

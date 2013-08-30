@@ -52,8 +52,6 @@ extern "C" {
 #include "libavcodec/avfft.h"
 #include "libswresample/swresample.h"
 
-#include "cmdutils.h"
-
 #ifdef __cplusplus
 }
 #endif
