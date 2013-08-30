@@ -17,32 +17,32 @@
 LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
+include external/ffmpeg/android/ffmpeg.mk
 
-FFMPEG_SRC_DIR   := $(TOP)/external/ffmpeg
-FFMPEG_BUILD_DIR := $(PRODUCT_OUT)/obj/ffmpeg
+FFMPEG_SRC_DIR := $(TOP)/external/ffmpeg
 
 LOCAL_SRC_FILES := \
-        NamExtractor.cpp
+	NamExtractor.cpp
 
 LOCAL_C_INCLUDES := \
-        $(JNI_H_INCLUDE) \
-        $(TOP)/frameworks/base/include \
-        $(TOP)/frameworks/base/include/media/stagefright/openmax \
-        $(TOP)/frameworks/base/media/libstagefright
+	$(JNI_H_INCLUDE) \
+	$(TOP)/frameworks/base/include \
+	$(TOP)/frameworks/base/include/media/stagefright/openmax \
+	$(TOP)/frameworks/base/media/libstagefright
 
 LOCAL_C_INCLUDES += \
-        $(TOP)/external/stagefright-plugins \
-        $(TOP)/external/stagefright-plugins/libstagefright \
+	$(TOP)/external/stagefright-plugins \
+	$(TOP)/external/stagefright-plugins/libstagefright \
 
 LOCAL_C_INCLUDES += \
 	$(FFMPEG_SRC_DIR) \
-	$(FFMPEG_BUILD_DIR)
+	$(FFMPEG_SRC_DIR)/android/include
 
 LOCAL_SHARED_LIBRARIES := \
-        libutils        \
-        libcutils       \
-        libstagefright  \
-        libstagefright_foundation \
+	libutils        \
+	libcutils       \
+	libstagefright  \
+	libstagefright_foundation \
 	libFFmpegExtractor
 
 LOCAL_MODULE:= libnamparser
@@ -58,6 +58,10 @@ ifeq ($(TARGET_ARCH),arm)
 endif
 
 LOCAL_CFLAGS += -D__STDC_CONSTANT_MACROS=1
+
+ifeq ($(TARGET_ARCH),arm)
+LOCAL_CFLAGS += -fpermissive
+endif
 
 include $(BUILD_SHARED_LIBRARY)
 

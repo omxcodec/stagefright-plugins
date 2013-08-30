@@ -26,8 +26,6 @@ extern "C" {
 
 #include <inttypes.h>
 #include <math.h>
-#include <limits.h>
-#include <signal.h>
 #include <limits.h> /* INT_MAX */
 
 #include "config.h"
@@ -44,7 +42,6 @@ extern "C" {
 #include "libavformat/avformat.h"
 #include "libavdevice/avdevice.h"
 #include "libswscale/swscale.h"
-#include "libavcodec/audioconvert.h"
 #include "libavutil/opt.h"
 #include "libavutil/internal.h"
 #include "libavcodec/avfft.h"

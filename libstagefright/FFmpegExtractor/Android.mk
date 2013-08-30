@@ -3,14 +3,20 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 include external/ffmpeg/android/ffmpeg.mk
 
+FFMPEG_SRC_DIR := $(TOP)/external/ffmpeg
+
 LOCAL_SRC_FILES := \
-        FFmpegExtractor.cpp
+	FFmpegExtractor.cpp
 
 LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/../.. \
-	frameworks/native/include/media/openmax \
-	frameworks/av/include \
-	frameworks/av/media/libstagefright
+	$(TOP)/frameworks/native/include/media/openmax \
+	$(TOP)/frameworks/av/include \
+	$(TOP)/frameworks/av/media/libstagefright
+
+LOCAL_C_INCLUDES += \
+	$(FFMPEG_SRC_DIR) \
+	$(FFMPEG_SRC_DIR)/android/include
 
 LOCAL_SHARED_LIBRARIES := \
 	libutils          \
@@ -27,13 +33,17 @@ LOCAL_MODULE:= libFFmpegExtractor
 LOCAL_MODULE_TAGS := optional
 
 ifeq ($(USES_NAM),true)
-    LOCAL_CFLAGS += -DUSES_NAM
+	LOCAL_CFLAGS += -DUSES_NAM
 endif
 
 ifeq ($(TARGET_ARCH),arm)
-    LOCAL_CFLAGS += -Wno-psabi
+	LOCAL_CFLAGS += -Wno-psabi
 endif
 
 LOCAL_CFLAGS += -D__STDC_CONSTANT_MACROS=1 -D__STDINT_LIMITS=1
+
+ifeq ($(TARGET_ARCH),arm)
+	LOCAL_CFLAGS += -fpermissive
+endif
 
 include $(BUILD_SHARED_LIBRARY)

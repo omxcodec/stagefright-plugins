@@ -33,12 +33,6 @@
 #define DEBUG_PKT 0
 #define DEBUG_FRM 0
 
-/**
- * Note: DECLARE_ALIGNED should move from "*.h" to here, otherwise
- * "Fatal signal 7 (SIGBUS)"!!! SIGBUS is because of an alignment exception
- */
-DECLARE_ALIGNED(16, uint8_t, mAudioBuf2)[AVCODEC_MAX_AUDIO_FRAME_SIZE * 4];
-
 namespace android {
 
 template<class T>

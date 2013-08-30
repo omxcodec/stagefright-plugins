@@ -37,4 +37,8 @@ LOCAL_MODULE_TAGS := optional
 
 LOCAL_CFLAGS += -D__STDC_CONSTANT_MACROS=1
 
+ifeq ($(TARGET_ARCH),arm)
+	LOCAL_CFLAGS += -fpermissive
+endif
+
 include $(BUILD_SHARED_LIBRARY)

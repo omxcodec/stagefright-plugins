@@ -20,16 +20,20 @@
 
 #include "SimpleSoftOMXComponent.h"
 
+#ifndef __GNUC__
+//fix DECLARE_ALIGNED
+#error "__GNUC__ cflags should be enabled"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "config.h"
 
 #include <inttypes.h>
 #include <math.h>
 #include <limits.h> /* INT_MAX */
 
+#include "config.h"
 #include "libavutil/avstring.h"
 #include "libavutil/colorspace.h"
 #include "libavutil/mathematics.h"
@@ -41,8 +45,8 @@ extern "C" {
 #include "libavutil/avassert.h"
 #include "libavutil/intreadwrite.h"
 #include "libavformat/avformat.h"
+#include "libavdevice/avdevice.h"
 #include "libswscale/swscale.h"
-#include "libavcodec/audioconvert.h"
 #include "libavutil/opt.h"
 #include "libavutil/internal.h"
 #include "libavcodec/avfft.h"
