@@ -1871,6 +1871,10 @@ bool SniffFFMPEG(
     (*meta)->setString("extended-extractor", "extended-extractor");
     (*meta)->setString("extended-extractor-subtype", "ffmpegextractor");
 
+	if (*confidence > 0.08f) {
+		(*meta)->setString("extended-extractor-use", "ffmpegextractor");
+	}
+
     return true;
 }
 
