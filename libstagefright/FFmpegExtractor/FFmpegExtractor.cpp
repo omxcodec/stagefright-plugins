@@ -1631,10 +1631,12 @@ static formatmap FILE_FORMATS[] = {
         {"rm",                      MEDIA_MIMETYPE_CONTAINER_RM       },
         {"flv",                     MEDIA_MIMETYPE_CONTAINER_FLV      },
         {"avi",                     MEDIA_MIMETYPE_CONTAINER_AVI      },
-        {"wav",                     MEDIA_MIMETYPE_CONTAINER_WAV      },
         {"ape",                     MEDIA_MIMETYPE_CONTAINER_APE      },
         {"dts",                     MEDIA_MIMETYPE_CONTAINER_DTS      },
         {"flac",                    MEDIA_MIMETYPE_CONTAINER_FLAC     },
+#if 0
+        {"wav",                     MEDIA_MIMETYPE_CONTAINER_WAV      },
+#endif
 };
 
 static void adjustMOVConfidence(AVFormatContext *ic, float *confidence)
