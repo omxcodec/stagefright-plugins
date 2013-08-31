@@ -70,8 +70,8 @@ const char program_name[] = "dummy";
 const int program_birth_year = 2012;
 
 // init ffmpeg
-static pthread_mutex_t init_mutex = PTHREAD_MUTEX_INITIALIZER;
-static int ref_count = 0;
+static pthread_mutex_t s_init_mutex = PTHREAD_MUTEX_INITIALIZER;
+static int s_ref_count = 0;
 
 namespace android {
 
@@ -231,7 +231,7 @@ status_t initFFmpeg()
     bool debug_enabled = false;
     char value[PROPERTY_VALUE_MAX];
 
-    pthread_mutex_lock(&init_mutex);
+    pthread_mutex_lock(&s_init_mutex);
 
     if (property_get("debug.nam.ffmpeg", value, NULL)
         && (!strcmp(value, "1") || !av_strcasecmp(value, "true"))) {
@@ -243,7 +243,7 @@ status_t initFFmpeg()
     else
         av_log_set_level(AV_LOG_INFO);
 
-    if(ref_count == 0) {
+    if(s_ref_count == 0) {
         nam_av_log_set_flags(AV_LOG_SKIP_REPEATED);
         av_log_set_callback(nam_av_log_callback);
 
@@ -265,26 +265,26 @@ status_t initFFmpeg()
     }
 
     // update counter
-    ref_count++;
+    s_ref_count++;
 
-    pthread_mutex_unlock(&init_mutex);
+    pthread_mutex_unlock(&s_init_mutex);
 
     return ret;
 }
 
 void deInitFFmpeg()
 {
-    pthread_mutex_lock(&init_mutex);
+    pthread_mutex_lock(&s_init_mutex);
 
     // update counter
-    ref_count--;
+    s_ref_count--;
 
-    if(ref_count == 0) {
+    if(s_ref_count == 0) {
         av_lockmgr_register(NULL);
         avformat_network_deinit();
     }
 
-    pthread_mutex_unlock(&init_mutex);
+    pthread_mutex_unlock(&s_init_mutex);
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -292,7 +292,7 @@ void deInitFFmpeg()
 //////////////////////////////////////////////////////////////////////////////////
 /* H.264 bitstream with start codes, NOT AVC1! ref: libavcodec/h264_parser.c */
 static int h264_split(AVCodecContext *avctx,
-                      const uint8_t *buf, int buf_size, int check_compatible_only)
+		const uint8_t *buf, int buf_size, int check_compatible_only)
 {
     int i;
     uint32_t state = -1;
@@ -312,7 +312,10 @@ static int h264_split(AVCodecContext *avctx,
             if (check_compatible_only)
                 return (has_sps & has_pps);
         }
-        if((state&0xFFFFFF00) == 0x100 && ((state&0xFFFFFF1F) == 0x101 || (state&0xFFFFFF1F) == 0x102 || (state&0xFFFFFF1F) == 0x105)){
+        if((state&0xFFFFFF00) == 0x100
+				&& ((state&0xFFFFFF1F) == 0x101
+					|| (state&0xFFFFFF1F) == 0x102
+					|| (state&0xFFFFFF1F) == 0x105)){
             if(has_pps){
                 while(i>4 && buf[i-5]==0) i--;
                 return i-4;
@@ -326,7 +329,7 @@ static int h264_split(AVCodecContext *avctx,
 
 /* ref: libavcodec/mpegvideo_parser.c */
 static int mpegvideo_split(AVCodecContext *avctx,
-                           const uint8_t *buf, int buf_size, int check_compatible_only)
+		const uint8_t *buf, int buf_size, int check_compatible_only)
 {
     int i;
     uint32_t state= -1;
@@ -344,7 +347,7 @@ static int mpegvideo_split(AVCodecContext *avctx,
 
 /* split extradata from buf for Android OMXCodec */
 int parser_split(AVCodecContext *avctx,
-                      const uint8_t *buf, int buf_size)
+		const uint8_t *buf, int buf_size)
 {
     if (!avctx || !buf || buf_size <= 0) {
         ALOGE("parser split, valid params");
@@ -366,13 +369,16 @@ int parser_split(AVCodecContext *avctx,
 int is_extradata_compatible_with_android(AVCodecContext *avctx)
 {
     if (avctx->extradata_size <= 0) {
-        ALOGI("extradata_size <= 0, extradata is not compatible with android decoder, the codec id: 0x%0x", avctx->codec_id);
+        ALOGI("extradata_size <= 0, extradata is not compatible with "
+				"android decoder, the codec id: 0x%0x", avctx->codec_id);
         return 0;
     }
 
-    if (avctx->codec_id == CODEC_ID_H264 && avctx->extradata[0] != 1 /* configurationVersion */) {
+    if (avctx->codec_id == CODEC_ID_H264
+			&& avctx->extradata[0] != 1 /* configurationVersion */) {
         // SPS + PPS
-        return !!(h264_split(avctx, avctx->extradata, avctx->extradata_size, 1) > 0);
+        return !!(h264_split(avctx, avctx->extradata,
+					avctx->extradata_size, 1) > 0);
     } else {
         // default, FIXME
         return !!(avctx->extradata_size > 0);
