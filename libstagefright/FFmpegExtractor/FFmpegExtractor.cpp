@@ -1570,8 +1570,8 @@ retry:
                     status = ERROR_MALFORMED;
                     break;
                 }
-		dst += mNALLengthSize;
-		ptr += mNALLengthSize;
+				dst += mNALLengthSize;
+				ptr += mNALLengthSize;
                 len -= mNALLengthSize;
 
                 memcpy(dst, ptr, nal_len);
@@ -1715,7 +1715,9 @@ static const char *LegacySniffFFMPEG(const char *uri, float *confidence)
         }
     }
 
-	adjustConfidenceIfNeeded(container, ic, confidence);
+	if (container) {
+		adjustConfidenceIfNeeded(container, ic, confidence);
+	}
 
     avformat_close_input(&ic);
     av_free(ic);
@@ -1770,7 +1772,9 @@ static const char *BetterSniffFFMPEG(const sp<DataSource> &source, float *confid
         }
     }
 
-	adjustConfidenceIfNeeded(container, ic, confidence);
+	if (container) {
+		adjustConfidenceIfNeeded(container, ic, confidence);
+	}
 
     avformat_close_input(&ic);
     av_free(ic);
