@@ -1631,6 +1631,7 @@ static formatmap FILE_FORMATS[] = {
         {"rm",                      MEDIA_MIMETYPE_CONTAINER_RM       },
         {"flv",                     MEDIA_MIMETYPE_CONTAINER_FLV      },
         {"avi",                     MEDIA_MIMETYPE_CONTAINER_AVI      },
+        {"wav",                     MEDIA_MIMETYPE_CONTAINER_WAV      },
         {"ape",                     MEDIA_MIMETYPE_CONTAINER_APE      },
         {"dts",                     MEDIA_MIMETYPE_CONTAINER_DTS      },
         {"flac",                    MEDIA_MIMETYPE_CONTAINER_FLAC     },
@@ -1871,6 +1872,8 @@ bool SniffFFMPEG(
     (*meta)->setString("extended-extractor", "extended-extractor");
     (*meta)->setString("extended-extractor-subtype", "ffmpegextractor");
 
+	//*confidence = 0.88f;
+
 	if (*confidence > 0.08f) {
 		(*meta)->setString("extended-extractor-use", "ffmpegextractor");
 	}
@@ -1896,6 +1899,7 @@ MediaExtractor *CreateFFmpegExtractor(const sp<DataSource> &source, const char *
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_FLV)       ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_DIVX)      ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_RM)        ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_WAV)       ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_FLAC)      ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_APE)       ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_DTS)       ||
