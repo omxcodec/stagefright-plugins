@@ -1617,61 +1617,6 @@ retry:
 
 // LegacySniffFFMPEG
 typedef struct {
-    const char *extension;
-    const char *container;
-} extmap;
-
-static extmap FILE_EXTS[] = {
-        {".mp4", MEDIA_MIMETYPE_CONTAINER_MPEG4},
-        {".3gp", MEDIA_MIMETYPE_CONTAINER_MPEG4},
-        {".mp3", MEDIA_MIMETYPE_AUDIO_MPEG},
-        {".mov", MEDIA_MIMETYPE_CONTAINER_MOV},
-        {".mkv", MEDIA_MIMETYPE_CONTAINER_MATROSKA},
-        {".ts",  MEDIA_MIMETYPE_CONTAINER_TS},
-        {".avi", MEDIA_MIMETYPE_CONTAINER_AVI},
-        {".asf", MEDIA_MIMETYPE_CONTAINER_ASF},
-        {".rm ", MEDIA_MIMETYPE_CONTAINER_RM},
-#if 0
-        {".wmv", MEDIA_MIMETYPE_CONTAINER_WMV},
-        {".wma", MEDIA_MIMETYPE_CONTAINER_WMA},
-        {".mpg", MEDIA_MIMETYPE_CONTAINER_MPG},
-        {".flv", MEDIA_MIMETYPE_CONTAINER_FLV},
-        {".divx", MEDIA_MIMETYPE_CONTAINER_DIVX},
-        {".mp2", MEDIA_MIMETYPE_CONTAINER_MP2},
-        {".ape", MEDIA_MIMETYPE_CONTAINER_APE},
-        {".ra",  MEDIA_MIMETYPE_CONTAINER_RA},
-#endif
-};
-
-const char *LegacySniffFFMPEG(const char * uri)
-{
-    size_t i;
-    const char *container = NULL;
-
-    ALOGI("list the file extensions suppoted by ffmpeg: ");
-    ALOGI("========================================");
-    for (i = 0; i < NELEM(FILE_EXTS); ++i) {
-            ALOGV("file_exts[%02d]: %s", i, FILE_EXTS[i].extension);
-    }
-    ALOGI("========================================");
-
-    int lenURI = strlen(uri);
-    for (i = 0; i < NELEM(FILE_EXTS); ++i) {
-        int len = strlen(FILE_EXTS[i].extension);
-        int start = lenURI - len;
-        if (start > 0) {
-            if (!av_strncasecmp(uri + start, FILE_EXTS[i].extension, len)) {
-                container = FILE_EXTS[i].container;
-                break;
-            }
-        }
-    }
-
-    return container;
-}
-
-// BetterSniffFFMPEG
-typedef struct {
     const char *format;
     const char *container;
 } formatmap;
@@ -1689,7 +1634,7 @@ static formatmap FILE_FORMATS[] = {
         {"flac",                    MEDIA_MIMETYPE_CONTAINER_FLAC     },
 };
 
-const char *BetterSniffFFMPEG(const char * uri)
+const char *LegacySniffFFMPEG(const char *uri, float *confidence)
 {
     size_t i;
     int err;
@@ -1714,7 +1659,7 @@ const char *BetterSniffFFMPEG(const char * uri)
     ALOGI("FFmpegExtrator, uri: %s, format_name: %s, format_long_name: %s",
             uri, ic->iformat->name, ic->iformat->long_name);
 
-    ALOGI("list the format suppoted by ffmpeg: ");
+    ALOGI("list the formats suppoted by ffmpeg: ");
     ALOGI("========================================");
     for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
             ALOGV("format_names[%02d]: %s", i, FILE_FORMATS[i].format);
@@ -1729,13 +1674,25 @@ const char *BetterSniffFFMPEG(const char * uri)
         }
     }
 
+	//WTF, MPEG4Extractor.cpp can not extractor mov format
+	//NOTE: isCompatibleBrand(MPEG4Extractor.cpp)
+	//  Won't promise that the following file types can be played.
+	//  Just give these file types a chance.
+	//  FOURCC('q', 't', ' ', ' '),  // Apple's QuickTime
+	//So......
+	if (!strcmp(ic->iformat->long_name, "QuickTime / MOV")) {
+		ALOGI("format is mov, confidence should larger than mpeg4");
+		//the MEDIA_MIMETYPE_CONTAINER_MPEG4 of confidence is 0.4f
+		*confidence = 0.41f;
+	}
+
     avformat_close_input(&ic);
     av_free(ic);
 
     return container;
 }
 
-const char *Better2SniffFFMPEG(const sp<DataSource> &source)
+const char *BetterSniffFFMPEG(const sp<DataSource> &source, float *confidence)
 {
     size_t i;
     int err;
@@ -1767,7 +1724,7 @@ const char *Better2SniffFFMPEG(const sp<DataSource> &source)
     ALOGI("FFmpegExtrator, url: %s, format_name: %s, format_long_name: %s",
             url, ic->iformat->name, ic->iformat->long_name);
 
-    ALOGI("list the format suppoted by ffmpeg: ");
+    ALOGI("list the formats suppoted by ffmpeg: ");
     ALOGI("========================================");
     for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
             ALOGV("format_names[%02d]: %s", i, FILE_FORMATS[i].format);
@@ -1782,6 +1739,18 @@ const char *Better2SniffFFMPEG(const sp<DataSource> &source)
         }
     }
 
+	//WTF, MPEG4Extractor.cpp can not extractor mov format
+	//NOTE: isCompatibleBrand(MPEG4Extractor.cpp)
+	//  Won't promise that the following file types can be played.
+	//  Just give these file types a chance.
+	//  FOURCC('q', 't', ' ', ' '),  // Apple's QuickTime
+	//So......
+	if (!strcmp(ic->iformat->long_name, "QuickTime / MOV")) {
+		ALOGI("format is mov, confidence should larger than mpeg4");
+		//the MEDIA_MIMETYPE_CONTAINER_MPEG4 of confidence is 0.4f
+		*confidence = 0.41f;
+	}
+
     avformat_close_input(&ic);
     av_free(ic);
 
@@ -1793,24 +1762,22 @@ bool SniffFFMPEG(
         sp<AMessage> *meta) {
     ALOGV("SniffFFMPEG");
 
-    const char *container = Better2SniffFFMPEG(source);
+    *confidence = 0.08f;  // be the last resort, by default
+
+    const char *container = BetterSniffFFMPEG(source, confidence);
     if (!container) {
         String8 uri = source->getUri();
         if (uri.empty())
             return false;
 
-        ALOGW("sniff through Better2SniffFFMPEG failed, try BetterSniffFFMPEG");
-        container = BetterSniffFFMPEG(uri);
-        if (!container) {
-            ALOGW("sniff through BetterSniffFFMPEG failed, try LegacySniffFFMPEG");
-            //only check the file extension
-            container = LegacySniffFFMPEG(uri);
-            ALOGW_IF(!container, "sniff through LegacySniffFFMPEG failed");
-        } else {
-            ALOGI("sniff through Better1SniffFFMPEG success");
+        ALOGW("sniff through BetterSniffFFMPEG failed, try LegacySniffFFMPEG");
+
+        container = LegacySniffFFMPEG(uri, confidence);
+		if (container) {
+            ALOGI("sniff through LegacySniffFFMPEG success");
         }
     } else {
-        ALOGI("sniff through Better2SniffFFMPEG success");
+        ALOGI("sniff through BetterSniffFFMPEG success");
     }
 
     if (container == NULL)
@@ -1818,7 +1785,6 @@ bool SniffFFMPEG(
 
     ALOGV("found container: %s", container);
 
-    *confidence = 0.08f;  // be the last resort
     mimeType->setTo(container);
 
     /* use MPEG4Extractor(not extended extractor) for HTTP source only */
