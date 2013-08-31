@@ -456,17 +456,17 @@ void FFmpegExtractor::printTime(int64_t time)
 
 int FFmpegExtractor::stream_component_open(int stream_index)
 {
-    AVCodecContext *avctx;
-    sp<MetaData> meta;
+    AVCodecContext *avctx = NULL;
+    sp<MetaData> meta = NULL;
     bool isAVC = false;
     bool supported = false;
-    uint32_t type;
-    const void *data;
-    size_t size;
-    int ret;
+    uint32_t type = 0;
+    const void *data = NULL;
+    size_t size = 0;
+    int ret = 0;
 
     ALOGI("stream_index: %d", stream_index);
-    if (stream_index < 0 || stream_index >= mFormatCtx->nb_streams)
+    if (stream_index < 0 || stream_index >= (int)mFormatCtx->nb_streams)
         return -1;
     avctx = mFormatCtx->streams[stream_index]->codec;
 
@@ -848,7 +848,7 @@ void FFmpegExtractor::stream_component_close(int stream_index)
 {
     AVCodecContext *avctx;
 
-    if (stream_index < 0 || stream_index >= mFormatCtx->nb_streams)
+    if (stream_index < 0 || stream_index >= (int)mFormatCtx->nb_streams)
         return;
     avctx = mFormatCtx->streams[stream_index]->codec;
 
@@ -1023,14 +1023,15 @@ void FFmpegExtractor::setFFmpegDefaultOpts()
 
 int FFmpegExtractor::initStreams()
 {
-    int err, i;
-    status_t status;
+    int err = 0;
+	int i = 0;
+    status_t status = UNKNOWN_ERROR;
     int eof = 0;
     int ret = 0, audio_ret = 0, video_ret = 0;
     int pkt_in_play_range = 0;
-    AVDictionaryEntry *t;
-    AVDictionary **opts;
-    int orig_nb_streams;
+    AVDictionaryEntry *t = NULL;
+    AVDictionary **opts = NULL;
+    int orig_nb_streams = 0;
     int st_index[AVMEDIA_TYPE_NB] = {0};
     int wanted_stream[AVMEDIA_TYPE_NB] = {0};
     st_index[AVMEDIA_TYPE_AUDIO]  = -1;
@@ -1089,7 +1090,7 @@ int FFmpegExtractor::initStreams()
     if (mSeekByBytes < 0)
         mSeekByBytes = !!(mFormatCtx->iformat->flags & AVFMT_TS_DISCONT);
 
-    for (i = 0; i < mFormatCtx->nb_streams; i++)
+    for (i = 0; i < (int)mFormatCtx->nb_streams; i++)
         mFormatCtx->streams[i]->discard = AVDISCARD_ALL;
     if (!mVideoDisable)
         st_index[AVMEDIA_TYPE_VIDEO] =
@@ -1625,6 +1626,7 @@ static formatmap FILE_FORMATS[] = {
         {"mpeg",                    MEDIA_MIMETYPE_CONTAINER_MPEG2PS  },
         {"mpegts",                  MEDIA_MIMETYPE_CONTAINER_TS       },
         {"mov,mp4,m4a,3gp,3g2,mj2", MEDIA_MIMETYPE_CONTAINER_MOV      },
+        {"matroska,webm",           MEDIA_MIMETYPE_CONTAINER_MATROSKA },
         {"asf",                     MEDIA_MIMETYPE_CONTAINER_ASF      },
         {"rm",                      MEDIA_MIMETYPE_CONTAINER_RM       },
         {"flv",                     MEDIA_MIMETYPE_CONTAINER_FLV      },
@@ -1646,7 +1648,7 @@ static void adjustMOVConfidence(AVFormatContext *ic, float *confidence)
 
 	tag = av_dict_get(tags, "major_brand", NULL, 0);
 	if (!tag) {
-		return NULL;
+		return;
 	}
 
 	ALOGV("major_brand tag is:%s", tag->value);
@@ -1665,14 +1667,58 @@ static void adjustMOVConfidence(AVFormatContext *ic, float *confidence)
 	}
 }
 
+static void adjustVideoCodecConfidence(AVFormatContext *ic,
+		enum AVCodecID codec_id, float *confidence)
+{
+	//add to here
+}
+
+static void adjustAudioCodecConfidence(AVFormatContext *ic,
+		enum AVCodecID codec_id, float *confidence)
+{
+	switch (codec_id) {
+	case CODEC_ID_AC3:
+		//TODO. if the other stream(e.g. mp3) is supported by stagefright
+		ALOGI("ffmpeg can demux ac3 only");
+		*confidence = 0.88f;
+	default:
+		break;
+	}
+}
+
+static void adjustCodecConfidence(AVFormatContext *ic, float *confidence)
+{
+	unsigned int idx = 0;
+	AVCodecContext *avctx = NULL;
+	AVMediaType	codec_type = AVMEDIA_TYPE_UNKNOWN;
+	enum AVCodecID codec_id = AV_CODEC_ID_NONE;
+
+	for (idx = 0; idx < ic->nb_streams; idx++)
+	{
+		avctx = ic->streams[idx]->codec;
+		codec_type = avctx->codec_type;
+		codec_id = avctx->codec_id;
+
+		if (codec_type == AVMEDIA_TYPE_VIDEO) {
+			adjustVideoCodecConfidence(ic, codec_id, confidence);
+		} else if (codec_type == AVMEDIA_TYPE_AUDIO) {
+			adjustAudioCodecConfidence(ic, codec_id, confidence);
+		}
+	}
+}
+
 static void adjustConfidenceIfNeeded(const char *mime,
 		AVFormatContext *ic, float *confidence)
 {
+	//check mime
 	if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MOV)) {
 		adjustMOVConfidence(ic, confidence);
 	} else {
 		//add to here;
 	}
+
+	//check codec
+	adjustCodecConfidence(ic, confidence);
 }
 
 static const char *LegacySniffFFMPEG(const char *uri, float *confidence)
@@ -1817,6 +1863,9 @@ bool SniffFFMPEG(
             && (source->flags() & DataSource::kIsCachingDataSource)) {
         return true;
     }
+
+	ALOGD("ffmpeg detected media content as '%s' with confidence %.2f",
+			container, *confidence);
 
     *meta = new AMessage;
     (*meta)->setString("extended-extractor", "extended-extractor");
