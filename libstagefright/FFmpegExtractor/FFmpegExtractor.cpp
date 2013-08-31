@@ -373,9 +373,9 @@ static uint32_t get_sample_rate(const uint8_t sf_index)
 
 int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
 {
-    const char *name;
-    bool *defersToCreateTrack;
-    AVBitStreamFilterContext **bsfc;
+    const char *name = NULL;
+    bool *defersToCreateTrack = NULL;
+    AVBitStreamFilterContext **bsfc = NULL;
 
     // init
     if (avctx->codec_type == AVMEDIA_TYPE_VIDEO) {
@@ -1634,7 +1634,48 @@ static formatmap FILE_FORMATS[] = {
         {"flac",                    MEDIA_MIMETYPE_CONTAINER_FLAC     },
 };
 
-const char *LegacySniffFFMPEG(const char *uri, float *confidence)
+static void adjustMOVConfidence(AVFormatContext *ic, float *confidence)
+{
+	AVDictionary *tags = NULL;
+	AVDictionaryEntry *tag = NULL;
+
+	tags = ic->metadata;
+
+	//NOTE: You can use command to show these tags,
+	//e.g. "ffprobe -show_format 2012.mov"
+
+	tag = av_dict_get(tags, "major_brand", NULL, 0);
+	if (!tag) {
+		return NULL;
+	}
+
+	ALOGV("major_brand tag is:%s", tag->value);
+
+	//when MEDIA_MIMETYPE_CONTAINER_MOV
+	//WTF, MPEG4Extractor.cpp can not extractor mov format
+	//NOTE: isCompatibleBrand(MPEG4Extractor.cpp)
+	//  Won't promise that the following file types can be played.
+	//  Just give these file types a chance.
+	//  FOURCC('q', 't', ' ', ' '),  // Apple's QuickTime
+	//So......
+	if (!strcmp(tag->value, "qt  ")) {
+		ALOGI("format is mov, confidence should be larger than mpeg4");
+		//the MEDIA_MIMETYPE_CONTAINER_MPEG4 of confidence is 0.4f
+		*confidence = 0.41f;
+	}
+}
+
+static void adjustConfidenceIfNeeded(const char *mime,
+		AVFormatContext *ic, float *confidence)
+{
+	if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MOV)) {
+		adjustMOVConfidence(ic, confidence);
+	} else {
+		//add to here;
+	}
+}
+
+static const char *LegacySniffFFMPEG(const char *uri, float *confidence)
 {
     size_t i;
     int err;
@@ -1674,17 +1715,7 @@ const char *LegacySniffFFMPEG(const char *uri, float *confidence)
         }
     }
 
-	//WTF, MPEG4Extractor.cpp can not extractor mov format
-	//NOTE: isCompatibleBrand(MPEG4Extractor.cpp)
-	//  Won't promise that the following file types can be played.
-	//  Just give these file types a chance.
-	//  FOURCC('q', 't', ' ', ' '),  // Apple's QuickTime
-	//So......
-	if (!strcmp(ic->iformat->long_name, "QuickTime / MOV")) {
-		ALOGI("format is mov, confidence should larger than mpeg4");
-		//the MEDIA_MIMETYPE_CONTAINER_MPEG4 of confidence is 0.4f
-		*confidence = 0.41f;
-	}
+	adjustConfidenceIfNeeded(container, ic, confidence);
 
     avformat_close_input(&ic);
     av_free(ic);
@@ -1692,7 +1723,7 @@ const char *LegacySniffFFMPEG(const char *uri, float *confidence)
     return container;
 }
 
-const char *BetterSniffFFMPEG(const sp<DataSource> &source, float *confidence)
+static const char *BetterSniffFFMPEG(const sp<DataSource> &source, float *confidence)
 {
     size_t i;
     int err;
@@ -1739,17 +1770,7 @@ const char *BetterSniffFFMPEG(const sp<DataSource> &source, float *confidence)
         }
     }
 
-	//WTF, MPEG4Extractor.cpp can not extractor mov format
-	//NOTE: isCompatibleBrand(MPEG4Extractor.cpp)
-	//  Won't promise that the following file types can be played.
-	//  Just give these file types a chance.
-	//  FOURCC('q', 't', ' ', ' '),  // Apple's QuickTime
-	//So......
-	if (!strcmp(ic->iformat->long_name, "QuickTime / MOV")) {
-		ALOGI("format is mov, confidence should larger than mpeg4");
-		//the MEDIA_MIMETYPE_CONTAINER_MPEG4 of confidence is 0.4f
-		*confidence = 0.41f;
-	}
+	adjustConfidenceIfNeeded(container, ic, confidence);
 
     avformat_close_input(&ic);
     av_free(ic);
