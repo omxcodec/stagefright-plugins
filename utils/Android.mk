@@ -1,21 +1,5 @@
 LOCAL_PATH:= $(call my-dir)
 
-# common
-include $(CLEAR_VARS)
-
-LOCAL_SRC_FILES := \
-	common_utils.cpp
-
-LOCAL_SHARED_LIBRARIES := \
-	libutils
-
-LOCAL_MODULE:= libcommon_utils
-
-LOCAL_MODULE_TAGS := optional
-
-include $(BUILD_SHARED_LIBRARY)
-
-
 include $(CLEAR_VARS)
 include external/ffmpeg/android/ffmpeg.mk
 

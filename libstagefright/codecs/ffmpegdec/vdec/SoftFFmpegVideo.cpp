@@ -24,7 +24,6 @@
 #include <media/stagefright/foundation/hexdump.h>
 #include <media/stagefright/MediaDefs.h>
 
-#include "utils/common_utils.h"
 #include "utils/ffmpeg_utils.h"
 
 #undef realloc
