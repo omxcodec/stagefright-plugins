@@ -35,6 +35,7 @@
 #include <media/stagefright/MediaSource.h>
 #include <media/stagefright/MetaData.h>
 #include <media/stagefright/Utils.h>
+#include <cutils/properties.h>
 #include <utils/String8.h>
 #include <utils/misc.h>
 
@@ -1874,7 +1875,13 @@ bool SniffFFMPEG(
     (*meta)->setString("extended-extractor", "extended-extractor");
     (*meta)->setString("extended-extractor-subtype", "ffmpegextractor");
 
-	//*confidence = 0.88f;
+	//debug only
+	char value[PROPERTY_VALUE_MAX];
+	property_get("sys.media.parser.ffmpeg", value, "0");
+	if (atoi(value)) {
+		ALOGI("[debug] parser use ffmpeg");
+		*confidence = 0.88f;
+	}
 
 	if (*confidence > 0.08f) {
 		(*meta)->setString("extended-extractor-use", "ffmpegextractor");

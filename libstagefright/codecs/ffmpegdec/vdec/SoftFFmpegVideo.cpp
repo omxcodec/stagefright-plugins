@@ -85,7 +85,7 @@ SoftFFmpegVideo::SoftFFmpegVideo(
         CHECK(!strcmp(name, "OMX.ffmpeg.h264.decoder"));
     }
 
-    ALOGD("SoftFFmpegAudio component: %s mMode: %d", name, mMode);
+    ALOGD("SoftFFmpegVideo component: %s mMode: %d", name, mMode);
 
     initPorts();
     CHECK_EQ(initDecoder(), (status_t)OK);
