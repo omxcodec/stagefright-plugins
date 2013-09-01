@@ -1053,6 +1053,12 @@ int FFmpegExtractor::initStreams()
     flush_pkt.size = 0;
 
     mFormatCtx = avformat_alloc_context();
+	if (!mFormatCtx)
+	{
+        ALOGE("oom for alloc avformat context");
+        ret -1;
+		goto fail;
+	}
     mFormatCtx->interrupt_callback.callback = decode_interrupt_cb;
     mFormatCtx->interrupt_callback.opaque = this;
     ALOGV("mFilename: %s", mFilename);
@@ -1541,7 +1547,7 @@ retry:
     }
      
     if (pktTS < mFirstKeyPktTimestamp) {
-            ALOGV("drop the packet with the backward timestamp, maybe them are B-frames after I-frame ^_^");
+            ALOGV("drop the packet with the backward timestamp, maybe they are B-frames after I-frame ^_^");
             av_free_packet(&pkt);
             goto retry;
     }
@@ -1725,111 +1731,84 @@ static void adjustConfidenceIfNeeded(const char *mime,
 	adjustCodecConfidence(ic, confidence);
 }
 
-static const char *LegacySniffFFMPEG(const char *uri, float *confidence)
+static const char *SniffFFMPEGCommon(const char *url, float *confidence)
 {
-    size_t i;
-    int err;
-    const char *container = NULL;
-    AVFormatContext *ic = NULL;
+	size_t i = 0;
+	int err = 0;
+	const char *container = NULL;
+	AVFormatContext *ic = NULL;
 
-    status_t status = initFFmpeg();
-    if (status != OK) {
-        ALOGE("could not init ffmpeg");
-        return NULL;
-    }
+	status_t status = initFFmpeg();
+	if (status != OK) {
+		ALOGE("could not init ffmpeg");
+		return NULL;
+	}
 
-    ic = avformat_alloc_context();
-    err = avformat_open_input(&ic, uri, NULL, NULL);
-    if (err < 0) {
-        ALOGE("avformat_open_input faild, uri: %s err: %d", uri, err);
-        return NULL;
-    }
+	ic = avformat_alloc_context();
+	if (!ic)
+	{
+		ALOGE("oom for alloc avformat context");
+		return NULL;
+	}
 
-    av_dump_format(ic, 0, uri, 0);
+	err = avformat_open_input(&ic, url, NULL, NULL);
+	if (err < 0) {
+		ALOGE("avformat_open_input faild, url: %s err: %d", url, err);
+		return NULL;
+	}
 
-    ALOGI("FFmpegExtrator, uri: %s, format_name: %s, format_long_name: %s",
-            uri, ic->iformat->name, ic->iformat->long_name);
+	av_dump_format(ic, 0, url, 0);
 
-    ALOGI("list the formats suppoted by ffmpeg: ");
-    ALOGI("========================================");
-    for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
-            ALOGV("format_names[%02d]: %s", i, FILE_FORMATS[i].format);
-    }
-    ALOGI("========================================");
+	ALOGI("FFmpegExtrator, url: %s, format_name: %s, format_long_name: %s",
+			url, ic->iformat->name, ic->iformat->long_name);
 
-    for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
-        int len = strlen(FILE_FORMATS[i].format);
-        if (!av_strncasecmp(ic->iformat->name, FILE_FORMATS[i].format, len)) {
-            container = FILE_FORMATS[i].container;
-            break;
-        }
-    }
+	ALOGI("list the formats suppoted by ffmpeg: ");
+	ALOGI("========================================");
+	for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
+		ALOGV("format_names[%02d]: %s", i, FILE_FORMATS[i].format);
+	}
+	ALOGI("========================================");
+
+	for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
+		int len = strlen(FILE_FORMATS[i].format);
+		if (!av_strncasecmp(ic->iformat->name, FILE_FORMATS[i].format, len)) {
+			container = FILE_FORMATS[i].container;
+			break;
+		}
+	}
 
 	if (container) {
 		adjustConfidenceIfNeeded(container, ic, confidence);
 	}
 
-    avformat_close_input(&ic);
-    av_free(ic);
+	avformat_close_input(&ic);
+	av_free(ic);
 
-    return container;
+	return container;
+}
+
+static const char *LegacySniffFFMPEG(const sp<DataSource> &source, float *confidence)
+{
+	String8 uri = source->getUri();
+	if (uri.empty()) {
+		return NULL;
+	}
+
+    ALOGI("source url:%s", uri.string());
+
+	return SniffFFMPEGCommon(uri.string(), confidence);
 }
 
 static const char *BetterSniffFFMPEG(const sp<DataSource> &source, float *confidence)
 {
-    size_t i;
-    int err;
-    size_t len = 0;
     char url[128] = {0};
-    const char *container = NULL;
-    AVFormatContext *ic = NULL;
-
-    status_t status = initFFmpeg();
-    if (status != OK) {
-        ALOGE("could not init ffmpeg");
-        return NULL;
-    }
 
     ALOGI("android-source:%p", &source);
 
     // pass the addr of smart pointer("source")
     snprintf(url, sizeof(url), "android-source:%p", &source);
 
-    ic = avformat_alloc_context();
-    err = avformat_open_input(&ic, url, NULL, NULL);
-    if (err < 0) {
-        ALOGE("avformat_open_input faild, url: %s err: %d", url, err);
-        return NULL;
-    }
-
-    av_dump_format(ic, 0, url, 0);
-
-    ALOGI("FFmpegExtrator, url: %s, format_name: %s, format_long_name: %s",
-            url, ic->iformat->name, ic->iformat->long_name);
-
-    ALOGI("list the formats suppoted by ffmpeg: ");
-    ALOGI("========================================");
-    for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
-            ALOGV("format_names[%02d]: %s", i, FILE_FORMATS[i].format);
-    }
-    ALOGI("========================================");
-
-    for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
-        int len = strlen(FILE_FORMATS[i].format);
-        if (!av_strncasecmp(ic->iformat->name, FILE_FORMATS[i].format, len)) {
-            container = FILE_FORMATS[i].container;
-            break;
-        }
-    }
-
-	if (container) {
-		adjustConfidenceIfNeeded(container, ic, confidence);
-	}
-
-    avformat_close_input(&ic);
-    av_free(ic);
-
-    return container;
+	return SniffFFMPEGCommon(url, confidence);
 }
 
 bool SniffFFMPEG(
@@ -1841,13 +1820,8 @@ bool SniffFFMPEG(
 
     const char *container = BetterSniffFFMPEG(source, confidence);
     if (!container) {
-        String8 uri = source->getUri();
-        if (uri.empty())
-            return false;
-
         ALOGW("sniff through BetterSniffFFMPEG failed, try LegacySniffFFMPEG");
-
-        container = LegacySniffFFMPEG(uri, confidence);
+        container = LegacySniffFFMPEG(source, confidence);
 		if (container) {
             ALOGI("sniff through LegacySniffFFMPEG success");
         }
@@ -1855,8 +1829,10 @@ bool SniffFFMPEG(
         ALOGI("sniff through BetterSniffFFMPEG success");
     }
 
-    if (container == NULL)
+    if (container == NULL) {
+        ALOGD("SniffFFMPEG failed to sniff this source");
         return false;
+	}
 
     ALOGV("found container: %s", container);
 
