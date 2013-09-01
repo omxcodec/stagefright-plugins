@@ -1,0 +1,4 @@
+#!/system/bin/sh
+
+setprop sys.media.parser.ffmpeg 1
+
