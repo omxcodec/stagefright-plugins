@@ -1622,7 +1622,6 @@ retry:
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// LegacySniffFFMPEG
 typedef struct {
     const char *format;
     const char *container;
@@ -1631,7 +1630,7 @@ typedef struct {
 static formatmap FILE_FORMATS[] = {
         {"mpeg",                    MEDIA_MIMETYPE_CONTAINER_MPEG2PS  },
         {"mpegts",                  MEDIA_MIMETYPE_CONTAINER_TS       },
-        {"mov,mp4,m4a,3gp,3g2,mj2", MEDIA_MIMETYPE_CONTAINER_MOV      },
+        {"mov,mp4,m4a,3gp,3g2,mj2", MEDIA_MIMETYPE_CONTAINER_MPEG4    },
         {"matroska,webm",           MEDIA_MIMETYPE_CONTAINER_MATROSKA },
         {"asf",                     MEDIA_MIMETYPE_CONTAINER_ASF      },
         {"rm",                      MEDIA_MIMETYPE_CONTAINER_RM       },
@@ -1645,7 +1644,7 @@ static formatmap FILE_FORMATS[] = {
 #endif
 };
 
-static void adjustMOVConfidence(AVFormatContext *ic, float *confidence)
+static void adjustMPEG4Confidence(AVFormatContext *ic, float *confidence)
 {
 	AVDictionary *tags = NULL;
 	AVDictionaryEntry *tag = NULL;
@@ -1662,7 +1661,7 @@ static void adjustMOVConfidence(AVFormatContext *ic, float *confidence)
 
 	ALOGV("major_brand tag is:%s", tag->value);
 
-	//when MEDIA_MIMETYPE_CONTAINER_MOV
+	//when MEDIA_MIMETYPE_CONTAINER_MPEG4
 	//WTF, MPEG4Extractor.cpp can not extractor mov format
 	//NOTE: isCompatibleBrand(MPEG4Extractor.cpp)
 	//  Won't promise that the following file types can be played.
@@ -1720,8 +1719,8 @@ static void adjustConfidenceIfNeeded(const char *mime,
 		AVFormatContext *ic, float *confidence)
 {
 	//check mime
-	if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MOV)) {
-		adjustMOVConfidence(ic, confidence);
+	if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MPEG4)) {
+		adjustMPEG4Confidence(ic, confidence);
 	} else {
 		//add to here;
 	}
@@ -1838,9 +1837,11 @@ bool SniffFFMPEG(
 	mimeType->setTo(container);
 
 	/* use MPEG4Extractor(not extended extractor) for HTTP source only */
-	if (!av_strcasecmp(container, MEDIA_MIMETYPE_CONTAINER_MPEG4)
+	if (!strcasecmp(container, MEDIA_MIMETYPE_CONTAINER_MPEG4)
 			&& (source->flags() & DataSource::kIsCachingDataSource)) {
-		return true;
+		ALOGI("support container: %s, but it is caching data source, "
+				"Don't use ffmpegextractor", container);
+		return false;
 	}
 
 	ALOGD("ffmpeg detected media content as '%s' with confidence %.2f",
