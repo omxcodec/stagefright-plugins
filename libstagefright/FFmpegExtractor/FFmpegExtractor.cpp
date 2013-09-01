@@ -1793,19 +1793,19 @@ static const char *LegacySniffFFMPEG(const sp<DataSource> &source, float *confid
 		return NULL;
 	}
 
-    ALOGI("source url:%s", uri.string());
+	ALOGI("source url:%s", uri.string());
 
 	return SniffFFMPEGCommon(uri.string(), confidence);
 }
 
 static const char *BetterSniffFFMPEG(const sp<DataSource> &source, float *confidence)
 {
-    char url[128] = {0};
+	char url[128] = {0};
 
-    ALOGI("android-source:%p", &source);
+	ALOGI("android-source:%p", &source);
 
-    // pass the addr of smart pointer("source")
-    snprintf(url, sizeof(url), "android-source:%p", &source);
+	// pass the addr of smart pointer("source")
+	snprintf(url, sizeof(url), "android-source:%p", &source);
 
 	return SniffFFMPEGCommon(url, confidence);
 }
@@ -1813,42 +1813,42 @@ static const char *BetterSniffFFMPEG(const sp<DataSource> &source, float *confid
 bool SniffFFMPEG(
         const sp<DataSource> &source, String8 *mimeType, float *confidence,
         sp<AMessage> *meta) {
-    ALOGV("SniffFFMPEG");
+	ALOGV("SniffFFMPEG");
 
-    *confidence = 0.08f;  // be the last resort, by default
+	*confidence = 0.08f;  // be the last resort, by default
 
-    const char *container = BetterSniffFFMPEG(source, confidence);
-    if (!container) {
-        ALOGW("sniff through BetterSniffFFMPEG failed, try LegacySniffFFMPEG");
-        container = LegacySniffFFMPEG(source, confidence);
+	const char *container = BetterSniffFFMPEG(source, confidence);
+	if (!container) {
+		ALOGW("sniff through BetterSniffFFMPEG failed, try LegacySniffFFMPEG");
+		container = LegacySniffFFMPEG(source, confidence);
 		if (container) {
-            ALOGI("sniff through LegacySniffFFMPEG success");
-        }
-    } else {
-        ALOGI("sniff through BetterSniffFFMPEG success");
-    }
-
-    if (container == NULL) {
-        ALOGD("SniffFFMPEG failed to sniff this source");
-        return false;
+			ALOGI("sniff through LegacySniffFFMPEG success");
+		}
+	} else {
+		ALOGI("sniff through BetterSniffFFMPEG success");
 	}
 
-    ALOGV("found container: %s", container);
+	if (container == NULL) {
+		ALOGD("SniffFFMPEG failed to sniff this source");
+		return false;
+	}
 
-    mimeType->setTo(container);
+	ALOGV("found container: %s", container);
 
-    /* use MPEG4Extractor(not extended extractor) for HTTP source only */
-    if (!av_strcasecmp(container, MEDIA_MIMETYPE_CONTAINER_MPEG4)
-            && (source->flags() & DataSource::kIsCachingDataSource)) {
-        return true;
-    }
+	mimeType->setTo(container);
+
+	/* use MPEG4Extractor(not extended extractor) for HTTP source only */
+	if (!av_strcasecmp(container, MEDIA_MIMETYPE_CONTAINER_MPEG4)
+			&& (source->flags() & DataSource::kIsCachingDataSource)) {
+		return true;
+	}
 
 	ALOGD("ffmpeg detected media content as '%s' with confidence %.2f",
 			container, *confidence);
 
-    *meta = new AMessage;
-    (*meta)->setString("extended-extractor", "extended-extractor");
-    (*meta)->setString("extended-extractor-subtype", "ffmpegextractor");
+	*meta = new AMessage;
+	(*meta)->setString("extended-extractor", "extended-extractor");
+	(*meta)->setString("extended-extractor-subtype", "ffmpegextractor");
 
 	//debug only
 	char value[PROPERTY_VALUE_MAX];
@@ -1862,7 +1862,7 @@ bool SniffFFMPEG(
 		(*meta)->setString("extended-extractor-use", "ffmpegextractor");
 	}
 
-    return true;
+	return true;
 }
 
 MediaExtractor *CreateFFmpegExtractor(const sp<DataSource> &source, const char *mime, const sp<AMessage> &meta) {
