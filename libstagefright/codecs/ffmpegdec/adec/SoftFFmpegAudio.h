@@ -87,8 +87,8 @@ private:
 
     enum {
         MODE_MPEG,
-	MODE_MPEGL1,
-	MODE_MPEGL2,
+        MODE_MPEGL1,
+        MODE_MPEGL2,
         MODE_AAC,
         MODE_WMA,
         MODE_RA,

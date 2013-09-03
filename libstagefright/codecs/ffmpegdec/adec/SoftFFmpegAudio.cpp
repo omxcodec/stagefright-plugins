@@ -104,8 +104,8 @@ SoftFFmpegAudio::SoftFFmpegAudio(
 }
 
 SoftFFmpegAudio::~SoftFFmpegAudio() {
-    av_freep(&mFrame);
     ALOGV("~SoftFFmpegAudio");
+    av_freep(&mFrame);
     deInitDecoder();
     deInitFFmpeg();
 }
@@ -872,9 +872,11 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
     List<BufferInfo *> &inQueue = getPortQueue(0);
     List<BufferInfo *> &outQueue = getPortQueue(1);
 
-    while ((!inQueue.empty() || mInputBufferSize > 0 ||
-            mAudioBufferSize > 0 || mFlushComplete) && !outQueue.empty()) {
-        if (!inQueue.empty() || mInputBufferSize > 0) {
+    while ((!inQueue.empty()  //there are input buffers to be emptied
+                || mAudioBufferSize > 0 //there are left decoded frames
+                || mFlushComplete)  //need it to fill eos outbuffer
+            && !outQueue.empty()) { //there are out buffers to be filled
+        if (!inQueue.empty()) {
             inInfo = *inQueue.begin();
             inHeader = inInfo->mHeader;
         } else {
@@ -886,13 +888,17 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
         OMX_BUFFERHEADERTYPE *outHeader = outInfo->mHeader;
 
         if (inHeader && inHeader->nFlags & OMX_BUFFERFLAG_EOS) {
+			CHECK(mInputBufferSize == 0);
+            ALOGD("ffmpeg audio decoder empty eos inbuf");
             inQueue.erase(inQueue.begin());
             inInfo->mOwnedByUs = false;
             notifyEmptyBufferDone(inHeader);
             mReceivedEOS = true;
+			continue; //empty all input buffers in inQueue
         }
 
         if (mReceivedEOS && (mFlushComplete || !(mCtx->codec->capabilities & CODEC_CAP_DELAY))) {
+            ALOGD("ffmpeg audio decoder fill eos outbuf");
             outHeader->nFilledLen = 0;
             outHeader->nFlags = OMX_BUFFERFLAG_EOS;
 
@@ -974,21 +980,27 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
                 av_get_sample_fmt_name(mCtx->sample_fmt));
         }
 
-        /* update the audio clock with the pts */
-        if (inHeader && inHeader->nOffset == 0) {
+        //update the audio clock with the pts
+        if (inHeader && inHeader->nOffset == 0
+                && mInputBufferSize == 0  // the last input buffer have be emptied
+                && mAudioBufferSize == 0) { // the last decoded frame have be filled
             mAnchorTimeUs = inHeader->nTimeStamp;
             mInputBufferSize = inHeader->nFilledLen;
         }
 
-        if (inHeader && mAudioBufferSize == 0 && !mFlushComplete) {
+        if ((inHeader && mAudioBufferSize == 0) //hope to get more decoded frame while have not read eos pkt
+                || (!inHeader && !mFlushComplete)) { //hope to get left decoded frame while have read eos pkt
             AVPacket pkt;
             memset(&pkt, 0, sizeof(pkt));
             av_init_packet(&pkt);
-            if (!mFlushComplete) {
+
+            if (inHeader) {
+				CHECK(mAudioBufferSize == 0);
                 pkt.data = (uint8_t *)inHeader->pBuffer + inHeader->nOffset;
                 pkt.size = inHeader->nFilledLen;
                 pkt.pts = inHeader->nTimeStamp; // ingore it, we will compute it
             } else {
+				CHECK(mFlushComplete == false);
                 pkt.data = NULL;
                 pkt.size = 0;
                 pkt.pts = AV_NOPTS_VALUE;
@@ -1036,27 +1048,32 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
             ALOGV("ffmpeg audio decoder, consume pkt len: %d", len);
 #endif
 
-            if (len < 0)
-                inputBufferUsedLength = inHeader->nFilledLen;
-            else
-                inputBufferUsedLength = len;
+			if (inHeader) {
+				CHECK(mFlushComplete == false);
 
-            CHECK_GE(inHeader->nFilledLen, inputBufferUsedLength);
-            inHeader->nOffset += inputBufferUsedLength;
-            inHeader->nFilledLen -= inputBufferUsedLength;
-            mInputBufferSize -= inputBufferUsedLength;
-            if (inHeader->nFilledLen == 0) {
-                inInfo->mOwnedByUs = false;
-                inQueue.erase(inQueue.begin());
-                inInfo = NULL;
-                notifyEmptyBufferDone(inHeader);
-                inHeader = NULL;
+                if (len < 0)
+                    inputBufferUsedLength = inHeader->nFilledLen;
+                else
+                    inputBufferUsedLength = len;
 
-                mInputBufferSize = 0;
-            }
+                CHECK_GE(inHeader->nFilledLen, inputBufferUsedLength);
+                inHeader->nOffset += inputBufferUsedLength;
+                inHeader->nFilledLen -= inputBufferUsedLength;
+                mInputBufferSize -= inputBufferUsedLength;
+                if (inHeader->nFilledLen == 0) {
+                    inInfo->mOwnedByUs = false;
+                    inQueue.erase(inQueue.begin());
+                    inInfo = NULL;
+                    notifyEmptyBufferDone(inHeader);
+                    inHeader = NULL;
+
+					//reset mInputBufferSize
+                    mInputBufferSize = 0;
+                }
+			}
 
             if (!gotFrm) {
-                ALOGI("ffmpeg audio decoder failed to get frame.");
+                ALOGI("ffmpeg audio decoder failed to get more frame.");
                 /* stop sending empty packets if the decoder is finished */
                 if (!pkt.data && mCtx->codec->capabilities & CODEC_CAP_DELAY)
                     mFlushComplete = true;
@@ -1103,9 +1120,9 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
 #endif
 
             decChannelLayout = av_get_default_channel_layout(mNumChannels);
-            if (mSamplingFmt != mAudioSrcFmt ||
-                    decChannelLayout != mAudioSrcChannelLayout ||
-                    mSamplingRate != mAudioSrcFreq ) {
+            if (mSamplingFmt != mAudioSrcFmt
+                    || decChannelLayout != mAudioSrcChannelLayout
+                    || mSamplingRate != mAudioSrcFreq) {
                 if (mSwrCtx)
                     swr_free(&mSwrCtx);
                 mSwrCtx = swr_alloc_set_opts(NULL,
@@ -1179,7 +1196,7 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
                     "nb_samples(before resample): %d, mAudioBufferSize: %d",
                     len, mFrame->nb_samples, mAudioBufferSize);
 #endif
-        } // if (inHeader && mAudioBufferSize == 0 && !mFlushComplete)
+        } //if ((inHeader && mAudioBufferSize == 0) || (!inHeader && !mFlushComplete))
 
         size_t copyToOutputBufferLen = mAudioBufferSize;
         if (mAudioBufferSize > kOutputBufferSize)
@@ -1204,9 +1221,9 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
             (av_get_bytes_per_sample(mAudioTgtFmt) * mNumChannels);
 
         // reset mNumFramesOutput
-        if (mAudioBufferSize == 0) {
+        if (mInputBufferSize == 0 && mAudioBufferSize == 0) {
 #if DEBUG_FRM
-            ALOGV("~~~~ mAudioBufferSize, set mNumFramesOutput = 0");
+            ALOGV("~~~~ reset mNumFramesOutput to 0");
 #endif
             mNumFramesOutput = 0;
         }
@@ -1225,7 +1242,12 @@ void SoftFFmpegAudio::onPortFlushCompleted(OMX_U32 portIndex) {
         // depend on fragments from the last one decoded.
         avcodec_flush_buffers(mCtx);
     }
-
+	mAnchorTimeUs = 0;
+	mNumFramesOutput = 0;
+	mInputBufferSize = 0;
+	mAudioBufferSize = 0;
+	mPAudioBuffer = NULL;
+	//don't free mFrame!
 }
 
 void SoftFFmpegAudio::onPortEnableCompleted(OMX_U32 portIndex, bool enabled) {

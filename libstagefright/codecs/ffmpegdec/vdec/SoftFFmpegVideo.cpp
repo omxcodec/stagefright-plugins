@@ -576,10 +576,12 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
         }
 
         if (inHeader->nFlags & OMX_BUFFERFLAG_EOS) {
+            ALOGD("ffmpeg video decoder empty eos inbuf");
             inQueue.erase(inQueue.begin());
             inInfo->mOwnedByUs = false;
             notifyEmptyBufferDone(inHeader);
 
+            ALOGD("ffmpeg video decoder fill eos outbuf");
             outHeader->nFilledLen = 0;
             outHeader->nFlags = OMX_BUFFERFLAG_EOS;
 

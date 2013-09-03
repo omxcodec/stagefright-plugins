@@ -44,18 +44,19 @@
 #include "utils/ffmpeg_cmdutils.h"
 #include "FFmpegExtractor.h"
 
+#define MAX_QUEUE_SIZE (15 * 1024 * 1024)
+#define MIN_AUDIOQ_SIZE (20 * 16 * 1024)
+#define MIN_FRAMES 5
+#define EXTRACTOR_MAX_PROBE_PACKETS 200
+#define FF_MAX_EXTRADATA_SIZE ((1 << 28) - FF_INPUT_BUFFER_PADDING_SIZE)
+
+//debug
 #define DEBUG_READ_ENTRY           0
 #define DEBUG_DISABLE_VIDEO        0
 #define DEBUG_DISABLE_AUDIO        0
 #define WAIT_KEY_PACKET_AFTER_SEEK 1
 #define DISABLE_NAL_TO_ANNEXB      0
-
-#define MAX_QUEUE_SIZE (15 * 1024 * 1024)
-#define MIN_AUDIOQ_SIZE (20 * 16 * 1024)
-#define MIN_FRAMES 5
-#define EXTRACTOR_MAX_PROBE_PACKETS 200
-
-#define FF_MAX_EXTRADATA_SIZE ((1 << 28) - FF_INPUT_BUFFER_PADDING_SIZE)
+#define DEBUG_PKT                  0
 
 enum {
     NO_SEEK = 0,
@@ -1517,10 +1518,10 @@ retry:
         mFirstKeyPktTimestamp = AV_NOPTS_VALUE;
         goto retry;
     } else if (pkt.data == NULL && pkt.size == 0) {
-        ALOGV("read %s eos pkt", av_get_media_type_string(mMediaType));
+        ALOGD("read %s eos pkt", av_get_media_type_string(mMediaType));
         av_free_packet(&pkt);
         mExtractor->reachedEOS(mMediaType);
-	return ERROR_END_OF_STREAM;
+	    return ERROR_END_OF_STREAM;
     }
 
     key = pkt.flags & AV_PKT_FLAG_KEY ? 1 : 0;
@@ -1605,7 +1606,7 @@ retry:
     int64_t start_time = mStream->start_time != AV_NOPTS_VALUE ? mStream->start_time : 0;
     timeUs = (int64_t)((pktTS - start_time) * av_q2d(mStream->time_base) * 1000000);
 
-#if 0
+#if DEBUG_PKT
     ALOGV("read %s pkt, size: %d, key: %d, pts: %lld, dts: %lld, timeUs[-startTime]: %llu us (%.2f secs)",
         av_get_media_type_string(mMediaType), pkt.size, key, pkt.pts, pkt.dts, timeUs, timeUs/1E6);
 #endif
