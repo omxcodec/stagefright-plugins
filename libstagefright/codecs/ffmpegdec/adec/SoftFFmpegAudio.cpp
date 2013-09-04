@@ -655,9 +655,11 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
             mNumChannels = wmaParams->nChannels;
             mSamplingRate = wmaParams->nSamplingRate;
             mBitRate = wmaParams->nBitRate;
+            mBlockAlign = wmaParams->nBlockAlign;
 
-            // wma need bitrate
+            // wmadec needs bitrate, block_align
             mCtx->bit_rate = mBitRate;
+            mCtx->block_align = mBlockAlign;
 
             channels = mNumChannels >= 2 ? 2 : 1;
             sampling_rate = mSamplingRate;
@@ -676,8 +678,8 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
                 av_get_default_channel_layout(channels);
 
             ALOGV("got OMX_IndexParamAudioWma, mNumChannels: %d, "
-                    "mSamplingRate: %d, mBitRate: %d",
-                mNumChannels, mSamplingRate, mBitRate);
+                    "mSamplingRate: %d, mBitRate: %d, mBlockAlign: %d",
+                mNumChannels, mSamplingRate, mBitRate, mBlockAlign);
 
             return OMX_ErrorNone;
         }
