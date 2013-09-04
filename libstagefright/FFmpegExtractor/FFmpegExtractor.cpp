@@ -962,9 +962,9 @@ void FFmpegExtractor::print_error_ex(const char *filename, int err)
 void FFmpegExtractor::buildFileName(const sp<DataSource> &source)
 {
 #if 1
-    ALOGI("android-source:%p", &source);
+    ALOGI("android-source:%p", source.get());
     // pass the addr of smart pointer("source")
-    snprintf(mFilename, sizeof(mFilename), "android-source:%p", &source);
+    snprintf(mFilename, sizeof(mFilename), "android-source:%p", source.get());
     ALOGI("build mFilename: %s", mFilename);
 #else
     const char *url = mDataSource->getNamURI();
@@ -1812,10 +1812,10 @@ static const char *BetterSniffFFMPEG(const sp<DataSource> &source, float *confid
 {
 	char url[128] = {0};
 
-	ALOGI("android-source:%p", &source);
+	ALOGI("android-source:%p", source.get());
 
 	// pass the addr of smart pointer("source")
-	snprintf(url, sizeof(url), "android-source:%p", &source);
+	snprintf(url, sizeof(url), "android-source:%p", source.get());
 
 	return SniffFFMPEGCommon(url, confidence);
 }

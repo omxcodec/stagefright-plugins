@@ -37,7 +37,7 @@ namespace android {
 class FFSource
 {
 public:
-    FFSource(sp<DataSource> source);
+    FFSource(DataSource *source);
     int init_check();
     int read(unsigned char *buf, size_t size);
     int64_t seek(int64_t pos);
@@ -48,7 +48,7 @@ protected:
     int64_t mOffset;
 };
 
-FFSource::FFSource(sp<DataSource> source)
+FFSource::FFSource(DataSource *source)
     : mSource(source),
       mOffset(0)
 {
@@ -108,7 +108,7 @@ static int android_open(URLContext *h, const char *url, int flags)
 {
     // the url in form of "android-source:<DataSource Ptr>",
     // the DataSource Pointer passed by the ffmpeg extractor
-    sp<DataSource>* source = NULL;
+    DataSource *source = NULL;
 
     ALOGD("android source begin open");
 
@@ -125,7 +125,7 @@ static int android_open(URLContext *h, const char *url, int flags)
     }
     ALOGD("ffmpeg open android data source success, source ptr: %p", source);
 
-    FFSource *ffs = new FFSource(*source);
+    FFSource *ffs = new FFSource(source);
     h->priv_data = (void *)ffs;
 
     ALOGD("android source open success");
