@@ -104,6 +104,7 @@ private:
         kPortIndexOutput = 1,
     };
 
+    bool mFFmpegInited;
     AVCodecContext *mCtx;
     struct SwrContext *mSwrCtx;
 

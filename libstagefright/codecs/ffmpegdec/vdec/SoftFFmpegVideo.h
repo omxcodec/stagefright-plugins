@@ -96,6 +96,7 @@ private:
         kPortIndexOutput = 1,
     };
 
+    bool mFFmpegInited;
     AVCodecContext *mCtx;
     struct SwsContext *mImgConvertCtx;
 

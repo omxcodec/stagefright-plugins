@@ -50,6 +50,7 @@ SoftFFmpegAudio::SoftFFmpegAudio(
         OMX_COMPONENTTYPE **component)
     : SimpleSoftOMXComponent(name, callbacks, appData, component),
       mMode(MODE_MPEG),
+      mFFmpegInited(false),
       mCtx(NULL),
       mSwrCtx(NULL),
       mCodecOpened(false),
@@ -107,7 +108,9 @@ SoftFFmpegAudio::~SoftFFmpegAudio() {
     ALOGV("~SoftFFmpegAudio");
     av_freep(&mFrame);
     deInitDecoder();
-    deInitFFmpeg();
+    if (mFFmpegInited) {
+        deInitFFmpeg();
+    }
 }
 
 void SoftFFmpegAudio::initPorts() {
@@ -235,6 +238,8 @@ status_t SoftFFmpegAudio::initDecoder() {
     status = initFFmpeg();
     if (status != OK)
         return NO_INIT;
+
+    mFFmpegInited = true;
 
     mCtx = avcodec_alloc_context3(NULL);
     if (!mCtx)

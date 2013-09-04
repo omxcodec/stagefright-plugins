@@ -52,6 +52,7 @@ SoftFFmpegVideo::SoftFFmpegVideo(
         OMX_COMPONENTTYPE **component)
     : SimpleSoftOMXComponent(name, callbacks, appData, component),
       mMode(MODE_H264),
+      mFFmpegInited(false),
       mCtx(NULL),
       mImgConvertCtx(NULL),
       mExtradataReady(false),
@@ -93,7 +94,9 @@ SoftFFmpegVideo::SoftFFmpegVideo(
 SoftFFmpegVideo::~SoftFFmpegVideo() {
     ALOGV("~SoftFFmpegVideo");
     deInitDecoder();
-    deInitFFmpeg();
+    if (mFFmpegInited) {
+        deInitFFmpeg();
+    }
 }
 
 void SoftFFmpegVideo::initPorts() {
@@ -219,6 +222,8 @@ status_t SoftFFmpegVideo::initDecoder() {
     status = initFFmpeg();
     if (status != OK)
         return NO_INIT;
+
+    mFFmpegInited = true;
 
     mCtx = avcodec_alloc_context3(NULL);
     if (!mCtx)
