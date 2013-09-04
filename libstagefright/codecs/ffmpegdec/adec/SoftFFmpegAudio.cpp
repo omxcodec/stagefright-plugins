@@ -323,7 +323,6 @@ void SoftFFmpegAudio::deInitDecoder() {
         swr_free(&mSwrCtx);
         mSwrCtx = NULL;
     }
-
 }
 
 OMX_ERRORTYPE SoftFFmpegAudio::internalGetParameter(
@@ -874,7 +873,7 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
 
     while ((!inQueue.empty()  //there are input buffers to be emptied
                 || mAudioBufferSize > 0 //there are left decoded frames
-                || mFlushComplete)  //need it to fill eos outbuffer
+                || mReceivedEOS)  //need it to fill eos outbuffer
             && !outQueue.empty()) { //there are out buffers to be filled
         if (!inQueue.empty()) {
             inInfo = *inQueue.begin();
@@ -1242,9 +1241,11 @@ void SoftFFmpegAudio::onPortFlushCompleted(OMX_U32 portIndex) {
         // depend on fragments from the last one decoded.
         avcodec_flush_buffers(mCtx);
     }
+	mReceivedEOS = false;
+	mFlushComplete = false;
 	mAnchorTimeUs = 0;
-	mNumFramesOutput = 0;
 	mInputBufferSize = 0;
+	mNumFramesOutput = 0;
 	mAudioBufferSize = 0;
 	mPAudioBuffer = NULL;
 	//don't free mFrame!

@@ -1208,7 +1208,7 @@ void FFmpegExtractor::readerEntry() {
     int eof = 0;
     int pkt_in_play_range = 0;
 
-    ALOGV("FFmpegExtractor::readerEntry");
+    ALOGV("FFmpegExtractor enter thread(readerEntry)");
 
     mVideoEOSReceived = false;
     mAudioEOSReceived = false;
@@ -1404,6 +1404,8 @@ fail:
     if (mFormatCtx) {
         avformat_close_input(&mFormatCtx);
     }
+
+    ALOGV("FFmpegExtractor exit thread(readerEntry)");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1447,17 +1449,25 @@ FFmpegExtractor::Track::Track(
 }
 
 FFmpegExtractor::Track::~Track() {
+    ALOGV("FFmpegExtractor::Track::~Track %s",
+            av_get_media_type_string(mMediaType));
+	mExtractor = NULL;
+	mMeta = NULL;
 }
 
 status_t FFmpegExtractor::Track::start(MetaData *params) {
+    ALOGV("FFmpegExtractor::Track::start %s",
+            av_get_media_type_string(mMediaType));
     Mutex::Autolock autoLock(mLock);
     //mExtractor->startReaderThread();
     return OK;
 }
 
 status_t FFmpegExtractor::Track::stop() {
+    ALOGV("FFmpegExtractor::Track::stop %s",
+            av_get_media_type_string(mMediaType));
     Mutex::Autolock autoLock(mLock);
-    mExtractor->stopReaderThread();
+    //mExtractor->stopReaderThread();
     return OK;
 }
 
@@ -1833,9 +1843,8 @@ bool SniffFFMPEG(
 		return false;
 	}
 
-	ALOGV("found container: %s", container);
-
-	mimeType->setTo(container);
+	ALOGD("ffmpeg detected media content as '%s' with confidence %.2f",
+			container, *confidence);
 
 	/* use MPEG4Extractor(not extended extractor) for HTTP source only */
 	if (!strcasecmp(container, MEDIA_MIMETYPE_CONTAINER_MPEG4)
@@ -1845,8 +1854,7 @@ bool SniffFFMPEG(
 		return false;
 	}
 
-	ALOGD("ffmpeg detected media content as '%s' with confidence %.2f",
-			container, *confidence);
+	mimeType->setTo(container);
 
 	*meta = new AMessage;
 	(*meta)->setString("extended-extractor", "extended-extractor");

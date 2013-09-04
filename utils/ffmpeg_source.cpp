@@ -56,6 +56,7 @@ FFSource::FFSource(sp<DataSource> source)
 
 FFSource::~FFSource()
 {
+	mSource = NULL;
 }
 
 int FFSource::init_check()
