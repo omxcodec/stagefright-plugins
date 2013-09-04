@@ -108,6 +108,7 @@ private:
 FFmpegExtractor::FFmpegExtractor(const sp<DataSource> &source)
     : mDataSource(source),
       mInitCheck(NO_INIT),
+      mFFmpegInited(false),
       mReaderThreadStarted(false) {
     ALOGV("FFmpegExtractor::FFmpegExtractor");
 
@@ -1047,6 +1048,7 @@ int FFmpegExtractor::initStreams()
         ret = -1;
         goto fail;
     }
+    mFFmpegInited = true;
 
     av_init_packet(&flush_pkt);
     flush_pkt.data = (uint8_t *)"FLUSH";
@@ -1056,8 +1058,8 @@ int FFmpegExtractor::initStreams()
 	if (!mFormatCtx)
 	{
         ALOGE("oom for alloc avformat context");
-        ret -1;
-		goto fail;
+        ret = -1;
+        goto fail;
 	}
     mFormatCtx->interrupt_callback.callback = decode_interrupt_cb;
     mFormatCtx->interrupt_callback.opaque = this;
@@ -1157,7 +1159,9 @@ void FFmpegExtractor::deInitStreams()
         avformat_close_input(&mFormatCtx);
     }
 
-    deInitFFmpeg();
+    if (mFFmpegInited) {
+        deInitFFmpeg();
+    }
 }
 
 status_t FFmpegExtractor::startReaderThread() {
@@ -1757,13 +1761,13 @@ static const char *SniffFFMPEGCommon(const char *url, float *confidence)
 	if (!ic)
 	{
 		ALOGE("oom for alloc avformat context");
-		return NULL;
+		goto fail;
 	}
 
 	err = avformat_open_input(&ic, url, NULL, NULL);
 	if (err < 0) {
 		ALOGE("avformat_open_input faild, url: %s err: %d", url, err);
-		return NULL;
+		goto fail;
 	}
 
 	av_dump_format(ic, 0, url, 0);
@@ -1790,8 +1794,14 @@ static const char *SniffFFMPEGCommon(const char *url, float *confidence)
 		adjustConfidenceIfNeeded(container, ic, confidence);
 	}
 
-	avformat_close_input(&ic);
-	av_free(ic);
+fail:
+	if (ic) {
+		avformat_close_input(&ic);
+		av_free(ic);
+	}
+	if (status == OK) {
+		deInitFFmpeg();
+	}
 
 	return container;
 }

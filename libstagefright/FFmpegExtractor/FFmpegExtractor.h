@@ -120,6 +120,7 @@ private:
     bool mVideoEOSReceived;
     bool mAudioEOSReceived;
 
+    bool mFFmpegInited;
     AVFormatContext *mFormatCtx;
     int mVideoStreamIdx;
     int mAudioStreamIdx;
@@ -131,6 +132,7 @@ private:
     bool mDefersToCreateAudioTrack;
     AVBitStreamFilterContext *mVideoBsfc;
     AVBitStreamFilterContext *mAudioBsfc;
+
     static int decode_interrupt_cb(void *ctx);
     void print_error_ex(const char *filename, int err);
     int initStreams();
