@@ -1655,6 +1655,7 @@ static formatmap FILE_FORMATS[] = {
         {"ape",                     MEDIA_MIMETYPE_CONTAINER_APE      },
         {"dts",                     MEDIA_MIMETYPE_CONTAINER_DTS      },
         {"flac",                    MEDIA_MIMETYPE_CONTAINER_FLAC     },
+        {"ac3",                     MEDIA_MIMETYPE_AUDIO_AC3          },
 #if 0
         {"wav",                     MEDIA_MIMETYPE_CONTAINER_WAV      },
 #endif
@@ -1892,6 +1893,7 @@ MediaExtractor *CreateFFmpegExtractor(const sp<DataSource> &source, const char *
     if (meta.get() && meta->findString("extended-extractor", &notuse) && (
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MPEG4)     ||
             !strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_MPEG)          ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_AC3)           ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MOV)       ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MATROSKA)  ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_TS)        ||
