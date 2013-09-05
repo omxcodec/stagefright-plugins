@@ -68,7 +68,7 @@ static AVPacket flush_pkt;
 namespace android {
 
 struct FFmpegExtractor::Track : public MediaSource {
-    Track(const sp<FFmpegExtractor> &extractor, sp<MetaData> meta, bool isAVC,
+    Track(FFmpegExtractor *extractor, sp<MetaData> meta, bool isAVC,
           AVStream *stream, PacketQueue *queue);
 
     virtual status_t start(MetaData *params);
@@ -84,7 +84,7 @@ protected:
 private:
     friend struct FFmpegExtractor;
 
-    sp<FFmpegExtractor> mExtractor;
+    FFmpegExtractor *mExtractor;
     sp<MetaData> mMeta;
 
     enum AVMediaType mMediaType;
@@ -109,6 +109,7 @@ FFmpegExtractor::FFmpegExtractor(const sp<DataSource> &source)
     : mDataSource(source),
       mInitCheck(NO_INIT),
       mFFmpegInited(false),
+      mFormatCtx(NULL),
       mReaderThreadStarted(false) {
     ALOGV("FFmpegExtractor::FFmpegExtractor");
 
@@ -1029,7 +1030,7 @@ int FFmpegExtractor::initStreams()
 	int i = 0;
     status_t status = UNKNOWN_ERROR;
     int eof = 0;
-    int ret = 0, audio_ret = 0, video_ret = 0;
+    int ret = 0, audio_ret = -1, video_ret = -1;
     int pkt_in_play_range = 0;
     AVDictionaryEntry *t = NULL;
     AVDictionary **opts = NULL;
@@ -1415,8 +1416,8 @@ fail:
 ////////////////////////////////////////////////////////////////////////////////
 
 FFmpegExtractor::Track::Track(
-        const sp<FFmpegExtractor> &extractor, sp<MetaData> meta, bool isAVC,
-          AVStream *stream, PacketQueue *queue)
+        FFmpegExtractor *extractor, sp<MetaData> meta, bool isAVC,
+        AVStream *stream, PacketQueue *queue)
     : mExtractor(extractor),
       mMeta(meta),
       mIsAVC(isAVC),
