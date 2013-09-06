@@ -29,8 +29,8 @@
 //#undef realloc
 //#include <stdlib.h>
 
-#define DEBUG_PKT 0
-#define DEBUG_FRM 0
+#define DEBUG_PKT 1
+#define DEBUG_FRM 1
 
 namespace android {
 

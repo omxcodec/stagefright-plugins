@@ -811,8 +811,10 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             break;
         }
 
-        ALOGI("bit_rate: %d, sample_rate: %d, channels: %d, bits_per_coded_sample: %d",
-             avctx->bit_rate, avctx->sample_rate, avctx->channels, avctx->bits_per_coded_sample);
+        ALOGI("bit_rate: %d, sample_rate: %d, channels: %d, "
+                "bits_per_coded_sample: %d, block_align:%d",
+                avctx->bit_rate, avctx->sample_rate, avctx->channels,
+                avctx->bits_per_coded_sample, avctx->block_align);
 
         meta->setInt32(kKeySampleRate, avctx->sample_rate);
         meta->setInt32(kKeyChannelCount, avctx->channels);
@@ -1656,9 +1658,7 @@ static formatmap FILE_FORMATS[] = {
         {"dts",                     MEDIA_MIMETYPE_CONTAINER_DTS      },
         {"flac",                    MEDIA_MIMETYPE_CONTAINER_FLAC     },
         {"ac3",                     MEDIA_MIMETYPE_AUDIO_AC3          },
-#if 0
         {"wav",                     MEDIA_MIMETYPE_CONTAINER_WAV      },
-#endif
 };
 
 static void adjustMPEG4Confidence(AVFormatContext *ic, float *confidence)
