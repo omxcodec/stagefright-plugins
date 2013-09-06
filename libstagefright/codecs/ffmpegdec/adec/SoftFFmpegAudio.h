@@ -153,6 +153,7 @@ private:
     } mOutputPortSettingsChange;
 
     void setAVCtxToDefault(AVCodecContext *avctx, const AVCodec *codec);
+	void reConfigCtx();
 
     void initPorts();
     status_t initDecoder();

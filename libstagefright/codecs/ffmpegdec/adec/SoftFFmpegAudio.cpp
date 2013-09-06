@@ -29,8 +29,8 @@
 //#undef realloc
 //#include <stdlib.h>
 
-#define DEBUG_PKT 1
-#define DEBUG_FRM 1
+#define DEBUG_PKT 0
+#define DEBUG_FRM 0
 
 namespace android {
 
@@ -232,6 +232,20 @@ void SoftFFmpegAudio::setAVCtxToDefault(AVCodecContext *avctx, const AVCodec *co
         avctx->flags |= CODEC_FLAG_EMU_EDGE;
 }
 
+
+void SoftFFmpegAudio::reConfigCtx() {
+    mCtx->channels = mNumChannels;
+    mCtx->sample_rate = mSamplingRate;
+    mCtx->bit_rate = mBitRate;
+    mCtx->sample_fmt = mSamplingFmt;
+
+    mAudioSrcFmt = mAudioTgtFmt = AV_SAMPLE_FMT_S16;
+    mAudioSrcFreq = mAudioTgtFreq = mSamplingRate;
+    mAudioSrcChannels = mAudioTgtChannels = mNumChannels;
+    mAudioSrcChannelLayout = mAudioTgtChannelLayout =
+        av_get_default_channel_layout(mNumChannels);
+}
+
 status_t SoftFFmpegAudio::initDecoder() {
     status_t status;
 
@@ -295,16 +309,8 @@ status_t SoftFFmpegAudio::initDecoder() {
 
     setAVCtxToDefault(mCtx, mCtx->codec);
 
-    mCtx->channels = mNumChannels;
-    mCtx->sample_rate = mSamplingRate;
-    mCtx->bit_rate = mBitRate;
-    mCtx->sample_fmt = mSamplingFmt;
-
-    mAudioSrcFmt = mAudioTgtFmt = AV_SAMPLE_FMT_S16;
-    mAudioSrcFreq = mAudioTgtFreq = mSamplingRate;
-    mAudioSrcChannels = mAudioTgtChannels = mNumChannels;
-    mAudioSrcChannelLayout = mAudioTgtChannelLayout = 
-        av_get_default_channel_layout(mNumChannels);
+    //default config
+    reConfigCtx();
 
     memset(mSilenceBuffer, 0, kOutputBufferSize);
 
@@ -447,8 +453,6 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalGetParameter(
             pcmParams->ePCMMode = OMX_AUDIO_PCMModeLinear;
             pcmParams->eChannelMapping[0] = OMX_AUDIO_ChannelLF;
             pcmParams->eChannelMapping[1] = OMX_AUDIO_ChannelRF;
-
-            ALOGV("audio config change");
 
             channels = mNumChannels >= 2 ? 2 : 1;
             sampling_rate = mSamplingRate;
@@ -971,6 +975,9 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
 
             setAVCtxToDefault(mCtx, mCtx->codec);
 
+            //we should update mCtx here!
+            reConfigCtx();
+
             ALOGI("open ffmpeg decoder now");
             err = avcodec_open2(mCtx, mCtx->codec, NULL);
             if (err < 0) {
@@ -1097,8 +1104,9 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
                     ALOGI("audio OMX_EventPortSettingsChanged, mCtx->channels: %d, "
                             "mNumChannels: %d, mCtx->sample_rate: %d, mSamplingRate: %d, "
                             "mCtx->sample_fmt: %s, mSamplingFmt: %s",
-                    mCtx->channels, mNumChannels, mCtx->sample_rate, mSamplingRate,
-                    av_get_sample_fmt_name(mCtx->sample_fmt), av_get_sample_fmt_name(mSamplingFmt));
+                             mCtx->channels, mNumChannels, mCtx->sample_rate, mSamplingRate,
+                             av_get_sample_fmt_name(mCtx->sample_fmt),
+                             av_get_sample_fmt_name(mSamplingFmt));
                     mNumChannels = mCtx->channels;
                     mSamplingRate = mCtx->sample_rate;
                     mSamplingFmt = mCtx->sample_fmt;
