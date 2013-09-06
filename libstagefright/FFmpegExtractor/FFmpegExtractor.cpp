@@ -1698,14 +1698,21 @@ static void adjustVideoCodecConfidence(AVFormatContext *ic,
 	//add to here
 }
 
+//TODO. if the other stream(e.g. mp3) is supported by stagefright
 static void adjustAudioCodecConfidence(AVFormatContext *ic,
 		enum AVCodecID codec_id, float *confidence)
 {
 	switch (codec_id) {
 	case CODEC_ID_AC3:
-		//TODO. if the other stream(e.g. mp3) is supported by stagefright
 		ALOGI("ffmpeg can demux ac3 only");
 		*confidence = 0.88f;
+		break;
+	case CODEC_ID_MP1:
+	case CODEC_ID_MP2:
+		//TODO. if the other stream(e.g. mp3) is supported by stagefright
+		ALOGI("ffmpeg can demux mp1 and mp2 only");
+		*confidence = 0.88f;
+		break;
 	default:
 		break;
 	}
@@ -1752,6 +1759,8 @@ static const char *SniffFFMPEGCommon(const char *url, float *confidence)
 	int err = 0;
 	const char *container = NULL;
 	AVFormatContext *ic = NULL;
+	AVDictionary **opts = NULL;
+	int orig_nb_streams = 0;
 
 	status_t status = initFFmpeg();
 	if (status != OK) {
@@ -1771,6 +1780,18 @@ static const char *SniffFFMPEGCommon(const char *url, float *confidence)
 		ALOGE("avformat_open_input faild, url: %s err: %d", url, err);
 		goto fail;
 	}
+
+	opts = setup_find_stream_info_opts(ic, codec_opts);
+	orig_nb_streams = ic->nb_streams;
+	err = avformat_find_stream_info(ic, opts);
+	if (err < 0) {
+		ALOGE("%s: could not find codec parameters", url);
+		goto fail;
+	}
+	for (i = 0; i < orig_nb_streams; i++) {
+		av_dict_free(&opts[i]);
+	}
+	av_freep(&opts);
 
 	av_dump_format(ic, 0, url, 0);
 
