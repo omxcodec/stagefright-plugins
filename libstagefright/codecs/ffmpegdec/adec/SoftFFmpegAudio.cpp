@@ -346,153 +346,163 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalGetParameter(
     switch (index) {
         case OMX_IndexParamAudioAac:
         {
-            OMX_AUDIO_PARAM_AACPROFILETYPE *aacParams =
+            OMX_AUDIO_PARAM_AACPROFILETYPE *profile =
                 (OMX_AUDIO_PARAM_AACPROFILETYPE *)params;
 
-            if (aacParams->nPortIndex != 0) {
+            if (profile->nPortIndex != 0) {
                 return OMX_ErrorUndefined;
             }
 
-            aacParams->nBitRate = 0;
-            aacParams->nAudioBandWidth = 0;
-            aacParams->nAACtools = 0;
-            aacParams->nAACERtools = 0;
-            aacParams->eAACProfile = OMX_AUDIO_AACObjectMain;
-            aacParams->eAACStreamFormat = OMX_AUDIO_AACStreamFormatMP4FF;
-            aacParams->eChannelMode = OMX_AUDIO_ChannelModeStereo;
+            profile->nBitRate = 0;
+            profile->nAudioBandWidth = 0;
+            profile->nAACtools = 0;
+            profile->nAACERtools = 0;
+            profile->eAACProfile = OMX_AUDIO_AACObjectMain;
+            profile->eAACStreamFormat = OMX_AUDIO_AACStreamFormatMP4FF;
+            profile->eChannelMode = OMX_AUDIO_ChannelModeStereo;
 
-            aacParams->nChannels = mNumChannels;
-            aacParams->nSampleRate = mSamplingRate;
+            profile->nChannels = 0;
+            profile->nSampleRate = 0;
 
             return OMX_ErrorNone;
         }
         case OMX_IndexParamAudioWma:
         {
-            OMX_AUDIO_PARAM_WMATYPE *wmaParams =
+            OMX_AUDIO_PARAM_WMATYPE *profile =
                 (OMX_AUDIO_PARAM_WMATYPE *)params;
 
-            if (wmaParams->nPortIndex != 0) {
+            if (profile->nPortIndex != 0) {
                 return OMX_ErrorUndefined;
             }
 
-            wmaParams->nChannels = 0;
-            wmaParams->nSamplingRate = 0;
-            wmaParams->nBitRate = 0;
-            wmaParams->eFormat = OMX_AUDIO_WMAFormatUnused;
+            profile->nChannels = 0;
+            profile->nSamplingRate = 0;
+            profile->nBitRate = 0;
+            profile->eFormat = OMX_AUDIO_WMAFormatUnused;
 
             return OMX_ErrorNone;
         }
         case OMX_IndexParamAudioRa:
         {
-            OMX_AUDIO_PARAM_RATYPE *raParams =
+            OMX_AUDIO_PARAM_RATYPE *profile =
                 (OMX_AUDIO_PARAM_RATYPE *)params;
 
-            if (raParams->nPortIndex != 0) {
+            if (profile->nPortIndex != 0) {
                 return OMX_ErrorUndefined;
             }
 
-            raParams->nChannels = 0;
-            raParams->nSamplingRate = 0;
-            raParams->eFormat = OMX_AUDIO_RAFormatUnused;
+            profile->nChannels = 0;
+            profile->nSamplingRate = 0;
+            profile->eFormat = OMX_AUDIO_RAFormatUnused;
 
             return OMX_ErrorNone;
         }
         case OMX_IndexParamAudioApe:
         {
-            OMX_AUDIO_PARAM_APETYPE *apeParams =
+            OMX_AUDIO_PARAM_APETYPE *profile =
                 (OMX_AUDIO_PARAM_APETYPE *)params;
 
-            if (apeParams->nPortIndex != 0) {
+            if (profile->nPortIndex != 0) {
                 return OMX_ErrorUndefined;
             }
 
-            apeParams->nChannels = 0;
-            apeParams->nSamplingRate = 0;
+            profile->nChannels = 0;
+            profile->nSamplingRate = 0;
 
             return OMX_ErrorNone;
         }
         case OMX_IndexParamAudioDts:
         {
-            OMX_AUDIO_PARAM_DTSTYPE *dtsParams =
+            OMX_AUDIO_PARAM_DTSTYPE *profile =
                 (OMX_AUDIO_PARAM_DTSTYPE *)params;
 
-            if (dtsParams->nPortIndex != 0) {
+            if (profile->nPortIndex != 0) {
                 return OMX_ErrorUndefined;
             }
 
-            dtsParams->nChannels = 0;
-            dtsParams->nSamplingRate = 0;
+            profile->nChannels = 0;
+            profile->nSamplingRate = 0;
 
             return OMX_ErrorNone;
         }
         case OMX_IndexParamAudioFlac:
         {
-            OMX_AUDIO_PARAM_FLACTYPE *flacParams =
+            OMX_AUDIO_PARAM_FLACTYPE *profile =
                 (OMX_AUDIO_PARAM_FLACTYPE *)params;
 
-            if (flacParams->nPortIndex != 0) {
+            if (profile->nPortIndex != 0) {
                 return OMX_ErrorUndefined;
             }
 
-            flacParams->nChannels = 0;
-            flacParams->nSampleRate = 0;
+            profile->nChannels = 0;
+            profile->nSampleRate = 0;
 
             return OMX_ErrorNone;
         }
         case OMX_IndexParamAudioPcm:
         {
-            OMX_AUDIO_PARAM_PCMMODETYPE *pcmParams =
+            OMX_AUDIO_PARAM_PCMMODETYPE *profile =
                 (OMX_AUDIO_PARAM_PCMMODETYPE *)params;
 
-            if (pcmParams->nPortIndex > 1) {
+            if (profile->nPortIndex > 1) {
                 return OMX_ErrorUndefined;
             }
 
-            pcmParams->eNumData = OMX_NumericalDataSigned;
-            pcmParams->eEndian = OMX_EndianBig;
-            pcmParams->bInterleaved = OMX_TRUE;
-            pcmParams->nBitPerSample = 16;
-            pcmParams->ePCMMode = OMX_AUDIO_PCMModeLinear;
-            pcmParams->eChannelMapping[0] = OMX_AUDIO_ChannelLF;
-            pcmParams->eChannelMapping[1] = OMX_AUDIO_ChannelRF;
+            profile->eNumData = OMX_NumericalDataSigned;
+            profile->eEndian = OMX_EndianBig;
+            profile->bInterleaved = OMX_TRUE;
+            profile->nBitPerSample = 16;
+            profile->ePCMMode = OMX_AUDIO_PCMModeLinear;
+            profile->eChannelMapping[0] = OMX_AUDIO_ChannelLF;
+            profile->eChannelMapping[1] = OMX_AUDIO_ChannelRF;
 
             // update src and target(except aac), only once!
             adjustAudioParameter();
 
-            pcmParams->nChannels = channels;
-            pcmParams->nSamplingRate = sampling_rate;
+            channels = mNumChannels >= 2 ? 2 : 1;
+
+            // 4000 <= sampling rate <= 48000
+            sampling_rate = mSamplingRate;
+            if (mSamplingRate < 4000) {
+                sampling_rate = 4000;
+            } else if (mSamplingRate > 48000) {
+                sampling_rate = 48000;
+            }
+
+            profile->nChannels = channels;
+            profile->nSamplingRate = sampling_rate;
 
             return OMX_ErrorNone;
         }
         case OMX_IndexParamAudioVorbis:
         {
-            OMX_AUDIO_PARAM_VORBISTYPE *vorbisParams =
+            OMX_AUDIO_PARAM_VORBISTYPE *profile =
                 (OMX_AUDIO_PARAM_VORBISTYPE *)params;
 
-            if (vorbisParams->nPortIndex != 0) {
+            if (profile->nPortIndex != 0) {
                 return OMX_ErrorUndefined;
             }
 
-            vorbisParams->nBitRate = 0;
-            vorbisParams->nMinBitRate = 0;
-            vorbisParams->nMaxBitRate = 0;
-            vorbisParams->nAudioBandWidth = 0;
-            vorbisParams->nQuality = 3;
-            vorbisParams->bManaged = OMX_FALSE;
-            vorbisParams->bDownmix = OMX_FALSE;
+            profile->nBitRate = 0;
+            profile->nMinBitRate = 0;
+            profile->nMaxBitRate = 0;
+            profile->nAudioBandWidth = 0;
+            profile->nQuality = 3;
+            profile->bManaged = OMX_FALSE;
+            profile->bDownmix = OMX_FALSE;
 
-            vorbisParams->nChannels = 1;
-            vorbisParams->nSampleRate = 44100;
+            profile->nChannels = 1;
+            profile->nSampleRate = 44100;
 /*
             if (!isConfigured()) {
-                vorbisParams->nChannels = 1;
-                vorbisParams->nSampleRate = 44100;
+                profile->nChannels = 1;
+                profile->nSampleRate = 44100;
             } else {
-                vorbisParams->nChannels = mVi->channels;
-                vorbisParams->nSampleRate = mVi->rate;
-                vorbisParams->nBitRate = mVi->bitrate_nominal;
-                vorbisParams->nMinBitRate = mVi->bitrate_lower;
-                vorbisParams->nMaxBitRate = mVi->bitrate_upper;
+                profile->nChannels = mVi->channels;
+                profile->nSampleRate = mVi->rate;
+                profile->nBitRate = mVi->bitrate_nominal;
+                profile->nMinBitRate = mVi->bitrate_lower;
+                profile->nMaxBitRate = mVi->bitrate_upper;
             }
 */
             return OMX_ErrorNone;
@@ -610,29 +620,29 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
         }
         case OMX_IndexParamAudioPcm:
         {
-            const OMX_AUDIO_PARAM_PCMMODETYPE *pcmParams =
+            const OMX_AUDIO_PARAM_PCMMODETYPE *profile =
                 (const OMX_AUDIO_PARAM_PCMMODETYPE *)params;
 
-            if (pcmParams->nPortIndex != 1) {
+            if (profile->nPortIndex != 1) {
                 return OMX_ErrorUndefined;
             }
 
-            mNumChannels = pcmParams->nChannels;
-            mSamplingRate = pcmParams->nSamplingRate;
+            mNumChannels = profile->nChannels;
+            mSamplingRate = profile->nSamplingRate;
 
             return OMX_ErrorNone;
         }
         case OMX_IndexParamAudioAac:
         {
-            const OMX_AUDIO_PARAM_AACPROFILETYPE *aacParams =
+            const OMX_AUDIO_PARAM_AACPROFILETYPE *profile =
                 (const OMX_AUDIO_PARAM_AACPROFILETYPE *)params;
 
-            if (aacParams->nPortIndex != 0) {
+            if (profile->nPortIndex != 0) {
                 return OMX_ErrorUndefined;
             }
 
-            mNumChannels = aacParams->nChannels;
-            mSamplingRate = aacParams->nSampleRate;
+            mNumChannels = profile->nChannels;
+            mSamplingRate = profile->nSampleRate;
 
             // update src and target(only aac), only once!
             adjustAudioParameter();
@@ -644,28 +654,28 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
         }
         case OMX_IndexParamAudioWma:
         {
-            OMX_AUDIO_PARAM_WMATYPE *wmaParams =
+            OMX_AUDIO_PARAM_WMATYPE *profile =
                 (OMX_AUDIO_PARAM_WMATYPE *)params;
 
-            if (wmaParams->nPortIndex != 0) {
+            if (profile->nPortIndex != 0) {
                 return OMX_ErrorUndefined;
             }
 
-            if (wmaParams->eFormat == OMX_AUDIO_WMAFormat7) {
+            if (profile->eFormat == OMX_AUDIO_WMAFormat7) {
                mCtx->codec_id = CODEC_ID_WMAV2;
-            } else if (wmaParams->eFormat == OMX_AUDIO_WMAFormat8) {
+            } else if (profile->eFormat == OMX_AUDIO_WMAFormat8) {
                mCtx->codec_id = CODEC_ID_WMAPRO;
-            } else if (wmaParams->eFormat == OMX_AUDIO_WMAFormat9) {
+            } else if (profile->eFormat == OMX_AUDIO_WMAFormat9) {
                mCtx->codec_id = CODEC_ID_WMALOSSLESS;
             } else {
-                ALOGE("unsupported wma codec: 0x%x", wmaParams->eFormat);
+                ALOGE("unsupported wma codec: 0x%x", profile->eFormat);
                 return OMX_ErrorUndefined;
             }
 
-            mNumChannels = wmaParams->nChannels;
-            mSamplingRate = wmaParams->nSamplingRate;
-            mBitRate = wmaParams->nBitRate;
-            mBlockAlign = wmaParams->nBlockAlign;
+            mNumChannels = profile->nChannels;
+            mSamplingRate = profile->nSamplingRate;
+            mBitRate = profile->nBitRate;
+            mBlockAlign = profile->nBlockAlign;
 
             // wmadec needs bitrate, block_align
             mCtx->bit_rate = mBitRate;
@@ -682,20 +692,20 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
         }
         case OMX_IndexParamAudioRa:
         {
-            OMX_AUDIO_PARAM_RATYPE *raParams =
+            OMX_AUDIO_PARAM_RATYPE *profile =
                 (OMX_AUDIO_PARAM_RATYPE *)params;
 
-            if (raParams->nPortIndex != 0) {
+            if (profile->nPortIndex != 0) {
                 return OMX_ErrorUndefined;
             }
 
             mCtx->codec_id = CODEC_ID_COOK;
 
-            mNumChannels = raParams->nChannels;
-            mSamplingRate = raParams->nSamplingRate;
+            mNumChannels = profile->nChannels;
+            mSamplingRate = profile->nSamplingRate;
             // FIXME, HACK!!!, I use the nNumRegions parameter pass blockAlign!!!
             // the cook audio codec need blockAlign!
-            mBlockAlign = raParams->nNumRegions;
+            mBlockAlign = profile->nNumRegions;
 
             // cook decoder need block_align
             mCtx->block_align = mBlockAlign;
@@ -711,39 +721,39 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
         }
         case OMX_IndexParamAudioApe:
         {
-            OMX_AUDIO_PARAM_APETYPE *apeParams =
+            OMX_AUDIO_PARAM_APETYPE *profile =
                 (OMX_AUDIO_PARAM_APETYPE *)params;
 
-            if (apeParams->nPortIndex != 0) {
+            if (profile->nPortIndex != 0) {
                 return OMX_ErrorUndefined;
             }
 
-            mNumChannels = apeParams->nChannels;
-            mSamplingRate = apeParams->nSamplingRate;
+            mNumChannels = profile->nChannels;
+            mSamplingRate = profile->nSamplingRate;
 
             // ape decoder need bits_per_coded_sample
-            mCtx->bits_per_coded_sample = apeParams->nBitsPerSample;
+            mCtx->bits_per_coded_sample = profile->nBitsPerSample;
 
             // update src and target, only once!
             adjustAudioParameter();
 
             ALOGV("got OMX_IndexParamAudioApe, mNumChannels: %d, "
                     "mSamplingRate: %d, nBitsPerSample: %lu",
-                mNumChannels, mSamplingRate, apeParams->nBitsPerSample);
+                mNumChannels, mSamplingRate, profile->nBitsPerSample);
 
             return OMX_ErrorNone;
         }
         case OMX_IndexParamAudioDts:
         {
-            OMX_AUDIO_PARAM_DTSTYPE *dtsParams =
+            OMX_AUDIO_PARAM_DTSTYPE *profile =
                 (OMX_AUDIO_PARAM_DTSTYPE *)params;
 
-            if (dtsParams->nPortIndex != 0) {
+            if (profile->nPortIndex != 0) {
                 return OMX_ErrorUndefined;
             }
 
-            mNumChannels = dtsParams->nChannels;
-            mSamplingRate = dtsParams->nSamplingRate;
+            mNumChannels = profile->nChannels;
+            mSamplingRate = profile->nSamplingRate;
 
             // update src and target, only once!
             adjustAudioParameter();
@@ -755,15 +765,15 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
         }
         case OMX_IndexParamAudioFlac:
         {
-            OMX_AUDIO_PARAM_FLACTYPE *flacParams =
+            OMX_AUDIO_PARAM_FLACTYPE *profile =
                 (OMX_AUDIO_PARAM_FLACTYPE *)params;
 
-            if (flacParams->nPortIndex != 0) {
+            if (profile->nPortIndex != 0) {
                 return OMX_ErrorUndefined;
             }
 
-            mNumChannels = flacParams->nChannels;
-            mSamplingRate = flacParams->nSampleRate;
+            mNumChannels = profile->nChannels;
+            mSamplingRate = profile->nSampleRate;
 
             // update src and target, only once!
             adjustAudioParameter();
@@ -775,19 +785,19 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
         }
         case OMX_IndexParamAudioVorbis:
         {
-            const OMX_AUDIO_PARAM_VORBISTYPE *vorbisParams =
+            const OMX_AUDIO_PARAM_VORBISTYPE *profile =
                 (const OMX_AUDIO_PARAM_VORBISTYPE *)params;
 
-            if (vorbisParams->nPortIndex != 0) {
+            if (profile->nPortIndex != 0) {
                 return OMX_ErrorUndefined;
             }
 
             ALOGD("got OMX_IndexParamAudioVorbis, "
                     "mNumChannels=%lu, mSamplingRate=%lu, nBitRate=%lu, "
                     "nMinBitRate=%lu, nMaxBitRate=%lu",
-                vorbisParams->nChannels, vorbisParams->nSampleRate,
-                vorbisParams->nBitRate, vorbisParams->nMinBitRate,
-                vorbisParams->nMaxBitRate);
+                profile->nChannels, profile->nSampleRate,
+                profile->nBitRate, profile->nMinBitRate,
+                profile->nMaxBitRate);
 
             return OMX_ErrorNone;
         }
@@ -909,6 +919,11 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
             //we should update mCtx here!
             reConfigCtx();
 
+            ALOGI("begin open ffmpeg audio decoder, mCtx sample_rate: %d, "
+                    "channels: %d, channel_layout: %llu, sample_fmt: %s",
+                mCtx->sample_rate, mCtx->channels, mCtx->channel_layout,
+                av_get_sample_fmt_name(mCtx->sample_fmt));
+
             ALOGI("open ffmpeg decoder now");
             err = avcodec_open2(mCtx, mCtx->codec, NULL);
             if (err < 0) {
@@ -918,7 +933,7 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
                 return;
             }
             mCodecOpened = true;
-            ALOGI("open ffmpeg audio decoder, mCtx sample_rate: %d, "
+            ALOGI("open ffmpeg audio decoder success, mCtx sample_rate: %d, "
                     "channels: %d, channel_layout: %llu, sample_fmt: %s",
                 mCtx->sample_rate, mCtx->channels, mCtx->channel_layout,
                 av_get_sample_fmt_name(mCtx->sample_fmt));
