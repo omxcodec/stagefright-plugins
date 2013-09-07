@@ -154,6 +154,8 @@ private:
 
     void setAVCtxToDefault(AVCodecContext *avctx, const AVCodec *codec);
 	void reConfigCtx();
+	OMX_ERRORTYPE isRoleSupported(const OMX_PARAM_COMPONENTROLETYPE *roleParams);
+	void adjustAudioParameter();
 
     void initPorts();
     status_t initDecoder();

@@ -287,8 +287,10 @@ status_t SoftFFmpegAudio::initDecoder() {
         break;
     case MODE_APE:
         mCtx->codec_id = CODEC_ID_APE;
+        break;
     case MODE_DTS:
         mCtx->codec_id = CODEC_ID_DTS;
+        break;
     case MODE_FLAC:
         mCtx->codec_id = CODEC_ID_FLAC;
         break;
@@ -454,21 +456,8 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalGetParameter(
             pcmParams->eChannelMapping[0] = OMX_AUDIO_ChannelLF;
             pcmParams->eChannelMapping[1] = OMX_AUDIO_ChannelRF;
 
-            channels = mNumChannels >= 2 ? 2 : 1;
-            sampling_rate = mSamplingRate;
-            // 4000 <= nSamplingRate <= 48000
-            if (mSamplingRate < 4000) {
-                sampling_rate = 4000;
-            } else if (mSamplingRate > 48000) {
-                sampling_rate = 48000;
-            }
-
             // update src and target(except aac), only once!
-            mAudioSrcChannels = mAudioTgtChannels =  channels;
-            mAudioSrcFreq = mAudioTgtFreq = sampling_rate;
-            mAudioSrcFmt = mAudioTgtFmt = AV_SAMPLE_FMT_S16;
-            mAudioSrcChannelLayout = mAudioTgtChannelLayout =
-                av_get_default_channel_layout(channels);
+            adjustAudioParameter();
 
             pcmParams->nChannels = channels;
             pcmParams->nSamplingRate = sampling_rate;
@@ -514,84 +503,110 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalGetParameter(
     }
 }
 
-OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
-        OMX_INDEXTYPE index, const OMX_PTR params) {
+OMX_ERRORTYPE SoftFFmpegAudio::isRoleSupported(
+        const OMX_PARAM_COMPONENTROLETYPE *roleParams) {
+    bool supported = true;
+
+    switch (mMode) {
+    case MODE_MPEG:
+        if (strncmp((const char *)roleParams->cRole,
+                "audio_decoder.mp3", OMX_MAX_STRINGNAME_SIZE - 1))
+            supported =  false;
+        break;
+    case MODE_MPEGL1:
+        if (strncmp((const char *)roleParams->cRole,
+                "audio_decoder.mp1", OMX_MAX_STRINGNAME_SIZE - 1))
+            supported =  false;
+        break;
+    case MODE_MPEGL2:
+        if (strncmp((const char *)roleParams->cRole,
+                "audio_decoder.mp2", OMX_MAX_STRINGNAME_SIZE - 1))
+            supported =  false;
+        break;
+    case MODE_AAC:
+        if (strncmp((const char *)roleParams->cRole,
+                "audio_decoder.aac", OMX_MAX_STRINGNAME_SIZE - 1))
+        supported =  false;
+        break;
+    case MODE_AC3:
+        if (strncmp((const char *)roleParams->cRole,
+                "audio_decoder.ac3", OMX_MAX_STRINGNAME_SIZE - 1))
+            supported =  false;
+        break;
+    case MODE_WMA:
+        if (strncmp((const char *)roleParams->cRole,
+                "audio_decoder.wma", OMX_MAX_STRINGNAME_SIZE - 1))
+        supported =  false;
+        break;
+    case MODE_RA:
+        if (strncmp((const char *)roleParams->cRole,
+                "audio_decoder.ra", OMX_MAX_STRINGNAME_SIZE - 1))
+        supported =  false;
+        break;
+    case MODE_APE:
+        if (strncmp((const char *)roleParams->cRole,
+                "audio_decoder.ape", OMX_MAX_STRINGNAME_SIZE - 1))
+        supported =  false;
+        break;
+    case MODE_DTS:
+        if (strncmp((const char *)roleParams->cRole,
+                "audio_decoder.dts", OMX_MAX_STRINGNAME_SIZE - 1))
+        supported =  false;
+        break;
+    case MODE_FLAC:
+        if (strncmp((const char *)roleParams->cRole,
+                "audio_decoder.flac", OMX_MAX_STRINGNAME_SIZE - 1))
+        supported =  false;
+        break;
+    case MODE_VORBIS:
+        if (strncmp((const char *)roleParams->cRole,
+                "audio_decoder.vorbis", OMX_MAX_STRINGNAME_SIZE - 1))
+        supported =  false;
+        break;
+    default:
+        CHECK(!"Should not be here. Unsupported role.");
+        break;
+    }
+
+    if (!supported) {
+        ALOGE("unsupported role: %s", (const char *)roleParams->cRole);
+        return OMX_ErrorUndefined;
+    }
+
+    return OMX_ErrorNone;
+}
+
+void SoftFFmpegAudio::adjustAudioParameter() {
     int32_t channels = 0;
     int32_t sampling_rate = 0;
 
+    // channels support 1 or 2 only
+    channels = mNumChannels >= 2 ? 2 : 1;
+
+    // 4000 <= sampling rate <= 48000
+    sampling_rate = mSamplingRate;
+    if (mSamplingRate < 4000) {
+        sampling_rate = 4000;
+    } else if (mSamplingRate > 48000) {
+        sampling_rate = 48000;
+    }
+
+    // update src and target(only wma), only once!
+    mAudioSrcChannels = mAudioTgtChannels = channels;
+    mAudioSrcFreq = mAudioTgtFreq = sampling_rate;
+    mAudioSrcFmt = mAudioTgtFmt = AV_SAMPLE_FMT_S16;
+    mAudioSrcChannelLayout = mAudioTgtChannelLayout =
+        av_get_default_channel_layout(channels);
+}
+
+OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
+        OMX_INDEXTYPE index, const OMX_PTR params) {
     switch (index) {
         case OMX_IndexParamStandardComponentRole:
         {
             const OMX_PARAM_COMPONENTROLETYPE *roleParams =
                 (const OMX_PARAM_COMPONENTROLETYPE *)params;
-
-            bool supported = true;
-            switch (mMode) {
-            case MODE_MPEG:
-                if (strncmp((const char *)roleParams->cRole,
-                        "audio_decoder.mp3", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            case MODE_MPEGL1:
-                if (strncmp((const char *)roleParams->cRole,
-                        "audio_decoder.mp1", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            case MODE_MPEGL2:
-                if (strncmp((const char *)roleParams->cRole,
-                        "audio_decoder.mp2", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            case MODE_AAC:
-                if (strncmp((const char *)roleParams->cRole,
-                        "audio_decoder.aac", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            case MODE_AC3:
-                if (strncmp((const char *)roleParams->cRole,
-                        "audio_decoder.ac3", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            case MODE_WMA:
-                if (strncmp((const char *)roleParams->cRole,
-                        "audio_decoder.wma", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            case MODE_RA:
-                if (strncmp((const char *)roleParams->cRole,
-                        "audio_decoder.ra", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            case MODE_APE:
-                if (strncmp((const char *)roleParams->cRole,
-                        "audio_decoder.ape", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            case MODE_DTS:
-                if (strncmp((const char *)roleParams->cRole,
-                        "audio_decoder.dts", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            case MODE_FLAC:
-                if (strncmp((const char *)roleParams->cRole,
-                        "audio_decoder.flac", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            case MODE_VORBIS:
-                if (strncmp((const char *)roleParams->cRole,
-                        "audio_decoder.vorbis", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            default:
-                CHECK(!"Should not be here. Unsupported role.");
-                break;
-            }
-            if (!supported) {
-                ALOGE("unsupported role: %s", (const char *)roleParams->cRole);
-                return OMX_ErrorUndefined;
-            }
-
-            return OMX_ErrorNone;
+			return isRoleSupported(roleParams);
         }
         case OMX_IndexParamAudioPcm:
         {
@@ -619,21 +634,8 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
             mNumChannels = aacParams->nChannels;
             mSamplingRate = aacParams->nSampleRate;
 
-            channels = mNumChannels >= 2 ? 2 : 1;
-            sampling_rate = mSamplingRate;
-            // 4000 <= nSamplingRate <= 48000
-            if (mSamplingRate < 4000) {
-                sampling_rate = 4000;
-            } else if (mSamplingRate > 48000) {
-                sampling_rate = 48000;
-            }
-
             // update src and target(only aac), only once!
-            mAudioSrcChannels = mAudioTgtChannels = channels;
-            mAudioSrcFreq = mAudioTgtFreq = sampling_rate;
-            mAudioSrcFmt = mAudioTgtFmt = AV_SAMPLE_FMT_S16;
-            mAudioSrcChannelLayout = mAudioTgtChannelLayout =
-                av_get_default_channel_layout(channels);
+            adjustAudioParameter();
 
             ALOGV("got OMX_IndexParamAudioAac, mNumChannels: %d, mSamplingRate: %d",
                 mNumChannels, mSamplingRate);
@@ -669,21 +671,8 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
             mCtx->bit_rate = mBitRate;
             mCtx->block_align = mBlockAlign;
 
-            channels = mNumChannels >= 2 ? 2 : 1;
-            sampling_rate = mSamplingRate;
-            // 4000 <= nSamplingRate <= 48000
-            if (mSamplingRate < 4000) {
-                sampling_rate = 4000;
-            } else if (mSamplingRate > 48000) {
-                sampling_rate = 48000;
-            }
-
             // update src and target(only wma), only once!
-            mAudioSrcChannels = mAudioTgtChannels = channels;
-            mAudioSrcFreq = mAudioTgtFreq = sampling_rate;
-            mAudioSrcFmt = mAudioTgtFmt = AV_SAMPLE_FMT_S16;
-            mAudioSrcChannelLayout = mAudioTgtChannelLayout =
-                av_get_default_channel_layout(channels);
+            adjustAudioParameter();
 
             ALOGV("got OMX_IndexParamAudioWma, mNumChannels: %d, "
                     "mSamplingRate: %d, mBitRate: %d, mBlockAlign: %d",
@@ -711,21 +700,8 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
             // cook decoder need block_align
             mCtx->block_align = mBlockAlign;
 
-            channels = mNumChannels >= 2 ? 2 : 1;
-            sampling_rate = mSamplingRate;
-            // 4000 <= nSamplingRate <= 48000
-            if (mSamplingRate < 4000) {
-                sampling_rate = 4000;
-            } else if (mSamplingRate > 48000) {
-                sampling_rate = 48000;
-            }
-
             // update src and target(only wma), only once!
-            mAudioSrcChannels = mAudioTgtChannels = channels;
-            mAudioSrcFreq = mAudioTgtFreq = sampling_rate;
-            mAudioSrcFmt = mAudioTgtFmt = AV_SAMPLE_FMT_S16;
-            mAudioSrcChannelLayout = mAudioTgtChannelLayout =
-                av_get_default_channel_layout(channels);
+            adjustAudioParameter();
 
             ALOGV("got OMX_IndexParamAudioRa, mNumChannels: %d, "
                     "mSamplingRate: %d, mBlockAlign: %d",
@@ -742,29 +718,14 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
                 return OMX_ErrorUndefined;
             }
 
-            mCtx->codec_id = CODEC_ID_APE;
-
             mNumChannels = apeParams->nChannels;
             mSamplingRate = apeParams->nSamplingRate;
 
             // ape decoder need bits_per_coded_sample
             mCtx->bits_per_coded_sample = apeParams->nBitsPerSample;
 
-            channels = mNumChannels >= 2 ? 2 : 1;
-            sampling_rate = mSamplingRate;
-            // 4000 <= nSamplingRate <= 48000
-            if (mSamplingRate < 4000) {
-                sampling_rate = 4000;
-            } else if (mSamplingRate > 48000) {
-                sampling_rate = 48000;
-            }
-
             // update src and target, only once!
-            mAudioSrcChannels = mAudioTgtChannels = channels;
-            mAudioSrcFreq = mAudioTgtFreq = sampling_rate;
-            mAudioSrcFmt = mAudioTgtFmt = AV_SAMPLE_FMT_S16;
-            mAudioSrcChannelLayout = mAudioTgtChannelLayout =
-                av_get_default_channel_layout(channels);
+            adjustAudioParameter();
 
             ALOGV("got OMX_IndexParamAudioApe, mNumChannels: %d, "
                     "mSamplingRate: %d, nBitsPerSample: %lu",
@@ -781,26 +742,11 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
                 return OMX_ErrorUndefined;
             }
 
-            mCtx->codec_id = CODEC_ID_DTS;
-
             mNumChannels = dtsParams->nChannels;
             mSamplingRate = dtsParams->nSamplingRate;
 
-            channels = mNumChannels >= 2 ? 2 : 1;
-            sampling_rate = mSamplingRate;
-            // 4000 <= nSamplingRate <= 48000
-            if (mSamplingRate < 4000) {
-                sampling_rate = 4000;
-            } else if (mSamplingRate > 48000) {
-                sampling_rate = 48000;
-            }
-
             // update src and target, only once!
-            mAudioSrcChannels = mAudioTgtChannels = channels;
-            mAudioSrcFreq = mAudioTgtFreq = sampling_rate;
-            mAudioSrcFmt = mAudioTgtFmt = AV_SAMPLE_FMT_S16;
-            mAudioSrcChannelLayout = mAudioTgtChannelLayout =
-                av_get_default_channel_layout(channels);
+            adjustAudioParameter();
 
             ALOGV("got OMX_IndexParamAudioDts, mNumChannels: %d, mSamplingRate: %d",
                 mNumChannels, mSamplingRate);
@@ -816,26 +762,11 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
                 return OMX_ErrorUndefined;
             }
 
-            mCtx->codec_id = CODEC_ID_FLAC;
-
             mNumChannels = flacParams->nChannels;
             mSamplingRate = flacParams->nSampleRate;
 
-            channels = mNumChannels >= 2 ? 2 : 1;
-            sampling_rate = mSamplingRate;
-            // 4000 <= nSamplingRate <= 48000
-            if (mSamplingRate < 4000) {
-                sampling_rate = 4000;
-            } else if (mSamplingRate > 48000) {
-                sampling_rate = 48000;
-            }
-
             // update src and target, only once!
-            mAudioSrcChannels = mAudioTgtChannels = channels;
-            mAudioSrcFreq = mAudioTgtFreq = sampling_rate;
-            mAudioSrcFmt = mAudioTgtFmt = AV_SAMPLE_FMT_S16;
-            mAudioSrcChannelLayout = mAudioTgtChannelLayout =
-                av_get_default_channel_layout(channels);
+            adjustAudioParameter();
 
             ALOGV("got OMX_IndexParamAudioFlac, mNumChannels: %d, mSamplingRate: %d",
                 mNumChannels, mSamplingRate);
