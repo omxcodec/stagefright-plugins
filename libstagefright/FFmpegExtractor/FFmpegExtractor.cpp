@@ -484,6 +484,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
     case CODEC_ID_MP1:
     case CODEC_ID_MP2:
     case CODEC_ID_MP3:
+    case CODEC_ID_MPEG1VIDEO:
     case CODEC_ID_MPEG2VIDEO:
     case CODEC_ID_WMV1:
     case CODEC_ID_WMV2:
@@ -611,8 +612,9 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             ALOGV("H263");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_H263);
             break;
+        case CODEC_ID_MPEG1VIDEO:
         case CODEC_ID_MPEG2VIDEO:
-            ALOGV("MPEG2VIDEO");
+            ALOGV("MPEG%dVIDEO", avctx->codec_id == CODEC_ID_MPEG2VIDEO ? 2 : 1);
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_MPEG2);
             {
                 sp<ABuffer> csd = new ABuffer(avctx->extradata_size);
