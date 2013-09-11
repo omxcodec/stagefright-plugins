@@ -266,15 +266,6 @@ status_t SoftFFmpegVideo::initDecoder() {
         break;
     }
 
-    mCtx->codec = avcodec_find_decoder(mCtx->codec_id);
-    if (!mCtx->codec)
-    {
-        ALOGE("find codec failed");
-        return BAD_TYPE;
-    }
-
-    setAVCtxToDefault(mCtx, mCtx->codec);
-
     mCtx->extradata_size = 0;
     mCtx->extradata = NULL;
     mCtx->width = mWidth;
@@ -297,8 +288,6 @@ void SoftFFmpegVideo::deInitDecoder() {
         av_free(mCtx);
         mCtx = NULL;
     }
-else ALOGI("SoftFFmpegVideo(%p)::deInitDecoder: skip flush %p", this, mCtx);
-
     if (mImgConvertCtx) {
         sws_freeContext(mImgConvertCtx);
         mImgConvertCtx = NULL;
@@ -410,6 +399,20 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalGetParameter(
             }
 
             wmvParams->eFormat = OMX_VIDEO_WMVFormatUnused;
+
+            return OMX_ErrorNone;
+        }
+
+        case OMX_IndexParamVideoRv:
+        {
+            OMX_VIDEO_PARAM_RVTYPE *rvParams =
+                (OMX_VIDEO_PARAM_RVTYPE *)params;
+
+            if (rvParams->nPortIndex != 0) {
+                return OMX_ErrorUndefined;
+            }
+
+            rvParams->eFormat = OMX_VIDEO_RVFormatUnused;
 
             return OMX_ErrorNone;
         }
@@ -539,6 +542,29 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
                 mCtx->codec_id = CODEC_ID_WMV3;
             } else {
                 ALOGE("unsupported wmv codec: 0x%x", wmvParams->eFormat);
+                return OMX_ErrorUndefined;
+            }
+
+            return OMX_ErrorNone;
+        }
+
+        case OMX_IndexParamVideoRv:
+        {
+            OMX_VIDEO_PARAM_RVTYPE *rvParams =
+                (OMX_VIDEO_PARAM_RVTYPE *)params;
+
+            if (rvParams->nPortIndex != 0) {
+                return OMX_ErrorUndefined;
+            }
+
+            if (rvParams->eFormat == OMX_VIDEO_RVFormatG2) {
+                mCtx->codec_id = CODEC_ID_RV20;
+            } else if (rvParams->eFormat == OMX_VIDEO_RVFormat8) {
+                mCtx->codec_id = CODEC_ID_RV30;
+            } else if (rvParams->eFormat == OMX_VIDEO_RVFormat9) {
+                mCtx->codec_id = CODEC_ID_RV40;
+            } else {
+                ALOGE("unsupported rv codec: 0x%x", rvParams->eFormat);
                 return OMX_ErrorUndefined;
             }
 

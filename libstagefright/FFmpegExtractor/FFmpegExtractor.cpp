@@ -494,6 +494,8 @@ int FFmpegExtractor::stream_component_open(int stream_index)
     case CODEC_ID_WMAV2:
     case CODEC_ID_WMAPRO:
     case CODEC_ID_WMALOSSLESS:
+    case CODEC_ID_RV20:
+    case CODEC_ID_RV30:
     case CODEC_ID_RV40:
     case CODEC_ID_COOK:
     case CODEC_ID_APE:
@@ -645,10 +647,22 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             meta->setInt32(kKeyWMVVersion, kTypeWMVVer_9);
             break;
+        case CODEC_ID_RV20:
+            ALOGV("RV30");
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_RV);
+            meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
+            meta->setInt32(kKeyRVVersion, kTypeRVVer_G2); //http://en.wikipedia.org/wiki/RealVideo
+        case CODEC_ID_RV30:
+            ALOGV("RV30");
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_RV);
+            meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
+            meta->setInt32(kKeyRVVersion, kTypeRVVer_8); //http://en.wikipedia.org/wiki/RealVideo
+            break;
         case CODEC_ID_RV40:
             ALOGV("RV40");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_RV);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
+            meta->setInt32(kKeyRVVersion, kTypeRVVer_9); //http://en.wikipedia.org/wiki/RealVideo
             break;
         default:
             CHECK(!"Should not be here. Unsupported codec.");

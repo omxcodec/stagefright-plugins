@@ -153,7 +153,7 @@ private:
     } mOutputPortSettingsChange;
 
     void setAVCtxToDefault(AVCodecContext *avctx, const AVCodec *codec);
-	void reConfigCtx();
+	void configDefaultCtx();
 	OMX_ERRORTYPE isRoleSupported(const OMX_PARAM_COMPONENTROLETYPE *roleParams);
 	void adjustAudioParameter();
 
