@@ -143,6 +143,10 @@ void SoftFFmpegVideo::initPorts() {
         def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_WMV);
         def.format.video.eCompressionFormat = OMX_VIDEO_CodingWMV;
         break;
+    case MODE_FLV:
+        def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_FLV1);
+        def.format.video.eCompressionFormat = OMX_VIDEO_CodingAutoDetect; // no flv omx codec
+        break;
     case MODE_RV:
         def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_RV);
         def.format.video.eCompressionFormat = OMX_VIDEO_CodingRV;
@@ -261,6 +265,9 @@ status_t SoftFFmpegVideo::initDecoder() {
     case MODE_RV:
         mCtx->codec_id = CODEC_ID_RV40;	// default, adjust in "internalSetParameter" fxn
         break;
+    case MODE_FLV:
+        mCtx->codec_id = CODEC_ID_FLV1;
+        break;
     default:
         CHECK(!"Should not be here. Unsupported codec");
         break;
@@ -371,6 +378,9 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalGetParameter(
                     break;
                 case MODE_RV:
                     formatParams->eCompressionFormat = OMX_VIDEO_CodingRV;
+                    break;
+                case MODE_FLV:
+                    formatParams->eCompressionFormat = OMX_VIDEO_CodingAutoDetect;
                     break;
                 default:
                     CHECK(!"Should not be here. Unsupported compression format.");

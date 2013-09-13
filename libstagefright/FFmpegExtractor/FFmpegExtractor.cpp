@@ -390,13 +390,14 @@ int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
 
     // ignore extradata
     if (avctx->codec_id == CODEC_ID_MP3 ||
-            avctx->codec_id == CODEC_ID_MP1  ||
-            avctx->codec_id == CODEC_ID_MP2  ||
-            avctx->codec_id == CODEC_ID_AC3  ||
-            avctx->codec_id == CODEC_ID_DTS  ||
+            avctx->codec_id == CODEC_ID_MP1   ||
+            avctx->codec_id == CODEC_ID_MP2   ||
+            avctx->codec_id == CODEC_ID_AC3   ||
+            avctx->codec_id == CODEC_ID_DTS   ||
             avctx->codec_id == CODEC_ID_H263  ||
             avctx->codec_id == CODEC_ID_H263P ||
             avctx->codec_id == CODEC_ID_H263I ||
+            avctx->codec_id == CODEC_ID_FLV1  ||
             avctx->codec_id == CODEC_ID_WMV1)
         return 1;
 
@@ -500,6 +501,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
     case CODEC_ID_APE:
     case CODEC_ID_DTS:
     case CODEC_ID_FLAC:
+    case CODEC_ID_FLV1:
         supported = true;
         break;
     default:
@@ -662,6 +664,11 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_RV);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             meta->setInt32(kKeyRVVersion, kTypeRVVer_9); //http://en.wikipedia.org/wiki/RealVideo
+            break;
+        case CODEC_ID_FLV1:
+            ALOGV("FLV1");
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_FLV1);
+            meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
         default:
             CHECK(!"Should not be here. Unsupported codec.");
@@ -1673,6 +1680,7 @@ static formatmap FILE_FORMATS[] = {
         {"asf",                     MEDIA_MIMETYPE_CONTAINER_ASF      },
         {"rm",                      MEDIA_MIMETYPE_CONTAINER_RM       },
         {"flv",                     MEDIA_MIMETYPE_CONTAINER_FLV      },
+        {"swf",                     MEDIA_MIMETYPE_CONTAINER_FLV      },
         {"avi",                     MEDIA_MIMETYPE_CONTAINER_AVI      },
         {"ape",                     MEDIA_MIMETYPE_CONTAINER_APE      },
         {"dts",                     MEDIA_MIMETYPE_CONTAINER_DTS      },

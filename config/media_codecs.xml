@@ -93,6 +93,7 @@ Only the three quirks included above are recognized at this point:
         <MediaCodec name="OMX.ffmpeg.vc1.decoder"    type="video/vc1" />
         <MediaCodec name="OMX.ffmpeg.wmv.decoder"    type="video/x-ms-wmv" />
         <MediaCodec name="OMX.ffmpeg.rv.decoder"     type="video/vnd.rn-realvideo" />
+        <MediaCodec name="OMX.ffmpeg.flv.decoder"     type="video/x-flv" />
 
 		<!-- ffmpeg audio codec -->
         <MediaCodec name="OMX.ffmpeg.aac.decoder"    type="audio/mp4a-latm" />
