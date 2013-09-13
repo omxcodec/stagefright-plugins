@@ -91,6 +91,7 @@ private:
 
     mutable Mutex mLock;
     sp<DataSource> mDataSource;
+    sp<MetaData> mMeta;
     status_t mInitCheck;
 
     KeyedVector<unsigned, sp<Track> > mTracks;

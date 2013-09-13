@@ -67,6 +67,8 @@ static AVPacket flush_pkt;
 
 namespace android {
 
+static const char *findMatchingContainer(const char *name);
+
 struct FFmpegExtractor::Track : public MediaSource {
     Track(FFmpegExtractor *extractor, sp<MetaData> meta, bool isAVC,
           AVStream *stream, PacketQueue *queue);
@@ -107,6 +109,7 @@ private:
 
 FFmpegExtractor::FFmpegExtractor(const sp<DataSource> &source)
     : mDataSource(source),
+      mMeta(new MetaData),
       mInitCheck(NO_INIT),
       mFFmpegInited(false),
       mFormatCtx(NULL),
@@ -185,11 +188,7 @@ sp<MetaData> FFmpegExtractor::getMetaData() {
         return NULL;
     }
 
-    sp<MetaData> meta = new MetaData;
-    // TODO
-    meta->setCString(kKeyMIMEType, "video/ffmpeg");
-
-    return meta;
+    return mMeta;
 }
 
 uint32_t FFmpegExtractor::flags() const {
@@ -1059,6 +1058,7 @@ int FFmpegExtractor::initStreams()
     st_index[AVMEDIA_TYPE_VIDEO]  = -1;
     wanted_stream[AVMEDIA_TYPE_AUDIO]  = -1;
     wanted_stream[AVMEDIA_TYPE_VIDEO]  = -1;
+    const char *mime = NULL;
 
     setFFmpegDefaultOpts();
 
@@ -1111,6 +1111,10 @@ int FFmpegExtractor::initStreams()
     for (i = 0; i < orig_nb_streams; i++)
         av_dict_free(&opts[i]);
     av_freep(&opts);
+
+    mime = findMatchingContainer(mFormatCtx->iformat->name);
+    CHECK(mime != NULL);
+    mMeta->setCString(kKeyMIMEType, mime);
 
     if (mFormatCtx->pb)
         mFormatCtx->pb->eof_reached = 0; // FIXME hack, ffplay maybe should not use url_feof() to test for the end
@@ -1769,6 +1773,29 @@ static void adjustConfidenceIfNeeded(const char *mime,
 	adjustCodecConfidence(ic, confidence);
 }
 
+static const char *findMatchingContainer(const char *name)
+{
+	size_t i = 0;
+	const char *container = NULL;
+
+	ALOGI("list the formats suppoted by ffmpeg: ");
+	ALOGI("========================================");
+	for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
+		ALOGV("format_names[%02d]: %s", i, FILE_FORMATS[i].format);
+	}
+	ALOGI("========================================");
+
+	for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
+		int len = strlen(FILE_FORMATS[i].format);
+		if (!av_strncasecmp(name, FILE_FORMATS[i].format, len)) {
+			container = FILE_FORMATS[i].container;
+			break;
+		}
+	}
+
+	return container;
+}
+
 static const char *SniffFFMPEGCommon(const char *url, float *confidence)
 {
 	size_t i = 0;
@@ -1776,7 +1803,7 @@ static const char *SniffFFMPEGCommon(const char *url, float *confidence)
 	const char *container = NULL;
 	AVFormatContext *ic = NULL;
 	AVDictionary **opts = NULL;
-	int orig_nb_streams = 0;
+	size_t orig_nb_streams = 0;
 
 	status_t status = initFFmpeg();
 	if (status != OK) {
@@ -1814,20 +1841,7 @@ static const char *SniffFFMPEGCommon(const char *url, float *confidence)
 	ALOGI("FFmpegExtrator, url: %s, format_name: %s, format_long_name: %s",
 			url, ic->iformat->name, ic->iformat->long_name);
 
-	ALOGI("list the formats suppoted by ffmpeg: ");
-	ALOGI("========================================");
-	for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
-		ALOGV("format_names[%02d]: %s", i, FILE_FORMATS[i].format);
-	}
-	ALOGI("========================================");
-
-	for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
-		int len = strlen(FILE_FORMATS[i].format);
-		if (!av_strncasecmp(ic->iformat->name, FILE_FORMATS[i].format, len)) {
-			container = FILE_FORMATS[i].container;
-			break;
-		}
-	}
+	container = findMatchingContainer(ic->iformat->name);
 
 	if (container) {
 		adjustConfidenceIfNeeded(container, ic, confidence);
