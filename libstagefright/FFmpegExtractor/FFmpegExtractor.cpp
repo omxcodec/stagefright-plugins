@@ -1744,18 +1744,28 @@ static void adjustCodecConfidence(AVFormatContext *ic, float *confidence)
 	AVCodecContext *avctx = NULL;
 	AVMediaType	codec_type = AVMEDIA_TYPE_UNKNOWN;
 	enum AVCodecID codec_id = AV_CODEC_ID_NONE;
+	bool haveVideo = false;
+	bool haveAudio = false;
+	bool haveMP3 = false;
 
-	for (idx = 0; idx < ic->nb_streams; idx++)
-	{
+	for (idx = 0; idx < ic->nb_streams; idx++) {
 		avctx = ic->streams[idx]->codec;
 		codec_type = avctx->codec_type;
 		codec_id = avctx->codec_id;
 
 		if (codec_type == AVMEDIA_TYPE_VIDEO) {
+			haveVideo = true;
 			adjustVideoCodecConfidence(ic, codec_id, confidence);
 		} else if (codec_type == AVMEDIA_TYPE_AUDIO) {
+			haveAudio = true;
 			adjustAudioCodecConfidence(ic, codec_id, confidence);
+			if (codec_id == CODEC_ID_MP3)
+				haveMP3 = true;
 		}
+	}
+
+	if (haveVideo && haveMP3) {
+		*confidence = 0.22f; // larger than MP3Extractor an MP3Extractor
 	}
 }
 
@@ -1931,7 +1941,7 @@ bool SniffFFMPEG(
 		*confidence = 0.88f;
 	}
 
-	if (*confidence > 0.08f) {
+	if (*confidence == 0.88f) {
 		(*meta)->setString("extended-extractor-use", "ffmpegextractor");
 	}
 
