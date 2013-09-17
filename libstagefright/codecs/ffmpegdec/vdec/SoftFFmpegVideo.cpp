@@ -24,7 +24,10 @@
 #include <media/stagefright/foundation/hexdump.h>
 #include <media/stagefright/MediaDefs.h>
 
+#include <OMX_FFExt.h>
+
 #include "utils/ffmpeg_utils.h"
+
 
 #undef realloc
 #include <stdlib.h>
@@ -63,7 +66,9 @@ SoftFFmpegVideo::SoftFFmpegVideo(
       mHeight(240),
       mStride(320),
       mOutputPortSettingsChange(NONE) {
-    if (!strcmp(name, "OMX.ffmpeg.mpeg4.decoder")) {
+    if (!strcmp(name, "OMX.ffmpeg.h264.decoder")) {
+        mMode = MODE_H264;
+	} else if (!strcmp(name, "OMX.ffmpeg.mpeg4.decoder")) {
         mMode = MODE_MPEG4;
     } else if (!strcmp(name, "OMX.ffmpeg.mpeg2v.decoder")) {
         mMode = MODE_MPEG2;
@@ -81,8 +86,10 @@ SoftFFmpegVideo::SoftFFmpegVideo(
         mMode = MODE_FLV;
     } else if (!strcmp(name, "OMX.ffmpeg.rv.decoder")) {
         mMode = MODE_RV;
+    } else if (!strcmp(name, "OMX.ffmpeg.vheuristic.decoder")) {
+        mMode = MODE_HEURISTIC;
     } else {
-        CHECK(!strcmp(name, "OMX.ffmpeg.h264.decoder"));
+        TRESPASS();
     }
 
     ALOGD("SoftFFmpegVideo component: %s mMode: %d", name, mMode);
@@ -150,6 +157,10 @@ void SoftFFmpegVideo::initPorts() {
     case MODE_RV:
         def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_RV);
         def.format.video.eCompressionFormat = OMX_VIDEO_CodingRV;
+        break;
+    case MODE_HEURISTIC:
+        def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_FFMPEG);
+        def.format.video.eCompressionFormat = OMX_VIDEO_CodingAutoDetect;
         break;
     default:
         CHECK(!"Should not be here. Unsupported mime type and compression format");
@@ -268,6 +279,9 @@ status_t SoftFFmpegVideo::initDecoder() {
     case MODE_FLV:
         mCtx->codec_id = CODEC_ID_FLV1;
         break;
+    case MODE_HEURISTIC:
+        mCtx->codec_id = CODEC_ID_NONE;
+        break;
     default:
         CHECK(!"Should not be here. Unsupported codec");
         break;
@@ -321,7 +335,7 @@ void SoftFFmpegVideo::preProcessVideoFrame(AVPicture *picture, void **bufp)
         avpicture_fill(picture2, buf, mCtx->pix_fmt, mCtx->width, mCtx->height);
 
         if (avpicture_deinterlace(picture2, picture,
-                                 mCtx->pix_fmt, mCtx->width, mCtx->height) < 0) {
+                mCtx->pix_fmt, mCtx->width, mCtx->height) < 0) {
             /* if error, do not deinterlace */
             ALOGE("Deinterlacing failed");
             av_free(buf);
@@ -382,6 +396,9 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalGetParameter(
                 case MODE_FLV:
                     formatParams->eCompressionFormat = OMX_VIDEO_CodingAutoDetect;
                     break;
+                case MODE_HEURISTIC:
+                    formatParams->eCompressionFormat = OMX_VIDEO_CodingAutoDetect;
+                    break;
                 default:
                     CHECK(!"Should not be here. Unsupported compression format.");
                     break;
@@ -428,6 +445,22 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalGetParameter(
         }
 
         default:
+            if ((OMX_FF_INDEXTYPE)index == OMX_IndexParamVideoFFmpeg)
+            {
+                OMX_VIDEO_PARAM_FFMPEGTYPE *ffmpegParams =
+                    (OMX_VIDEO_PARAM_FFMPEGTYPE *)params;
+
+                if (ffmpegParams->nPortIndex != 0) {
+                    return OMX_ErrorUndefined;
+                }
+
+                ffmpegParams->eCodecId = CODEC_ID_NONE;
+                ffmpegParams->nWidth   = 0;
+                ffmpegParams->nHeight  = 0;
+
+                return OMX_ErrorNone;
+            }
+
             return SimpleSoftOMXComponent::internalGetParameter(index, params);
     }
 }
@@ -480,6 +513,11 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
             case MODE_RV:
                 if (strncmp((const char *)roleParams->cRole,
                         "video_decoder.rv", OMX_MAX_STRINGNAME_SIZE - 1))
+                    supported =  false;
+                break;
+            case MODE_HEURISTIC:
+                if (strncmp((const char *)roleParams->cRole,
+                        "video_decoder.heuristic", OMX_MAX_STRINGNAME_SIZE - 1))
                     supported =  false;
                 break;
             default:
@@ -582,6 +620,29 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
         }
 
         default:
+            if ((OMX_FF_INDEXTYPE)index == OMX_IndexParamVideoFFmpeg)
+            {
+                OMX_VIDEO_PARAM_FFMPEGTYPE *ffmpegParams =
+                    (OMX_VIDEO_PARAM_FFMPEGTYPE *)params;
+
+                if (ffmpegParams->nPortIndex != 0) {
+                    return OMX_ErrorUndefined;
+                }
+
+                mCtx->codec_id = (enum AVCodecID)ffmpegParams->eCodecId;
+                mCtx->width    = ffmpegParams->nWidth;
+                mCtx->height   = ffmpegParams->nHeight;
+
+                ALOGD("got OMX_IndexParamVideoFFmpeg, "
+                    "eCodecId:%ld(%s), nWidth:%lu, nHeight:%lu",
+                    ffmpegParams->eCodecId,
+                    avcodec_get_name(mCtx->codec_id),
+                    ffmpegParams->nWidth,
+                    ffmpegParams->nHeight); 
+
+                return OMX_ErrorNone;
+            }
+
             ALOGI("internalSetParameter, index: 0x%x", index);
             return SimpleSoftOMXComponent::internalSetParameter(index, params);
     }

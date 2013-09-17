@@ -97,6 +97,7 @@ private:
         MODE_DTS,
         MODE_FLAC,
         MODE_VORBIS,
+        MODE_HEURISTIC
     } mMode;
 
     enum {

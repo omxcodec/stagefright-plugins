@@ -34,6 +34,8 @@ extern "C" {
 }
 #endif
 
+#define SF_NOPTS_VALUE ((uint64_t)AV_NOPTS_VALUE-1)
+
 namespace android {
 
 status_t initFFmpeg();

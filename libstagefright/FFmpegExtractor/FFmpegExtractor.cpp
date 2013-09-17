@@ -56,7 +56,7 @@
 #define DEBUG_DISABLE_AUDIO        0
 #define WAIT_KEY_PACKET_AFTER_SEEK 1
 #define DISABLE_NAL_TO_ANNEXB      0
-#define DEBUG_PKT                  0
+#define DEBUG_PKT                  1
 
 enum {
     NO_SEEK = 0,
@@ -375,6 +375,7 @@ static uint32_t get_sample_rate(const uint8_t sf_index)
 
 int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
 {
+    enum AVCodecID codec_id = CODEC_ID_NONE;
     const char *name = NULL;
     bool *defersToCreateTrack = NULL;
     AVBitStreamFilterContext **bsfc = NULL;
@@ -388,21 +389,19 @@ int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
         defersToCreateTrack = &mDefersToCreateAudioTrack;
     }
 
+	codec_id = avctx->codec_id;
+
     // ignore extradata
-    if (avctx->codec_id == CODEC_ID_MP3 ||
-            avctx->codec_id == CODEC_ID_MP1   ||
-            avctx->codec_id == CODEC_ID_MP2   ||
-            avctx->codec_id == CODEC_ID_AC3   ||
-            avctx->codec_id == CODEC_ID_DTS   ||
-            avctx->codec_id == CODEC_ID_H263  ||
-            avctx->codec_id == CODEC_ID_H263P ||
-            avctx->codec_id == CODEC_ID_H263I ||
-            avctx->codec_id == CODEC_ID_FLV1  ||
-            avctx->codec_id == CODEC_ID_WMV1)
+    if (codec_id != CODEC_ID_H264
+            && codec_id != CODEC_ID_MPEG4
+            && codec_id != CODEC_ID_MPEG1VIDEO
+            && codec_id != CODEC_ID_MPEG2VIDEO
+            && codec_id != CODEC_ID_AAC) {
         return 1;
+    }
 
     // is extradata compatible with android?
-    if (avctx->codec_id != CODEC_ID_AAC) {
+    if (codec_id != CODEC_ID_AAC) {
         int is_compatible = is_extradata_compatible_with_android(avctx);
         if (!is_compatible) {
             ALOGI("%s extradata is not compatible with android, should to extract it from bitstream",
@@ -414,7 +413,7 @@ int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
         return 1;
     }
 
-    if (avctx->codec_id == CODEC_ID_AAC) {
+    if (codec_id == CODEC_ID_AAC) {
         name = "aac_adtstoasc";
     }
 
@@ -457,23 +456,11 @@ void FFmpegExtractor::printTime(int64_t time)
         hours, mins, secs, (100 * us) / AV_TIME_BASE);
 }
 
-int FFmpegExtractor::stream_component_open(int stream_index)
+bool FFmpegExtractor::is_codec_supported(enum AVCodecID codec_id)
 {
-    AVCodecContext *avctx = NULL;
-    sp<MetaData> meta = NULL;
-    bool isAVC = false;
     bool supported = false;
-    uint32_t type = 0;
-    const void *data = NULL;
-    size_t size = 0;
-    int ret = 0;
 
-    ALOGI("stream_index: %d", stream_index);
-    if (stream_index < 0 || stream_index >= (int)mFormatCtx->nb_streams)
-        return -1;
-    avctx = mFormatCtx->streams[stream_index]->codec;
-
-    switch(avctx->codec_id) {
+    switch(codec_id) {
     case CODEC_ID_H264:
     case CODEC_ID_MPEG4:
     case CODEC_ID_H263:
@@ -505,9 +492,33 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         supported = true;
         break;
     default:
-        supported = false;
+        ALOGD("unsuppoted codec(id:0x%0x), but give it a chance", codec_id);
+        //Won't promise that the following codec id can be supported.
+	    //Just give these codecs a chance.
+        supported = true;
         break;
     }
+
+	return supported;
+}
+
+int FFmpegExtractor::stream_component_open(int stream_index)
+{
+    AVCodecContext *avctx = NULL;
+    sp<MetaData> meta = NULL;
+    bool isAVC = false;
+    bool supported = false;
+    uint32_t type = 0;
+    const void *data = NULL;
+    size_t size = 0;
+    int ret = 0;
+
+    ALOGI("stream_index: %d", stream_index);
+    if (stream_index < 0 || stream_index >= (int)mFormatCtx->nb_streams)
+        return -1;
+    avctx = mFormatCtx->streams[stream_index]->codec;
+
+    supported = is_codec_supported(avctx->codec_id);
 
     if (!supported) {
         ALOGE("unsupport the codec, id: 0x%0x", avctx->codec_id);
@@ -536,7 +547,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         if (mVideoStream == NULL)
             mVideoStream = mFormatCtx->streams[stream_index];
         if (!mVideoQInited) {
-	    packet_queue_init(&mVideoQ);
+	        packet_queue_init(&mVideoQ);
             mVideoQInited = true;
         }
 
@@ -671,7 +682,15 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
         default:
-            CHECK(!"Should not be here. Unsupported codec.");
+            ALOGD("unsuppoted video codec(id:%d, name:%s), but give it a chance",
+                    avctx->codec_id, avcodec_get_name(avctx->codec_id));
+            meta = new MetaData;
+            meta->setInt32(kKeyCodecId, avctx->codec_id);
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_FFMPEG);
+            if (avctx->extradata_size > 0) {
+                meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
+            }
+            //CHECK(!"Should not be here. Unsupported codec.");
             break;
         }
 
@@ -829,7 +848,15 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
         default:
-            CHECK(!"Should not be here. Unsupported codec.");
+            ALOGD("unsuppoted audio codec(id:%d, name:%s), but give it a chance",
+                    avctx->codec_id, avcodec_get_name(avctx->codec_id));
+            meta = new MetaData;
+            meta->setInt32(kKeyCodecId, avctx->codec_id);
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_FFMPEG);
+            if (avctx->extradata_size > 0) {
+                meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
+            }
+            //CHECK(!"Should not be here. Unsupported codec.");
             break;
         }
 
@@ -838,11 +865,12 @@ int FFmpegExtractor::stream_component_open(int stream_index)
                 avctx->bit_rate, avctx->sample_rate, avctx->channels,
                 avctx->bits_per_coded_sample, avctx->block_align);
 
-        meta->setInt32(kKeySampleRate, avctx->sample_rate);
         meta->setInt32(kKeyChannelCount, avctx->channels);
-        meta->setInt32(kKeyBitspersample, avctx->bits_per_coded_sample);
         meta->setInt32(kKeyBitRate, avctx->bit_rate);
+        meta->setInt32(kKeyBitspersample, avctx->bits_per_coded_sample);
+        meta->setInt32(kKeySampleRate, avctx->sample_rate);
         meta->setInt32(kKeyBlockAlign, avctx->block_align);
+        meta->setInt32(kKeySampleFormat, avctx->sample_fmt);
         if (mAudioStream->duration != AV_NOPTS_VALUE) {
             int64_t duration = mAudioStream->duration * av_q2d(mAudioStream->time_base) * 1000000;
             printTime(duration);
@@ -1523,8 +1551,8 @@ status_t FFmpegExtractor::Track::read(
     ReadOptions::SeekMode mode;
     int64_t pktTS = AV_NOPTS_VALUE;
     int64_t seekTimeUs = AV_NOPTS_VALUE;
-    int64_t timeUs;
-    int key;
+    int64_t timeUs = AV_NOPTS_VALUE;
+    int key = 0;
     status_t status = OK;
 
     if (options && options->getSeekTo(&seekTimeUs, &mode)) {
@@ -1569,7 +1597,7 @@ retry:
     }
 
     key = pkt.flags & AV_PKT_FLAG_KEY ? 1 : 0;
-    pktTS = pkt.pts;
+    pktTS = pkt.pts; //FIXME AV_NOPTS_VALUE??
     // use dts when AVI
     if (pkt.pts == AV_NOPTS_VALUE)
         pktTS = pkt.dts;
@@ -1585,12 +1613,12 @@ retry:
         }
     }
 
-    if (mFirstKeyPktTimestamp == AV_NOPTS_VALUE) {
+    if (pktTS != AV_NOPTS_VALUE && mFirstKeyPktTimestamp == AV_NOPTS_VALUE) {
         // update the first key timestamp
         mFirstKeyPktTimestamp = pktTS;
     }
      
-    if (pktTS < mFirstKeyPktTimestamp) {
+    if (pktTS != AV_NOPTS_VALUE && pktTS < mFirstKeyPktTimestamp) {
             ALOGV("drop the packet with the backward timestamp, maybe they are B-frames after I-frame ^_^");
             av_free_packet(&pkt);
             goto retry;
@@ -1648,11 +1676,18 @@ retry:
     }
 
     int64_t start_time = mStream->start_time != AV_NOPTS_VALUE ? mStream->start_time : 0;
-    timeUs = (int64_t)((pktTS - start_time) * av_q2d(mStream->time_base) * 1000000);
+    if (pktTS != AV_NOPTS_VALUE)
+        timeUs = (int64_t)((pktTS - start_time) * av_q2d(mStream->time_base) * 1000000);
+    else
+        timeUs = SF_NOPTS_VALUE; //FIXME AV_NOPTS_VALUE is negative, but stagefright need positive
 
 #if DEBUG_PKT
-    ALOGV("read %s pkt, size: %d, key: %d, pts: %lld, dts: %lld, timeUs[-startTime]: %llu us (%.2f secs)",
-        av_get_media_type_string(mMediaType), pkt.size, key, pkt.pts, pkt.dts, timeUs, timeUs/1E6);
+    if (pktTS != AV_NOPTS_VALUE)
+        ALOGV("read %s pkt, size:%d, key:%d, pts:%lld, dts:%lld, timeUs[-startTime]:%lld us (%.2f secs)",
+            av_get_media_type_string(mMediaType), pkt.size, key, pkt.pts, pkt.dts, timeUs, timeUs/1E6);
+    else
+        ALOGV("read %s pkt, size:%d, key:%d, pts:N/A, dts:N/A, timeUs[-startTime]:N/A",
+            av_get_media_type_string(mMediaType), pkt.size, key);
 #endif
 
     mediaBuffer->meta_data()->setInt64(kKeyTime, timeUs);

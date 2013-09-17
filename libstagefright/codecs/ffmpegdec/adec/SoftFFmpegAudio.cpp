@@ -24,6 +24,8 @@
 #include <media/stagefright/foundation/hexdump.h>
 #include <media/stagefright/MediaDefs.h>
 
+#include <OMX_FFExt.h>
+
 #include "utils/ffmpeg_utils.h"
 
 //#undef realloc
@@ -94,6 +96,8 @@ SoftFFmpegAudio::SoftFFmpegAudio(
         mMode = MODE_FLAC;
     } else if (!strcmp(name, "OMX.ffmpeg.vorbis.decoder")) {
         mMode = MODE_VORBIS;
+    } else if (!strcmp(name, "OMX.ffmpeg.aheuristic.decoder")) {
+        mMode = MODE_HEURISTIC;
     } else {
         TRESPASS();
     }
@@ -180,6 +184,10 @@ void SoftFFmpegAudio::initPorts() {
     case MODE_VORBIS:
         def.format.audio.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_AUDIO_VORBIS);
         def.format.audio.eEncoding = OMX_AUDIO_CodingVORBIS;
+        break;
+    case MODE_HEURISTIC:
+        def.format.audio.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_AUDIO_FFMPEG);
+        def.format.audio.eEncoding = OMX_AUDIO_CodingAutoDetect;
         break;
     default:
         CHECK(!"Should not be here. Unsupported mime type and compression format");
@@ -296,6 +304,9 @@ status_t SoftFFmpegAudio::initDecoder() {
         break;
     case MODE_VORBIS:
         mCtx->codec_id = CODEC_ID_VORBIS;
+        break;
+    case MODE_HEURISTIC:
+        mCtx->codec_id = CODEC_ID_NONE;
         break;
     default:
         CHECK(!"Should not be here. Unsupported codec");
@@ -503,6 +514,26 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalGetParameter(
         }
 
         default:
+            if ((OMX_FF_INDEXTYPE)index == OMX_IndexParamAudioFFmpeg)
+            {
+                OMX_AUDIO_PARAM_FFMPEGTYPE *profile =
+                    (OMX_AUDIO_PARAM_FFMPEGTYPE *)params;
+
+                if (profile->nPortIndex != 0) {
+                    return OMX_ErrorUndefined;
+                }
+
+                profile->eCodecId = 0; 
+                profile->nChannels = 0;
+                profile->nBitRate = 0;
+                profile->nBitsPerSample = 0;
+                profile->nSampleRate = 0;
+                profile->nBlockAlign = 0;
+                profile->eSampleFormat = 0;
+
+                return OMX_ErrorNone;
+            }
+
             return SimpleSoftOMXComponent::internalGetParameter(index, params);
     }
 }
@@ -565,6 +596,11 @@ OMX_ERRORTYPE SoftFFmpegAudio::isRoleSupported(
     case MODE_VORBIS:
         if (strncmp((const char *)roleParams->cRole,
                 "audio_decoder.vorbis", OMX_MAX_STRINGNAME_SIZE - 1))
+        supported =  false;
+        break;
+    case MODE_HEURISTIC:
+        if (strncmp((const char *)roleParams->cRole,
+                "audio_decoder.heuristic", OMX_MAX_STRINGNAME_SIZE - 1))
         supported =  false;
         break;
     default:
@@ -801,6 +837,44 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
             return OMX_ErrorNone;
         }
         default:
+            if ((OMX_FF_INDEXTYPE)index == OMX_IndexParamAudioFFmpeg)
+            {
+                OMX_AUDIO_PARAM_FFMPEGTYPE *profile =
+                    (OMX_AUDIO_PARAM_FFMPEGTYPE *)params;
+
+                if (profile->nPortIndex != 0) {
+                    return OMX_ErrorUndefined;
+                }
+
+                mNumChannels = profile->nChannels;
+                mSamplingRate = profile->nSampleRate;
+                mBitRate = profile->nBitRate;
+                mSamplingFmt = (AVSampleFormat)profile->eSampleFormat;
+
+                mCtx->codec_id = (enum AVCodecID)profile->eCodecId; 
+                //mCtx->channels = profile->nChannels;
+                //mCtx->bit_rate = profile->nBitRate;
+                mCtx->bits_per_coded_sample = profile->nBitsPerSample;
+                //mCtx->sample_rate = profile->nSampleRate;
+                mCtx->block_align = mBlockAlign;
+                //mCtx->sample_fmt = profile->eSampleFormat;
+
+                // FIXME, need to cleanup
+                adjustAudioParameter();
+
+                ALOGD("got OMX_IndexParamAudioFFmpeg, "
+                    "eCodecId:%ld(%s), nChannels:%lu, nBitRate:%lu, "
+                    "nBitsPerSample:%lu, nSampleRate:%lu, "
+                    "nBlockAlign:%lu, eSampleFormat:%lu(%s)",
+                    profile->eCodecId, avcodec_get_name(mCtx->codec_id),
+                    profile->nChannels, profile->nBitRate,
+                    profile->nBitsPerSample, profile->nSampleRate,
+                    profile->nBlockAlign, profile->eSampleFormat,
+                    av_get_sample_fmt_name(mCtx->sample_fmt));
+
+                return OMX_ErrorNone;
+            }
+
             ALOGI("internalSetParameter, index: 0x%x", index);
             return SimpleSoftOMXComponent::internalSetParameter(index, params);
     }
@@ -1202,6 +1276,7 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
 }
 
 void SoftFFmpegAudio::onPortFlushCompleted(OMX_U32 portIndex) {
+    ALOGV("ffmpeg audio decoder flush port(%lu)", portIndex);
     if (portIndex == 0 && mCtx) {
         // Make sure that the next buffer output does not still
         // depend on fragments from the last one decoded.

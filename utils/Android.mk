@@ -13,7 +13,7 @@ LOCAL_SHARED_LIBRARIES := \
 	libavformat \
 	libavutil \
 	libutils \
-	libcutils \
+	libcutils
 
 LOCAL_MODULE := libffmpeg_utils
 

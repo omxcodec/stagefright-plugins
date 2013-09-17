@@ -88,7 +88,8 @@ private:
         MODE_DIVX,
         MODE_WMV,
         MODE_FLV,
-        MODE_RV
+        MODE_RV,
+        MODE_HEURISTIC
     } mMode;
 
     enum {

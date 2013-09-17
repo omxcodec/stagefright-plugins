@@ -141,6 +141,7 @@ private:
     void buildFileName(const sp<DataSource> &source);
     void setFFmpegDefaultOpts();
     void printTime(int64_t time);
+	bool is_codec_supported(enum AVCodecID codec_id);
     int stream_component_open(int stream_index);
     void stream_component_close(int stream_index);
     void packet_queue_init(PacketQueue *q);
