@@ -418,28 +418,28 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalGetParameter(
 
         case OMX_IndexParamVideoWmv:
         {
-            OMX_VIDEO_PARAM_WMVTYPE *wmvParams =
+            OMX_VIDEO_PARAM_WMVTYPE *profile =
                 (OMX_VIDEO_PARAM_WMVTYPE *)params;
 
-            if (wmvParams->nPortIndex != 0) {
+            if (profile->nPortIndex != 0) {
                 return OMX_ErrorUndefined;
             }
 
-            wmvParams->eFormat = OMX_VIDEO_WMVFormatUnused;
+            profile->eFormat = OMX_VIDEO_WMVFormatUnused;
 
             return OMX_ErrorNone;
         }
 
         case OMX_IndexParamVideoRv:
         {
-            OMX_VIDEO_PARAM_RVTYPE *rvParams =
+            OMX_VIDEO_PARAM_RVTYPE *profile =
                 (OMX_VIDEO_PARAM_RVTYPE *)params;
 
-            if (rvParams->nPortIndex != 0) {
+            if (profile->nPortIndex != 0) {
                 return OMX_ErrorUndefined;
             }
 
-            rvParams->eFormat = OMX_VIDEO_RVFormatUnused;
+            profile->eFormat = OMX_VIDEO_RVFormatUnused;
 
             return OMX_ErrorNone;
         }
@@ -465,6 +465,68 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalGetParameter(
     }
 }
 
+OMX_ERRORTYPE SoftFFmpegVideo::isRoleSupported(
+		        const OMX_PARAM_COMPONENTROLETYPE *roleParams) {
+    bool supported = true;
+
+    switch (mMode) {
+    case MODE_H264:
+        if (strncmp((const char *)roleParams->cRole,
+                "video_decoder.avc", OMX_MAX_STRINGNAME_SIZE - 1))
+            supported =  false;
+            break;
+    case MODE_MPEG4:
+        if (strncmp((const char *)roleParams->cRole,
+                "video_decoder.mpeg4", OMX_MAX_STRINGNAME_SIZE - 1))
+            supported =  false;
+            break;
+    case MODE_MPEG2:
+        if (strncmp((const char *)roleParams->cRole,
+                "video_decoder.mpeg2v", OMX_MAX_STRINGNAME_SIZE - 1))
+            supported =  false;
+            break;
+    case MODE_H263:
+        if (strncmp((const char *)roleParams->cRole,
+                "video_decoder.h263", OMX_MAX_STRINGNAME_SIZE - 1))
+            supported =  false;
+            break;
+    case MODE_VPX:
+        if (strncmp((const char *)roleParams->cRole,
+                "video_decoder.vpx", OMX_MAX_STRINGNAME_SIZE - 1))
+            supported =  false;
+            break;
+    case MODE_VC1:
+        if (strncmp((const char *)roleParams->cRole,
+                "video_decoder.vc1", OMX_MAX_STRINGNAME_SIZE - 1))
+            supported =  false;
+            break;
+    case MODE_WMV:
+        if (strncmp((const char *)roleParams->cRole,
+                "video_decoder.wmv", OMX_MAX_STRINGNAME_SIZE - 1))
+            supported =  false;
+            break;
+    case MODE_RV:
+        if (strncmp((const char *)roleParams->cRole,
+                "video_decoder.rv", OMX_MAX_STRINGNAME_SIZE - 1))
+            supported =  false;
+            break;
+    case MODE_HEURISTIC:
+        if (strncmp((const char *)roleParams->cRole,
+                "video_decoder.heuristic", OMX_MAX_STRINGNAME_SIZE - 1))
+            supported =  false;
+            break;
+    default:
+        CHECK(!"Should not be here. Unsupported role.");
+        break;
+    }
+
+    if (!supported) {
+        ALOGE("unsupported role: %s", (const char *)roleParams->cRole);
+        return OMX_ErrorUndefined;
+    }
+    return OMX_ErrorNone;
+}
+
 OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
         OMX_INDEXTYPE index, const OMX_PTR params) {
     switch (index) {
@@ -472,64 +534,7 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
         {
             const OMX_PARAM_COMPONENTROLETYPE *roleParams =
                 (const OMX_PARAM_COMPONENTROLETYPE *)params;
-
-            bool supported = true;
-            switch (mMode) {
-            case MODE_H264:
-                if (strncmp((const char *)roleParams->cRole,
-                        "video_decoder.avc", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            case MODE_MPEG4:
-                if (strncmp((const char *)roleParams->cRole,
-                        "video_decoder.mpeg4", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            case MODE_MPEG2:
-                if (strncmp((const char *)roleParams->cRole,
-                        "video_decoder.mpeg2v", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            case MODE_H263:
-                if (strncmp((const char *)roleParams->cRole,
-                        "video_decoder.h263", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            case MODE_VPX:
-                if (strncmp((const char *)roleParams->cRole,
-                        "video_decoder.vpx", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            case MODE_VC1:
-                if (strncmp((const char *)roleParams->cRole,
-                        "video_decoder.vc1", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            case MODE_WMV:
-                if (strncmp((const char *)roleParams->cRole,
-                        "video_decoder.wmv", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            case MODE_RV:
-                if (strncmp((const char *)roleParams->cRole,
-                        "video_decoder.rv", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            case MODE_HEURISTIC:
-                if (strncmp((const char *)roleParams->cRole,
-                        "video_decoder.heuristic", OMX_MAX_STRINGNAME_SIZE - 1))
-                    supported =  false;
-                break;
-            default:
-                CHECK(!"Should not be here. Unsupported role.");
-                break;
-            }
-            if (!supported) {
-                ALOGE("unsupported role: %s", (const char *)roleParams->cRole);
-                return OMX_ErrorUndefined;
-            }
-
-            return OMX_ErrorNone;
+            return isRoleSupported(roleParams);
         }
 
         case OMX_IndexParamVideoPortFormat:
@@ -575,21 +580,21 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
 
         case OMX_IndexParamVideoWmv:
         {
-            OMX_VIDEO_PARAM_WMVTYPE *wmvParams =
+            OMX_VIDEO_PARAM_WMVTYPE *profile =
                 (OMX_VIDEO_PARAM_WMVTYPE *)params;
 
-            if (wmvParams->nPortIndex != 0) {
+            if (profile->nPortIndex != 0) {
                 return OMX_ErrorUndefined;
             }
 
-            if (wmvParams->eFormat == OMX_VIDEO_WMVFormat7) {
+            if (profile->eFormat == OMX_VIDEO_WMVFormat7) {
                 mCtx->codec_id = CODEC_ID_WMV1;
-            } else if (wmvParams->eFormat == OMX_VIDEO_WMVFormat8) {
+            } else if (profile->eFormat == OMX_VIDEO_WMVFormat8) {
                 mCtx->codec_id = CODEC_ID_WMV2;
-            } else if (wmvParams->eFormat == OMX_VIDEO_WMVFormat9) {
+            } else if (profile->eFormat == OMX_VIDEO_WMVFormat9) {
                 mCtx->codec_id = CODEC_ID_WMV3;
             } else {
-                ALOGE("unsupported wmv codec: 0x%x", wmvParams->eFormat);
+                ALOGE("unsupported wmv codec: 0x%x", profile->eFormat);
                 return OMX_ErrorUndefined;
             }
 
@@ -598,21 +603,21 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
 
         case OMX_IndexParamVideoRv:
         {
-            OMX_VIDEO_PARAM_RVTYPE *rvParams =
+            OMX_VIDEO_PARAM_RVTYPE *profile =
                 (OMX_VIDEO_PARAM_RVTYPE *)params;
 
-            if (rvParams->nPortIndex != 0) {
+            if (profile->nPortIndex != 0) {
                 return OMX_ErrorUndefined;
             }
 
-            if (rvParams->eFormat == OMX_VIDEO_RVFormatG2) {
+            if (profile->eFormat == OMX_VIDEO_RVFormatG2) {
                 mCtx->codec_id = CODEC_ID_RV20;
-            } else if (rvParams->eFormat == OMX_VIDEO_RVFormat8) {
+            } else if (profile->eFormat == OMX_VIDEO_RVFormat8) {
                 mCtx->codec_id = CODEC_ID_RV30;
-            } else if (rvParams->eFormat == OMX_VIDEO_RVFormat9) {
+            } else if (profile->eFormat == OMX_VIDEO_RVFormat9) {
                 mCtx->codec_id = CODEC_ID_RV40;
             } else {
-                ALOGE("unsupported rv codec: 0x%x", rvParams->eFormat);
+                ALOGE("unsupported rv codec: 0x%x", profile->eFormat);
                 return OMX_ErrorUndefined;
             }
 

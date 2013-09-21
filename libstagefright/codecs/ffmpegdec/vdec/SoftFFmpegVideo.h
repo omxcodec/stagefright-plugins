@@ -114,6 +114,7 @@ private:
     } mOutputPortSettingsChange;
 
     void setAVCtxToDefault(AVCodecContext *avctx, const AVCodec *codec);
+    OMX_ERRORTYPE isRoleSupported(const OMX_PARAM_COMPONENTROLETYPE *roleParams);
     void preProcessVideoFrame(AVPicture *picture, void **bufp);
 
     void initPorts();
