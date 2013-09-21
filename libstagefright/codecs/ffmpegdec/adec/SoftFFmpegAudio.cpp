@@ -45,34 +45,7 @@ static void InitOMXParams(T *params) {
     params->nVersion.s.nStep = 0;
 }
 
-SoftFFmpegAudio::SoftFFmpegAudio(
-        const char *name,
-        const OMX_CALLBACKTYPE *callbacks,
-        OMX_PTR appData,
-        OMX_COMPONENTTYPE **component)
-    : SimpleSoftOMXComponent(name, callbacks, appData, component),
-      mMode(MODE_MPEG),
-      mFFmpegInited(false),
-      mCtx(NULL),
-      mSwrCtx(NULL),
-      mCodecOpened(false),
-      mExtradataReady(false),
-      mIgnoreExtradata(false),
-      mFlushComplete(false),
-      mSignalledError(false),
-      mReceivedEOS(false),
-      mFrame(NULL),
-      mAnchorTimeUs(0),
-      mNumFramesOutput(0),
-      mInputBufferSize(0),
-      mAudioBufferSize(0),
-      mNumChannels(2),
-      mSamplingRate(44100),
-      mBitRate(0),
-      mBlockAlign(0),
-      mSamplingFmt(AV_SAMPLE_FMT_S16),
-      mAudioConfigChanged(false),
-      mOutputPortSettingsChange(NONE) {
+void SoftFFmpegAudio::setMode(const char *name) {
     if (!strcmp(name, "OMX.ffmpeg.mp3.decoder")) {
         mMode = MODE_MPEG;
         mIgnoreExtradata = true;
@@ -101,6 +74,38 @@ SoftFFmpegAudio::SoftFFmpegAudio(
     } else {
         TRESPASS();
     }
+}
+
+SoftFFmpegAudio::SoftFFmpegAudio(
+        const char *name,
+        const OMX_CALLBACKTYPE *callbacks,
+        OMX_PTR appData,
+        OMX_COMPONENTTYPE **component)
+    : SimpleSoftOMXComponent(name, callbacks, appData, component),
+      mMode(MODE_MPEG),
+      mFFmpegInited(false),
+      mCtx(NULL),
+      mSwrCtx(NULL),
+      mCodecOpened(false),
+      mExtradataReady(false),
+      mIgnoreExtradata(false),
+      mFlushComplete(false),
+      mSignalledError(false),
+      mReceivedEOS(false),
+      mFrame(NULL),
+      mAnchorTimeUs(0),
+      mNumFramesOutput(0),
+      mInputBufferSize(0),
+      mAudioBufferSize(0),
+      mNumChannels(2),
+      mSamplingRate(44100),
+      mBitRate(0),
+      mBlockAlign(0),
+      mSamplingFmt(AV_SAMPLE_FMT_S16),
+      mAudioConfigChanged(false),
+      mOutputPortSettingsChange(NONE) {
+
+    setMode(name);
 
     ALOGD("SoftFFmpegAudio component: %s mMode: %d", name, mMode);
 

@@ -48,24 +48,7 @@ static void InitOMXParams(T *params) {
     params->nVersion.s.nStep = 0;
 }
 
-SoftFFmpegVideo::SoftFFmpegVideo(
-        const char *name,
-        const OMX_CALLBACKTYPE *callbacks,
-        OMX_PTR appData,
-        OMX_COMPONENTTYPE **component)
-    : SimpleSoftOMXComponent(name, callbacks, appData, component),
-      mMode(MODE_H264),
-      mFFmpegInited(false),
-      mCtx(NULL),
-      mImgConvertCtx(NULL),
-      mExtradataReady(false),
-      mIgnoreExtradata(false),
-      mSignalledError(false),
-      mDoDeinterlace(true),
-      mWidth(320),
-      mHeight(240),
-      mStride(320),
-      mOutputPortSettingsChange(NONE) {
+void SoftFFmpegVideo::setMode(const char *name) {
     if (!strcmp(name, "OMX.ffmpeg.h264.decoder")) {
         mMode = MODE_H264;
 	} else if (!strcmp(name, "OMX.ffmpeg.mpeg4.decoder")) {
@@ -91,6 +74,28 @@ SoftFFmpegVideo::SoftFFmpegVideo(
     } else {
         TRESPASS();
     }
+}
+
+SoftFFmpegVideo::SoftFFmpegVideo(
+        const char *name,
+        const OMX_CALLBACKTYPE *callbacks,
+        OMX_PTR appData,
+        OMX_COMPONENTTYPE **component)
+    : SimpleSoftOMXComponent(name, callbacks, appData, component),
+      mMode(MODE_H264),
+      mFFmpegInited(false),
+      mCtx(NULL),
+      mImgConvertCtx(NULL),
+      mExtradataReady(false),
+      mIgnoreExtradata(false),
+      mSignalledError(false),
+      mDoDeinterlace(true),
+      mWidth(320),
+      mHeight(240),
+      mStride(320),
+      mOutputPortSettingsChange(NONE) {
+
+    setMode(name);
 
     ALOGD("SoftFFmpegVideo component: %s mMode: %d", name, mMode);
 

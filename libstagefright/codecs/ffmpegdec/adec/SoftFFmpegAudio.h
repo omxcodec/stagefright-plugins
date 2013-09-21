@@ -153,6 +153,7 @@ private:
         AWAITING_ENABLED
     } mOutputPortSettingsChange;
 
+    void setMode(const char *name);
     void setAVCtxToDefault(AVCodecContext *avctx, const AVCodec *codec);
 	void configDefaultCtx();
 	OMX_ERRORTYPE isRoleSupported(const OMX_PARAM_COMPONENTROLETYPE *roleParams);
