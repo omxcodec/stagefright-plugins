@@ -56,7 +56,7 @@
 #define DEBUG_DISABLE_AUDIO        0
 #define WAIT_KEY_PACKET_AFTER_SEEK 1
 #define DISABLE_NAL_TO_ANNEXB      0
-#define DEBUG_PKT                  1
+#define DEBUG_PKT                  0
 
 enum {
     NO_SEEK = 0,

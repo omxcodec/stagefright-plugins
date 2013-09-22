@@ -32,10 +32,6 @@ LOCAL_MODULE:= libFFmpegExtractor
 
 LOCAL_MODULE_TAGS := optional
 
-ifeq ($(USES_NAM),true)
-	LOCAL_CFLAGS += -DUSES_NAM
-endif
-
 ifeq ($(TARGET_ARCH),arm)
 	LOCAL_CFLAGS += -Wno-psabi
 endif

@@ -30,10 +30,6 @@ LOCAL_SHARED_LIBRARIES := \
 LOCAL_MODULE := libstagefright_soft_ffmpegvdec
 LOCAL_MODULE_TAGS := optional
 
-ifeq ($(USES_NAM),true)
-    LOCAL_CFLAGS += -DUSES_NAM
-endif
-
 ifeq ($(TARGET_ARCH),arm)
     LOCAL_CFLAGS += -Wno-psabi
 endif

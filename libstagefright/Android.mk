@@ -49,10 +49,6 @@ LOCAL_MODULE:= libnamparser
 
 LOCAL_MODULE_TAGS := optional
 
-ifeq ($(TARGET_DEVICE),maguro)
-    LOCAL_CFLAGS += -DUSES_NAM
-endif
-
 ifeq ($(TARGET_ARCH),arm)
     LOCAL_CFLAGS += -Wno-psabi
 endif

@@ -109,7 +109,7 @@ private:
     AVCodecContext *mCtx;
     struct SwrContext *mSwrCtx;
 
-    bool mCodecOpened;
+    bool mCodecAlreadyOpened;
     bool mExtradataReady;
     bool mIgnoreExtradata;
     bool mFlushComplete;
@@ -118,17 +118,17 @@ private:
 
     AVFrame *mFrame;
 
-    int64_t mAnchorTimeUs;
+    int64_t mAudioClock;
     int64_t mNumFramesOutput;
     int32_t mInputBufferSize;
 
     //"Fatal signal 7 (SIGBUS)"!!! SIGBUS is because of an alignment exception
     //LOCAL_CFLAGS += -D__GNUC__=1 in *.cpp file
-    DECLARE_ALIGNED(16, uint8_t, mAudioBuf2)[AVCODEC_MAX_AUDIO_FRAME_SIZE * 4];
+    DECLARE_ALIGNED(16, uint8_t, mAudioBuffer2)[AVCODEC_MAX_AUDIO_FRAME_SIZE * 4];
 
     uint8_t mSilenceBuffer[kOutputBufferSize];
-    uint8_t *mPAudioBuffer;
-    int32_t mAudioBufferSize;
+    uint8_t *mResampledData;
+    int32_t mResampledDataSize;
 
     int32_t mNumChannels;
     int32_t mSamplingRate;

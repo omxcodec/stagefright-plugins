@@ -14,6 +14,4 @@
 # limitations under the License.
 #
 
-ifeq ($(USES_NAM),true)
 include $(call all-subdir-makefiles)
-endif
