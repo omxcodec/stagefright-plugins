@@ -705,6 +705,11 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             int64_t duration = mVideoStream->duration * av_q2d(mVideoStream->time_base) * 1000000;
             printTime(duration);
             ALOGV("video startTime: %lld", mVideoStream->start_time);
+            if (mVideoStream->start_time != AV_NOPTS_VALUE) {
+                ALOGV("video startTime:%lld", mVideoStream->start_time);
+            } else {
+                ALOGV("video startTime:N/A");
+            }
             meta->setInt64(kKeyDuration, duration);
         } else {
             // default when no stream duration
@@ -874,7 +879,11 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         if (mAudioStream->duration != AV_NOPTS_VALUE) {
             int64_t duration = mAudioStream->duration * av_q2d(mAudioStream->time_base) * 1000000;
             printTime(duration);
-            ALOGV("audio startTime: %lld", mAudioStream->start_time);
+            if (mAudioStream->start_time != AV_NOPTS_VALUE) {
+                ALOGV("audio startTime:%lld", mAudioStream->start_time);
+            } else {
+                ALOGV("audio startTime:N/A");
+            }
             meta->setInt64(kKeyDuration, duration);
         } else {
             // default when no stream duration
