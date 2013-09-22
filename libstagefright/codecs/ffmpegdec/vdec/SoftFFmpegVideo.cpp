@@ -573,10 +573,10 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
             // only care about input port
             if (defParams->nPortIndex == kPortIndexOutput) {
                 OMX_VIDEO_PORTDEFINITIONTYPE *video_def = &defParams->format.video;
-                mWidth = video_def->nFrameWidth;
-                mHeight = video_def->nFrameHeight;
-                ALOGV("got OMX_IndexParamPortDefinition, mWidth: %d, mHeight: %d",
-                        mWidth, mHeight);
+                mCtx->width = video_def->nFrameWidth;
+                mCtx->height = video_def->nFrameHeight;
+                ALOGV("got OMX_IndexParamPortDefinition, width: %lu, height: %lu",
+                        video_def->nFrameWidth, video_def->nFrameHeight);
                 return OMX_ErrorNone;
             }
 
@@ -644,7 +644,7 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
                 mCtx->height   = ffmpegParams->nHeight;
 
                 ALOGD("got OMX_IndexParamVideoFFmpeg, "
-                    "eCodecId:%ld(%s), nWidth:%lu, nHeight:%lu",
+                    "eCodecId:%ld(%s), width:%lu, height:%lu",
                     ffmpegParams->eCodecId,
                     avcodec_get_name(mCtx->codec_id),
                     ffmpegParams->nWidth,
@@ -676,8 +676,8 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
         OMX_BUFFERHEADERTYPE *outHeader = outInfo->mHeader;
 
         if (mCtx->width != mWidth || mCtx->height != mHeight) {
-            mCtx->width = mWidth;
-            mCtx->height = mHeight;
+            mWidth = mCtx->width;
+            mHeight = mCtx->height;
             mStride = mWidth;
 
             updatePortDefinitions();
