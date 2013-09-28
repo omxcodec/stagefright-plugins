@@ -135,7 +135,6 @@ private:
     AVBitStreamFilterContext *mAudioBsfc;
 
     static int decode_interrupt_cb(void *ctx);
-    void print_error_ex(const char *filename, int err);
     int initStreams();
     void deInitStreams();
     void buildFileName(const sp<DataSource> &source);

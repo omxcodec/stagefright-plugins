@@ -1012,16 +1012,6 @@ int FFmpegExtractor::decode_interrupt_cb(void *ctx)
     return extrator->mAbortRequest;
 }
 
-void FFmpegExtractor::print_error_ex(const char *filename, int err)
-{
-    char errbuf[128];
-    const char *errbuf_ptr = errbuf;
-
-    if (av_strerror(err, errbuf, sizeof(errbuf)) < 0)
-        errbuf_ptr = strerror(AVUNERROR(err));
-    ALOGI("%s: %s\n", filename, errbuf_ptr);
-}
-
 void FFmpegExtractor::buildFileName(const sp<DataSource> &source)
 {
 #if 1
@@ -1129,7 +1119,7 @@ int FFmpegExtractor::initStreams()
     ALOGV("mFilename: %s", mFilename);
     err = avformat_open_input(&mFormatCtx, mFilename, NULL, &format_opts);
     if (err < 0) {
-        print_error_ex(mFilename, err);
+        ALOGE("%s: avformat_open_input failed, err:%s", mFilename, av_err2str(err));
         ret = -1;
         goto fail;
     }
@@ -1148,7 +1138,7 @@ int FFmpegExtractor::initStreams()
 
     err = avformat_find_stream_info(mFormatCtx, opts);
     if (err < 0) {
-        ALOGE("%s: could not find codec parameters\n", mFilename);
+        ALOGE("%s: could not find stream info, err:%s", mFilename, av_err2str(err));
         ret = -1;
         goto fail;
     }
@@ -1882,7 +1872,7 @@ static const char *SniffFFMPEGCommon(const char *url, float *confidence)
 
 	err = avformat_open_input(&ic, url, NULL, NULL);
 	if (err < 0) {
-		ALOGE("avformat_open_input faild, url: %s err: %d", url, err);
+        ALOGE("%s: avformat_open_input failed, err:%s", url, av_err2str(err));
 		goto fail;
 	}
 
@@ -1890,7 +1880,7 @@ static const char *SniffFFMPEGCommon(const char *url, float *confidence)
 	orig_nb_streams = ic->nb_streams;
 	err = avformat_find_stream_info(ic, opts);
 	if (err < 0) {
-		ALOGE("%s: could not find codec parameters", url);
+        ALOGE("%s: could not find stream info, err:%s", url, av_err2str(err));
 		goto fail;
 	}
 	for (i = 0; i < orig_nb_streams; i++) {
