@@ -56,8 +56,6 @@ extern "C" {
 }
 #endif
 
-#define USE_PRE_AUDIO_BUF
-
 const int AVCODEC_MAX_AUDIO_FRAME_SIZE = 192000; // Deprecated in ffmpeg
 
 namespace android {
@@ -123,16 +121,11 @@ private:
     int64_t mAudioClock;
     int32_t mInputBufferSize;
 
-#ifdef USE_PRE_AUDIO_BUF
     //"Fatal signal 7 (SIGBUS)"!!! SIGBUS is because of an alignment exception
     //LOCAL_CFLAGS += -D__GNUC__=1 in *.cpp file
+    //Don't malloc mAudioBuffer", because "NEON optimised stereo fltp to s16
+    //conversion" require byte alignment.
     DECLARE_ALIGNED(16, uint8_t, mAudioBuffer)[AVCODEC_MAX_AUDIO_FRAME_SIZE * 4];
-#else
-    //Don't use the following code, because "NEON optimised stereo
-    //fltp to s16 conversion" require byte alignment.
-	uint8_t *mAudioBuffer;
-	unsigned int mAudioBufferSize;
-#endif
 
     uint8_t mSilenceBuffer[kOutputBufferSize];
     uint8_t *mResampledData;

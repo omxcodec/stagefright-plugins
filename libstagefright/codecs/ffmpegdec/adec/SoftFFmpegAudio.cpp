@@ -111,11 +111,6 @@ SoftFFmpegAudio::~SoftFFmpegAudio() {
     ALOGV("~SoftFFmpegAudio");
     av_freep(&mFrame);
     mFrame = NULL;
-#ifndef USE_PRE_AUDIO_BUF
-    av_freep(&mAudioBuffer);
-    mAudioBuffer = NULL;
-    mAudioBufferSize = 0;
-#endif
     deInitDecoder();
     if (mFFmpegInited) {
         deInitFFmpeg();
@@ -1205,13 +1200,8 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
 
             if (mSwrCtx) {
                 const uint8_t **in = (const uint8_t **)mFrame->extended_data;
-#ifdef USE_PRE_AUDIO_BUF
                 uint8_t *out[] = {mAudioBuffer};
                 int out_count = sizeof(mAudioBuffer) / mAudioTgtChannels / av_get_bytes_per_sample(mAudioTgtFmt);
-#else
-                uint8_t **out = &mAudioBuffer;
-                int out_count = (int64_t)mFrame->nb_samples * mAudioTgtFreq / mFrame->sample_rate + 256;
-#endif
                 int out_size  = av_samples_get_buffer_size(NULL, mAudioTgtChannels, out_count, mAudioTgtFmt, 0);
                 int len2 = 0;
                 if (out_size < 0) {
@@ -1227,15 +1217,7 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
                     mAudioTgtChannels,
                     av_get_sample_fmt_name(mAudioTgtFmt));
 #endif
-#ifndef USE_PRE_AUDIO_BUF
-                av_fast_malloc(&mAudioBuffer, &mAudioBufferSize, out_size);
-                if (!mAudioBuffer) {
-                    ALOGE("av_fast_malloc() failed");
-                    notify(OMX_EventError, OMX_ErrorUndefined, 0, NULL);
-                    mSignalledError = true;
-                    return;
-                }
-#endif
+
                 len2 = swr_convert(mSwrCtx, out, out_count, in, mFrame->nb_samples);
                 if (len2 < 0) {
                     ALOGE("audio_resample() failed");
