@@ -131,14 +131,6 @@ private:
     uint8_t *mResampledData;
     int32_t mResampledDataSize;
 
-    //int32_t mNumChannels;
-    //int32_t mSamplingRate;
-    /* some audio codec need bit rate when init, e.g. wma, and should be > 0 */
-    //int32_t mBitRate;
-    //int32_t mBlockAlign;
-    //AVSampleFormat mSamplingFmt;
-    bool mAudioConfigChanged;
-
     enum AVSampleFormat mAudioSrcFmt;
     enum AVSampleFormat mAudioTgtFmt;
     int mAudioSrcChannels;

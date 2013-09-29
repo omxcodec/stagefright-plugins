@@ -96,7 +96,6 @@ SoftFFmpegAudio::SoftFFmpegAudio(
       mAudioClock(0),
       mInputBufferSize(0),
       mResampledDataSize(0),
-      mAudioConfigChanged(false),
       mOutputPortSettingsChange(NONE) {
 
     setMode(name);
@@ -1049,25 +1048,12 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
             //decode audio packet
             len = avcodec_decode_audio4(mCtx, mFrame, &gotFrm, &pkt);
 
-            // A negative error code is returned if an error occurred during decoding
+            //A negative error code is returned if an error occurred during decoding
             if (len < 0) {
                 ALOGE("ffmpeg audio decoder failed to decode frame. "
                         "consume pkt len: %d", len);
 
-                /* if !mAudioConfigChanged, Don't fill the out buffer */
-                if (!mAudioConfigChanged) {
-                    inInfo->mOwnedByUs = false;
-                    inQueue.erase(inQueue.begin());
-                    inInfo = NULL;
-                    notifyEmptyBufferDone(inHeader);
-                    inHeader = NULL;
-
-                    mInputBufferSize = 0; // need?
-                    continue;
-                }
-
-                //inputBufferUsedLength = inHeader->nFilledLen;
-                /* if error, we skip the frame and play silence instead */
+                //if error, we skip the frame and play silence instead
                 mResampledData = mSilenceBuffer;
                 mResampledDataSize = kOutputBufferSize; //FIXME, need to calculate the size
             }
@@ -1080,6 +1066,7 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
 				CHECK(mFlushComplete == false);
 
                 if (len < 0) {
+                    //if error, we skip the frame 
                     inputBufferUsedLength = mInputBufferSize;
                  } else {
                     inputBufferUsedLength = len;
@@ -1103,41 +1090,11 @@ void SoftFFmpegAudio::onQueueFilled(OMX_U32 portIndex) {
 
             if (!gotFrm) {
                 ALOGI("ffmpeg audio decoder failed to get more frame.");
-                /* stop sending empty packets if the decoder is finished */
+                //stop sending empty packets if the decoder is finished
                 if (!pkt.data && mCtx->codec->capabilities & CODEC_CAP_DELAY)
                     mFlushComplete = true;
                 continue;
             }
-
-#if 0 //TODO
-            /**
-             * FIXME, check mAudioConfigChanged when the first time you call the audio4!
-             * mCtx->sample_rate and mCtx->channels may be changed by audio decoder later, why???
-             */
-            if (!mAudioConfigChanged) {
-                //if (mCtx->channels != mNumChannels || mCtx->sample_rate != mSamplingRate
-				//    || mCtx->sample_fmt != mSamplingFmt) {
-                if (mCtx->channels != mNumChannels || mCtx->sample_rate != mSamplingRate) {
-                    ALOGI("audio OMX_EventPortSettingsChanged, mCtx->channels: %d, "
-                            "mNumChannels: %d, mCtx->sample_rate: %d, mSamplingRate: %d, "
-                            "mCtx->sample_fmt: %s, mSamplingFmt: %s",
-                             mCtx->channels, mNumChannels, mCtx->sample_rate, mSamplingRate,
-                             av_get_sample_fmt_name(mCtx->sample_fmt),
-                             av_get_sample_fmt_name(mSamplingFmt));
-                    mNumChannels = mCtx->channels;
-                    mSamplingRate = mCtx->sample_rate;
-                    mSamplingFmt = mCtx->sample_fmt;
-                    mAudioConfigChanged = true;
-                    notify(OMX_EventPortSettingsChanged, 1, 0, NULL);
-                    mOutputPortSettingsChange = AWAITING_DISABLED;
-                    return;
-                } else {
-                    // match with the default, set mAudioConfigChanged true anyway!
-                    mAudioConfigChanged = true;
-                    mSamplingFmt = mCtx->sample_fmt;
-                }
-			}
-#endif
 
             dataSize = av_samples_get_buffer_size(NULL, av_frame_get_channels(mFrame),
                            mFrame->nb_samples, (enum AVSampleFormat)mFrame->format, 1);
