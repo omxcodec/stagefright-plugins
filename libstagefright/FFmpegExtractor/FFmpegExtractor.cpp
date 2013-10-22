@@ -1574,13 +1574,6 @@ retry:
         return ERROR_END_OF_STREAM;
     }
 
-	//FIXME, drop, omxcodec requires a positive timestamp! e.g. vorbis
-    if (pkt.pts < 0) {
-        ALOGW("drop the packet with negative timestamp(pts:%lld)", pkt.pts);
-        av_free_packet(&pkt);
-        goto retry;
-    }
-
     if (seeking) {
         if (pkt.data != flush_pkt.data) {
             av_free_packet(&pkt);
@@ -1611,6 +1604,13 @@ retry:
     //use dts when AVI
     if (pkt.pts == AV_NOPTS_VALUE)
         pktTS = pkt.dts;
+
+    //FIXME, drop, omxcodec requires a positive timestamp! e.g. vorbis
+    if (pktTS != AV_NOPTS_VALUE && pktTS < 0) {
+        ALOGW("drop the packet with negative timestamp(pts:%lld)", pktTS);
+        av_free_packet(&pkt);
+        goto retry;
+    }
 
     if (waitKeyPkt) {
         if (!key) {
