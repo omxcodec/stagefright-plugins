@@ -101,7 +101,7 @@ Only the three quirks included above are recognized at this point:
         <!-- ffmpeg audio codec -->
         <MediaCodec name="OMX.ffmpeg.aac.decoder"    type="audio/mp4a-latm" />
         <MediaCodec name="OMX.ffmpeg.mp3.decoder"    type="audio/mpeg" />
-        <MediaCodec name="OMX.ffmpeg.vorbis.decoder"    type="audio/vorbis" />
+        <!--MediaCodec name="OMX.ffmpeg.vorbis.decoder"    type="audio/vorbis" /-->
         <MediaCodec name="OMX.ffmpeg.wma.decoder"    type="audio/x-ms-wma" />
         <MediaCodec name="OMX.ffmpeg.ra.decoder"     type="audio/vnd.rn-realaudio" />
         <MediaCodec name="OMX.ffmpeg.flac.decoder"   type="audio/flac" />
