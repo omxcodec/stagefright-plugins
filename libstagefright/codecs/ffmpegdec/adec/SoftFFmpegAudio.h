@@ -81,42 +81,57 @@ protected:
 
 private:
     enum {
-        kNumBuffers = 4,
+        kInputPortIndex   = 0,
+        kOutputPortIndex  = 1,
+        kNumInputBuffers  = 4,
+        kNumOutputBuffers = 4,
         kOutputBufferSize = 4608 * 2
     };
 
     enum {
-        MODE_MPEG,
-        MODE_MPEGL1,
-        MODE_MPEGL2,
+        MODE_NONE,
         MODE_AAC,
+        MODE_MPEG,
+        MODE_VORBIS,
         MODE_WMA,
         MODE_RA,
+        MODE_FLAC,
+        MODE_MPEGL2,
         MODE_AC3,
         MODE_APE,
         MODE_DTS,
-        MODE_FLAC,
-        MODE_VORBIS,
-        MODE_HEURISTIC
+        MODE_TRIAL
     } mMode;
 
-    enum {
-        kPortIndexInput  = 0,
-        kPortIndexOutput = 1,
+    enum EOSStatus {
+        INPUT_DATA_AVAILABLE,
+        INPUT_EOS_SEEN,
+        OUTPUT_FRAMES_FLUSHED,
     };
 
-    bool mFFmpegInited;
-    AVCodecContext *mCtx;
-    struct SwrContext *mSwrCtx;
+    enum {
+        ERR_NO_FRM              = 2,
+        ERR_FLUSHED             = 1,
+        ERR_OK                  = 0,  //No errors
+        ERR_OOM                 = -1, //Out of memmory
+        ERR_INVALID_PARAM       = -2,
+        ERR_CODEC_NOT_FOUND     = -3,
+        ERR_DECODER_OPEN_FAILED = -4,
+        ERR_SWR_INIT_FAILED     = -5,
+        ERR_RESAMPLE_FAILED     = -6
+    };
 
+    bool mFFmpegAlreadyInited;
     bool mCodecAlreadyOpened;
     bool mExtradataReady;
     bool mIgnoreExtradata;
-    bool mFlushComplete;
-    bool mSignalledError;
-    bool mReceivedEOS;
-
+    AVCodecContext *mCtx;
+    struct SwrContext *mSwrCtx;
     AVFrame *mFrame;
+
+    EOSStatus mEOSStatus;
+
+    bool mSignalledError;
 
     int64_t mAudioClock;
     int32_t mInputBufferSize;
@@ -131,14 +146,14 @@ private:
     uint8_t *mResampledData;
     int32_t mResampledDataSize;
 
-    enum AVSampleFormat mAudioSrcFmt;
-    enum AVSampleFormat mAudioTgtFmt;
+    int mAudioSrcFreq;
+    int mAudioTgtFreq;
     int mAudioSrcChannels;
     int mAudioTgtChannels;
     int64_t mAudioSrcChannelLayout;
     int64_t mAudioTgtChannelLayout;
-    int mAudioSrcFreq;
-    int mAudioTgtFreq;
+    enum AVSampleFormat mAudioSrcFmt;
+    enum AVSampleFormat mAudioTgtFmt;
 
     enum {
         NONE,
@@ -147,14 +162,26 @@ private:
     } mOutputPortSettingsChange;
 
     void setMode(const char *name);
-    void setAVCtxToDefault(AVCodecContext *avctx, const AVCodec *codec);
-	void configDefaultCtx();
+	void initInputFormat(uint32_t mode, OMX_PARAM_PORTDEFINITIONTYPE &def);
+    void setDefaultCtx(AVCodecContext *avctx, const AVCodec *codec);
+	void resetCtx();
 	OMX_ERRORTYPE isRoleSupported(const OMX_PARAM_COMPONENTROLETYPE *roleParams);
-	void adjustAudioParameter();
+	void adjustAudioParams();
+    bool isConfigured();
 
     void initPorts();
     status_t initDecoder();
     void deInitDecoder();
+
+    int32_t handleExtradata();
+    int32_t openDecoder();
+	void    updateTimeStamp(OMX_BUFFERHEADERTYPE *inHeader);
+	void    initPacket(AVPacket *pkt, OMX_BUFFERHEADERTYPE *inHeader);
+	int32_t decodeAudio();
+    int32_t resampleAudio();
+    void    drainOneOutputBuffer();
+    void    drainEOSOutputBuffer();
+    void    drainAllOutputBuffers();
 
     DISALLOW_EVIL_CONSTRUCTORS(SoftFFmpegAudio);
 };

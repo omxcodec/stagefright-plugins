@@ -74,32 +74,51 @@ protected:
 
 private:
     enum {
+        kInputPortIndex   = 0,
+        kOutputPortIndex  = 1,
         kNumInputBuffers  = 5,
         kNumOutputBuffers = 2,
     };
 
     enum {
-        MODE_H264,
-        MODE_MPEG4,
+        MODE_NONE,
         MODE_MPEG2,
         MODE_H263,
+        MODE_MPEG4,
+        MODE_WMV,
+        MODE_RV,
+        MODE_H264,
         MODE_VPX,
         MODE_VC1,
+        MODE_FLV1,
         MODE_DIVX,
-        MODE_WMV,
-        MODE_FLV,
-        MODE_RV,
-        MODE_HEURISTIC
+        MODE_TRIAL
     } mMode;
 
-    enum {
-        kPortIndexInput  = 0,
-        kPortIndexOutput = 1,
+    enum EOSStatus {
+        INPUT_DATA_AVAILABLE,
+        INPUT_EOS_SEEN,
+        OUTPUT_FRAMES_FLUSHED
     };
 
-    bool mFFmpegInited;
+    enum {
+        ERR_NO_FRM              = 2,
+        ERR_FLUSHED             = 1,
+		ERR_OK                  = 0,  //No errors
+        ERR_OOM                 = -1, //Out of memmory
+		ERR_CODEC_NOT_FOUND     = -2,
+		ERR_DECODER_OPEN_FAILED = -2,
+		ERR_SWS_FAILED          = -3,
+    };
+
+    bool mFFmpegAlreadyInited;
+	bool mCodecAlreadyOpened;
+	bool mPendingFrameAsSettingChanged;
     AVCodecContext *mCtx;
     struct SwsContext *mImgConvertCtx;
+	AVFrame *mFrame;
+
+    EOSStatus mEOSStatus;
 
     bool mExtradataReady;
     bool mIgnoreExtradata;
@@ -114,13 +133,24 @@ private:
     } mOutputPortSettingsChange;
 
     void setMode(const char *name);
-    void setAVCtxToDefault(AVCodecContext *avctx, const AVCodec *codec);
+    void initInputFormat(uint32_t mode, OMX_PARAM_PORTDEFINITIONTYPE &def);
+	void getInputFormat(uint32_t mode, OMX_VIDEO_PARAM_PORTFORMATTYPE *formatParams);
+    void setDefaultCtx(AVCodecContext *avctx, const AVCodec *codec);
     OMX_ERRORTYPE isRoleSupported(const OMX_PARAM_COMPONENTROLETYPE *roleParams);
-    void preProcessVideoFrame(AVPicture *picture, void **bufp);
 
     void initPorts();
     status_t initDecoder();
     void deInitDecoder();
+
+	bool    handlePortSettingChangeEvent();
+	int32_t handleExtradata();
+	int32_t openDecoder();
+    void    initPacket(AVPacket *pkt, OMX_BUFFERHEADERTYPE *inHeader);
+    int32_t decodeVideo();
+    int32_t preProcessVideoFrame(AVPicture *picture, void **bufp);
+	int32_t drainOneOutputBuffer();
+	void    drainEOSOutputBuffer();
+	void    drainAllOutputBuffers();
 
     void updatePortDefinitions();
 
