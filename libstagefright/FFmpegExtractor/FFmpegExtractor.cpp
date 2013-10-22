@@ -468,7 +468,6 @@ bool FFmpegExtractor::is_codec_supported(enum AVCodecID codec_id)
     case CODEC_ID_H263I:
     case CODEC_ID_AAC:
     case CODEC_ID_AC3:
-    case CODEC_ID_MP1:
     case CODEC_ID_MP2:
     case CODEC_ID_MP3:
     case CODEC_ID_MPEG1VIDEO:
@@ -489,10 +488,13 @@ bool FFmpegExtractor::is_codec_supported(enum AVCodecID codec_id)
     case CODEC_ID_DTS:
     case CODEC_ID_FLAC:
     case CODEC_ID_FLV1:
+    case CODEC_ID_VORBIS:
+
         supported = true;
         break;
     default:
-        ALOGD("unsuppoted codec(id:0x%0x), but give it a chance", codec_id);
+        ALOGD("unsuppoted codec(%s), but give it a chance",
+                avcodec_get_name(codec_id));
         //Won't promise that the following codec id can be supported.
 	    //Just give these codecs a chance.
         supported = true;
@@ -521,10 +523,10 @@ int FFmpegExtractor::stream_component_open(int stream_index)
     supported = is_codec_supported(avctx->codec_id);
 
     if (!supported) {
-        ALOGE("unsupport the codec, id: 0x%0x", avctx->codec_id);
+        ALOGE("unsupport the codec(%s)", avcodec_get_name(avctx->codec_id));
         return -1;
     }
-    ALOGV("support the codec");
+    ALOGI("support the codec(%s)", avcodec_get_name(avctx->codec_id));
 
     unsigned streamType;
     ssize_t index = mTracks.indexOfKey(stream_index);
@@ -538,7 +540,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
 
     char tagbuf[32];
     av_get_codec_tag_string(tagbuf, sizeof(tagbuf), avctx->codec_tag);
-    ALOGV("Tag %s/0x%08x with codec id '%d'\n", tagbuf, avctx->codec_tag, avctx->codec_id);
+    ALOGV("Tag %s/0x%08x with codec(%s)\n", tagbuf, avctx->codec_tag, avcodec_get_name(avctx->codec_id));
 
     switch (avctx->codec_type) {
     case AVMEDIA_TYPE_VIDEO:
@@ -754,11 +756,6 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         }
 
         switch(avctx->codec_id) {
-        case CODEC_ID_MP1:
-            ALOGV("MP1");
-            meta = new MetaData;
-            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_MPEG_LAYER_I);
-            break;
         case CODEC_ID_MP2:
             ALOGV("MP2");
             meta = new MetaData;
@@ -768,6 +765,12 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             ALOGV("MP3");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_MPEG);
+            break;
+        case CODEC_ID_VORBIS:
+            ALOGV("VORBIS");
+            meta = new MetaData;
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_VORBIS);
+            meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
         case CODEC_ID_AC3:
             ALOGV("AC3");
@@ -1571,6 +1574,13 @@ retry:
         return ERROR_END_OF_STREAM;
     }
 
+	//FIXME, drop, omxcodec requires a positive timestamp! e.g. vorbis
+    if (pkt.pts < 0) {
+        ALOGW("drop the packet with negative timestamp(pts:%lld)", pkt.pts);
+        av_free_packet(&pkt);
+        goto retry;
+    }
+
     if (seeking) {
         if (pkt.data != flush_pkt.data) {
             av_free_packet(&pkt);
@@ -1597,13 +1607,14 @@ retry:
 
     key = pkt.flags & AV_PKT_FLAG_KEY ? 1 : 0;
     pktTS = pkt.pts; //FIXME AV_NOPTS_VALUE??
-    // use dts when AVI
+
+    //use dts when AVI
     if (pkt.pts == AV_NOPTS_VALUE)
         pktTS = pkt.dts;
 
     if (waitKeyPkt) {
         if (!key) {
-            ALOGV("drop the no key packet");
+            ALOGV("drop the non-key packet");
             av_free_packet(&pkt);
             goto retry;
         } else {
@@ -1721,6 +1732,7 @@ static formatmap FILE_FORMATS[] = {
         {"flac",                    MEDIA_MIMETYPE_CONTAINER_FLAC     },
         {"ac3",                     MEDIA_MIMETYPE_AUDIO_AC3          },
         {"wav",                     MEDIA_MIMETYPE_CONTAINER_WAV      },
+        {"ogg",                     MEDIA_MIMETYPE_AUDIO_VORBIS       },
 };
 
 static void adjustMPEG4Confidence(AVFormatContext *ic, float *confidence)
@@ -1983,7 +1995,7 @@ bool SniffFFMPEG(
 		*confidence = 0.88f;
 	}
 
-	if (*confidence == 0.88f) {
+	if (*confidence > 0.08f) {
 		(*meta)->setString("extended-extractor-use", "ffmpegextractor");
 	}
 
@@ -2015,6 +2027,7 @@ MediaExtractor *CreateFFmpegExtractor(const sp<DataSource> &source, const char *
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_DTS)       ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MP2)       ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_RA)        ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_VORBIS)        ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_WMA))) {
         ret = new FFmpegExtractor(source);
     }
