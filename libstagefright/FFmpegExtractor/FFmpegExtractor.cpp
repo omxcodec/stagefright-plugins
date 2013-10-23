@@ -749,7 +749,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         }
 
         if (avctx->extradata) {
-            ALOGV("audio stream extradata:");
+            ALOGV("audio stream extradata(%d):", avctx->extradata_size);
             hexdump(avctx->extradata, avctx->extradata_size);
         } else {
             ALOGV("audio stream no extradata, but we can ignore it.");

@@ -742,7 +742,7 @@ int32_t SoftFFmpegVideo::openDecoder() {
 
     int err = avcodec_open2(mCtx, mCtx->codec, NULL);
     if (err < 0) {
-        ALOGE("ffmpeg video decoder failed to initialize. (%d)", err);
+        ALOGE("ffmpeg video decoder failed to initialize. (%s)", av_err2str(err));
         return ERR_DECODER_OPEN_FAILED;
     }
 	mCodecAlreadyOpened = true;
