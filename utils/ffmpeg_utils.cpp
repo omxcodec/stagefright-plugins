@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #define LOG_NDEBUG 0
 #define LOG_TAG "FFMPEG"
 #include <utils/Log.h>
@@ -40,7 +41,6 @@ extern "C" {
 #include "libavutil/parseutils.h"
 #include "libavutil/samplefmt.h"
 #include "libavutil/avassert.h"
-#include "libavutil/intreadwrite.h"
 #include "libavformat/avformat.h"
 #include "libavdevice/avdevice.h"
 #include "libswscale/swscale.h"
@@ -82,7 +82,7 @@ namespace android {
 extern "C" {
 #endif
 
-void av_noreturn exit_program(int ret)
+void exit_program(int ret)
 {
     // do nothing
 }
