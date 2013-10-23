@@ -1732,7 +1732,7 @@ static formatmap FILE_FORMATS[] = {
         {"flac",                    MEDIA_MIMETYPE_CONTAINER_FLAC     },
         {"ac3",                     MEDIA_MIMETYPE_AUDIO_AC3          },
         {"wav",                     MEDIA_MIMETYPE_CONTAINER_WAV      },
-        {"ogg",                     MEDIA_MIMETYPE_AUDIO_VORBIS       },
+        {"ogg",                     MEDIA_MIMETYPE_CONTAINER_OGG      },
 };
 
 static void adjustMPEG4Confidence(AVFormatContext *ic, float *confidence)
@@ -2027,7 +2027,7 @@ MediaExtractor *CreateFFmpegExtractor(const sp<DataSource> &source, const char *
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_DTS)       ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MP2)       ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_RA)        ||
-            !strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_VORBIS)        ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_OGG)       ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_WMA))) {
         ret = new FFmpegExtractor(source);
     }
