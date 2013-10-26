@@ -187,7 +187,7 @@ void SoftFFmpegVideo::initPorts() {
     def.eDir = OMX_DirInput;
     def.nBufferCountMin = kNumInputBuffers;
     def.nBufferCountActual = def.nBufferCountMin;
-    def.nBufferSize = 1280 * 720; // 256 * 1024?
+    def.nBufferSize = 1280 * 720 * 3 / 2; // 256 * 1024?
     def.bEnabled = OMX_TRUE;
     def.bPopulated = OMX_FALSE;
     def.eDomain = OMX_PortDomainVideo;
