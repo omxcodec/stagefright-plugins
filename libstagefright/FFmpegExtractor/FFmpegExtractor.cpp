@@ -1739,7 +1739,7 @@ static formatmap FILE_FORMATS[] = {
         {"ac3",                     MEDIA_MIMETYPE_AUDIO_AC3          },
         {"wav",                     MEDIA_MIMETYPE_CONTAINER_WAV      },
         {"ogg",                     MEDIA_MIMETYPE_CONTAINER_OGG      },
-        {"hevc",                     MEDIA_MIMETYPE_CONTAINER_HEVC    },
+        {"hevc",                    MEDIA_MIMETYPE_CONTAINER_HEVC     },
 };
 
 static void adjustMPEG4Confidence(AVFormatContext *ic, float *confidence)

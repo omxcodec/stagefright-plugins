@@ -5,9 +5,7 @@ Stagefright Plugins for Android
 1. Enhance the Android multimedia framework providing additional Plugins for
    user interaction
 2. FFmpeg provides demuxers and av codecs;
-3. NamExtractor is a extractor plugin, it would be loaded by Stagefright when 
-   Stagefright started. NamExtractor will load FFmpegExtractor.FFmpegExtractor
-   is the reference to "ffmpeg/ffplay" to achieve. 
+3. FFmpegExtractor is a extractor plugin.
 4. libstagefright_soft_ffmpegvdec plugin is video decoder
 5. libstagefright_soft_ffmpegadec plugin is audio decoder
 
@@ -25,53 +23,37 @@ I used to travel there in 2011 Sep.
 Requirements
 ================================================================================
 
-CyanogenMod 9.x (Ice Cream Sandwich)
-http://wiki.cyanogenmod.com/wiki/Galaxy_Nexus_(GSM):_Compile_CyanogenMod_(Linux)
+1. android_frameworks_native:
+https://github.com/omxcodec/android_frameworks_native.git
+branch: cm_maguro-10.1
 
-FFMPEG-1.0 release
-http://ffmpeg.org
-ref: git://android.git.linaro.org/platform/external/ffmpeg.git
+2. android_frameworks_av:
+https://github.com/omxcodec/android_frameworks_av.git
+branch: cm_maguro-10.1
+
+3. android_external_ffmpeg
+git@github.com:omxcodec/android_external_ffmpeg
+branch: cm_maguro-10.1
 
 ================================================================================
 How to build
 ================================================================================
 
 1. Get the Source
-   clone cm-9.1.0 source from CyanogenMod git:
-       repo init -u git://github.com/CyanogenMod/android.git -b cm-9.1.0
-   plz ref: http://wiki.cyanogenmod.com/wiki/Galaxy_Nexus_(GSM):_Compile_CyanogenMod_(Linux)
-
-   clone my sources from the omxcodec{github} git!
    in your "android/external" folder, run:
-   stagefright-plugins:
+   stagefright-plugins(branch: master):
        git clone git@github.com:omxcodec/stagefright-plugins.git stagefright-plugins
-   ffmpeg:
-       git clone git@github.com:omxcodec/android_external_ffmpeg.git ffmpeg -b omxcodec-1.0
+   ffmpeg(branch: cm_maguro-10.1):
+       git clone git@github.com:omxcodec/android_external_ffmpeg.git ffmpeg -b cm_maguro-10.1
 
-   in your "android/external" folder, run:
-   cp stagefright-plugins/repo/local_manifest.xml ../.repo
-   cd ..      // go to android folder
-   repo sync  // sync "frameworks_base" code again!
-
-   "repo sync" sync "frameworks_base" code again! of course, you can merge my
-   android_external_ffmpeg code instread of "repo sync" frameworks_base. once you do,
-   so you should pay attention to the "USES_NAM" flag, it is only in the
-   "android/frameworks/base" directory
+   android_frameworks_native and android_frameworks_av:
+       you should merge my android_frameworks_native(branch: cm_maguro-10.1) and
+   android_frameworks_av(branch: cm_maguro-10.1) code. once you do, you should pay attention to
+   the "USES_NAM" flag, it is only in the "android/frameworks/native" and "android/frameworks/av"
+   directories.
  
 2. Compile
-   add USES_NAM flag to COMMON_GLOBAL_CFLAGS in android build system
-       vi vendor/samsung/maguro/BoardConfigVendor.mk and add these lines to it
-           USES_NAM := true
-           ifdef USES_NAM
-               COMMON_GLOBAL_CFLAGS += -DUSES_NAM
-           endif
-
-   ffmpeg:
-       cd android/external/ffmpeg
-       mm ffmpeg  // NOT "mm", plz FIXME!
-
-       cd android/external/stagefright-plugins
-       mm
+   compile your android source tree again!
 
 3. Install
    adb root
@@ -83,12 +65,14 @@ How to build
    get test media files:
        wget http://movies.apple.com/media/us/ipad/2012/tv-spots/apple-ipad-this_good-us-20120307_848x480.mov
        wget http://movies.apple.com/media/us/ipad/2012/80ba527a-1a34-4f70-aae8-14f87ab76eea/tours/apple-ipad-feature-us-20120307_848x480.mp4
+       wget http://ftp.kw.bbc.co.uk/hevc/hm-10.0-anchors/bitstreams/i_main/BQMall_832x480_60_qp22.bin
 
    let us suppose your media files locate at "/sdcard/Movies/" folder.
    one console window, you should run:
+       adb logcat -c  //clears (flushes) the entire log and exits.
        adb logcat
    and other cosole window, you should run:
-   test NamExtractor and FFmpegExtractor plugins:
+   test FFmpegExtractor plugins:
        adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/apple-ipad-this_good-us-20120307_848x480.mov -t video/*
        adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/apple-ipad-feature-us-20120307_848x480.mp4 -t video/*
    test SoftFFmpegVideo decoder plugin:
@@ -98,6 +82,13 @@ How to build
        adb root && adb shell set-vdec-sw1 // let omxcodec choose software decoder
        adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/apple-ipad-this_good-us-20120307_848x480.mov -t video/*
        adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/apple-ipad-feature-us-20120307_848x480.mp4 -t video/*
+
+   test HEVC(H.265) decoder:
+       cd android/external/stagefright-plugins/tools folder, run:
+       adb root
+       ./install // install my scripts
+       adb root && adb shell set-vdec-drop // disable drop video frames
+	   adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/BQMall_832x480_60_qp22.bin -t video/*
 
    run it and enjoy!
 
@@ -112,29 +103,40 @@ Input formats:
     Matroska (MKV)
     Real(RM,RMVB)
     WAV
-    FLV(H.264+AAC)
+    FLV
+    SWF
+    APE
+    DTS
+    FLAC
+    WAV
+    OGG
+    Raw HEVC(H.265) bitstreams
 
-Video formats:
+Video decoders:
     MPEG-1/2
     MPEG-4
     H.263
     H.264 / MPEG-4 AVC
     WMV 1/2
     WMV 3 / WMV-9 / VC-1
-    Real Video
+    RV (Real Video)
+    VP8
+    FLV1
+    DIVX
+    HEVC(H.265)
 
-Audio formats:
-    MPEG Layer 1/2
-    MP3 - MPEG Layer 3
-    AAC - MPEG-4 part3
-    AC3 - A/52 (Dolby Digital)
+Audio decoder:
+    MP2 (MPEG Layer 2)
+    MP3 (MPEG Layer 3)
+    AAC (MPEG-4 part3)
+    AC3
     WMA 1/2
     WMA 3
-    Real Audio
-    AMR (3GPP)
+    RA (Real Audio)
     APE
     DTS
     FLAC
+    VORBIS
     
 ================================================================================
 Known issues

@@ -4,11 +4,7 @@ Stagefright插件
 
 1. 基于Android多媒体框架提供额外的插件给用户集成
 2. FFmpeg提供demux和音视频解码器
-3. NamExtractor属于Stagefright的一个demux(extractor)插件，它将随着Stagefright的
-   启动而加载。NamExtractor后续会加载FFmpegExtractor插件做真正的demux操作，它将
-   Stagefright的智能指针DataSource传给FFmpeg，FFmpeg基于此指针封装URLProtocol，
-   便于兼容FFmpeg本身的框架，同时，Stagefright的所有Source都可以这样导入FFmpeg
-   便于扩展。FFmpegExtractor是参考ffmpeg官方代码ffplay.c文件实现
+3. FFmpegExtractor属于Stagefright的一个demux(extractor)插件
 4. libstagefright_soft_ffmpegvdec是一个视频解码器插件
 5. libstagefright_soft_ffmpegadec是一个音频解码器插件
 6. 任何FFmpegExtractor demux后的视频都优先选用视频硬件解码，充分发挥硬件特性
@@ -26,54 +22,37 @@ Stagefright插件
 需要条件
 ================================================================================
 
-CyanogenMod 9.x (Ice Cream Sandwich)
-http://wiki.cyanogenmod.com/wiki/Galaxy_Nexus_(GSM):_Compile_CyanogenMod_(Linux)
+1. android_frameworks_native:
+https://github.com/omxcodec/android_frameworks_native.git
+branch: cm_maguro-10.1
 
-FFMPEG-1.0 release
-http://ffmpeg.org
-ref: git://android.git.linaro.org/platform/external/ffmpeg.git
+2. android_frameworks_av:
+https://github.com/omxcodec/android_frameworks_av.git
+branch: cm_maguro-10.1
+
+3. android_external_ffmpeg
+git@github.com:omxcodec/android_external_ffmpeg
+branch: cm_maguro-10.1
 
 ================================================================================
 如何编译
 ================================================================================
 
 1. 获取源码
-   从CyanogenMod git仓库中克隆cm-9.1.0代码
-       repo init -u git://github.com/CyanogenMod/android.git -b cm-9.1.0
-   请参考: http://wiki.cyanogenmod.com/wiki/Galaxy_Nexus_(GSM):_Compile_CyanogenMod_(Linux)
-
-   从我的 omxcodec{github} 仓库中克隆代码!
    进入你的Android源码目录 "android/external", 运行如下命令:
-   stagefright-plugins:
+   stagefright-plugins(branch: master):
        git clone git@github.com:omxcodec/stagefright-plugins.git stagefright-plugins
-   ffmpeg:
-       git clone git@github.com:omxcodec/android_external_ffmpeg.git ffmpeg -b omxcodec-1.0
+   ffmpeg(branch: cm_maguro-10.1):
+       git clone git@github.com:omxcodec/android_external_ffmpeg.git ffmpeg -b cm_maguro-10.1
 
-   进入"android/external" 目录, 运行如下命令:
-   cp stagefright-plugins/repo/local_manifest.xml ../.repo
-   cd ..      // 进入Android源码根目录
-   repo sync  // 同步我的 "frameworks_base" 代码!
-
-   这里的"repo sync"命令负责同步我的 "frameworks_base"仓库! 当然，你也可以对比我的代码，
-   通过对比，你也很容易合并入我修改部分的代码，因为，修改部分很少，而且非常有规律，需要
-   使用"USES_NAM"这个宏定义区分原有代码。修改的代码仅仅在"android/frameworks/base"目录
+   android_frameworks_native and android_frameworks_av:
+       显然，你应该合并我的android_frameworks_native(branch: cm_maguro-10.1)和
+   android_frameworks_av(branch: cm_maguro-10.1)的源代码。合并修改部分的代码比较少，
+   而且非常有规律，我修改过的代码使用了"USES_NAM"这个宏，而且我修改过的代码仅仅在
+   "android/frameworks/native"和"android/frameworks/av"两个目录。
  
 2. 编译
-   Android系统:
-   增加"USES_NAM"标识到Android编译系统中的编译参数"COMMON_GLOBAL_CFLAGS"
-       编辑 vendor/samsung/maguro/BoardConfigVendor.mk 增加如下几行
-           USES_NAM := true
-           ifdef USES_NAM
-               COMMON_GLOBAL_CFLAGS += -DUSES_NAM
-           endif
-
-   ffmpeg:
-       进入android/external/ffmpeg
-       mm ffmpeg  // 不是命令"mm", FIXME
-
-   stagefright-plugins:
-       进入android/external/stagefright-plugins
-       mm
+   请重新编译你的整个Android系统。
 
 3. 安装
    adb root
@@ -85,13 +64,14 @@ ref: git://android.git.linaro.org/platform/external/ffmpeg.git
    获取测试文件:
        wget http://movies.apple.com/media/us/ipad/2012/tv-spots/apple-ipad-this_good-us-20120307_848x480.mov
        wget http://movies.apple.com/media/us/ipad/2012/80ba527a-1a34-4f70-aae8-14f87ab76eea/tours/apple-ipad-feature-us-20120307_848x480.mp4
+       wget http://ftp.kw.bbc.co.uk/hevc/hm-10.0-anchors/bitstreams/i_main/BQMall_832x480_60_qp22.bin
 
    假设你视频测试文件放在目录 "/sdcard/Movies/".
    开启一个linux终端，运行:
        adb logcat -c //清空先前所有的log
        adb logcat
    开启另外一个linux终端, 分情况运行:
-   测试 NamExtractor 和 FFmpegExtractor 插件:
+   测试 FFmpegExtractor 插件:
        adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/apple-ipad-this_good-us-20120307_848x480.mov -t video/*
        adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/apple-ipad-feature-us-20120307_848x480.mp4 -t video/*
    测试 SoftFFmpegVideo 视频解码器插件:
@@ -101,6 +81,12 @@ ref: git://android.git.linaro.org/platform/external/ffmpeg.git
        adb root && adb shell set-vdec-sw1 // 让Stagefright优先选用视频软件解码器
        adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/apple-ipad-this_good-us-20120307_848x480.mov -t video/*
        adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/apple-ipad-feature-us-20120307_848x480.mp4 -t video/*
+   测试 HEVC(H.265) 视频解码器:
+       进入目录android/external/stagefright-plugins/tools, 运行:
+       adb root
+       ./install // 安装测试脚本
+       adb root && adb shell set-vdec-drop0 // 禁止视频解码速度过慢时Stagefright做丢帧处理
+       adb shell am start -a android.intent.action.VIEW -d file:///mnt/sdcard/Movies/BQMall_832x480_60_qp22.bin -t video/*
 
    希望你一切顺利
 
@@ -115,29 +101,40 @@ ref: git://android.git.linaro.org/platform/external/ffmpeg.git
     Matroska (MKV)
     Real(RM,RMVB)
     WAV
-    FLV(H.264+AAC)
+    FLV
+    SWF
+    APE
+    DTS
+    FLAC
+    WAV
+    OGG
+    Raw HEVC(H.265) bitstreams
 
-视频格式:
+视频解码器:
     MPEG-1/2
     MPEG-4
     H.263
     H.264 / MPEG-4 AVC
     WMV 1/2
     WMV 3 / WMV-9 / VC-1
-    Real Video
+    RV (Real Video)
+    VP8
+    FLV1
+    DIVX
+    HEVC(H.265)
 
-音频格式:
-    MPEG Layer 1/2
-    MP3 - MPEG Layer 3
-    AAC - MPEG-4 part3
-    AC3 - A/52 (Dolby Digital)
+音频解码器:
+    MP2 (MPEG Layer 2)
+    MP3 (MPEG Layer 3)
+    AAC (MPEG-4 part3)
+    AC3
     WMA 1/2
     WMA 3
-    Real Audio
-    AMR (3GPP)
+    RA (Real Audio)
     APE
     DTS
     FLAC
+    VORBIS
     
 ================================================================================
 存在问题
