@@ -24,8 +24,6 @@
 #include <media/stagefright/foundation/hexdump.h>
 #include <media/stagefright/MediaDefs.h>
 
-#include <OMX_FFExt.h>
-
 #include "utils/ffmpeg_utils.h"
 
 #define DEBUG_PKT 0
@@ -65,6 +63,8 @@ void SoftFFmpegVideo::setMode(const char *name) {
         mMode = MODE_FLV1;
     } else if (!strcmp(name, "OMX.ffmpeg.divx.decoder")) {
         mMode = MODE_DIVX;
+    } else if (!strcmp(name, "OMX.ffmpeg.hevc.decoder")) {
+        mMode = MODE_HEVC;
     } else if (!strcmp(name, "OMX.ffmpeg.vtrial.decoder")) {
         mMode = MODE_TRIAL;
     } else {
@@ -153,6 +153,10 @@ void SoftFFmpegVideo::initInputFormat(uint32_t mode,
     case MODE_DIVX:
         def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_DIVX);
         def.format.video.eCompressionFormat = OMX_VIDEO_CodingDIVX;
+        break;
+    case MODE_HEVC:
+        def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_HEVC);
+        def.format.video.eCompressionFormat = OMX_VIDEO_CodingHEVC;
         break;
     case MODE_TRIAL:
         def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_FFMPEG);
@@ -264,40 +268,43 @@ status_t SoftFFmpegVideo::initDecoder() {
     mCtx->codec_type = AVMEDIA_TYPE_VIDEO;
     switch (mMode) {
     case MODE_MPEG2:
-        mCtx->codec_id = CODEC_ID_MPEG2VIDEO;
+        mCtx->codec_id = AV_CODEC_ID_MPEG2VIDEO;
         break;
     case MODE_H263:
-        mCtx->codec_id = CODEC_ID_H263;
+        mCtx->codec_id = AV_CODEC_ID_H263;
         //FIXME, which?
-        //mCtx->codec_id = CODEC_ID_H263P;
-        //mCtx->codec_id = CODEC_ID_H263I;
+        //mCtx->codec_id = AV_CODEC_ID_H263P;
+        //mCtx->codec_id = AV_CODEC_ID_H263I;
         break;
     case MODE_MPEG4:
-        mCtx->codec_id = CODEC_ID_MPEG4;
+        mCtx->codec_id = AV_CODEC_ID_MPEG4;
         break;
     case MODE_WMV:
-        mCtx->codec_id = CODEC_ID_WMV2;	// default, adjust in "internalSetParameter" fxn
+        mCtx->codec_id = AV_CODEC_ID_WMV2;	// default, adjust in "internalSetParameter" fxn
         break;
     case MODE_RV:
-        mCtx->codec_id = CODEC_ID_RV40;	// default, adjust in "internalSetParameter" fxn
+        mCtx->codec_id = AV_CODEC_ID_RV40;	// default, adjust in "internalSetParameter" fxn
         break;
     case MODE_H264:
-        mCtx->codec_id = CODEC_ID_H264;
+        mCtx->codec_id = AV_CODEC_ID_H264;
         break;
     case MODE_VPX:
-        mCtx->codec_id = CODEC_ID_VP8;
+        mCtx->codec_id = AV_CODEC_ID_VP8;
         break;
     case MODE_VC1:
-        mCtx->codec_id = CODEC_ID_VC1;
+        mCtx->codec_id = AV_CODEC_ID_VC1;
         break;
     case MODE_FLV1:
-        mCtx->codec_id = CODEC_ID_FLV1;
+        mCtx->codec_id = AV_CODEC_ID_FLV1;
         break;
     case MODE_DIVX:
-        mCtx->codec_id = CODEC_ID_MPEG4;
+        mCtx->codec_id = AV_CODEC_ID_MPEG4;
+        break;
+    case MODE_HEVC:
+        mCtx->codec_id = AV_CODEC_ID_HEVC;
         break;
     case MODE_TRIAL:
-        mCtx->codec_id = CODEC_ID_NONE;
+        mCtx->codec_id = AV_CODEC_ID_NONE;
         break;
     default:
         CHECK(!"Should not be here. Unsupported codec");
@@ -371,6 +378,9 @@ void SoftFFmpegVideo::getInputFormat(uint32_t mode,
     case MODE_DIVX:
         formatParams->eCompressionFormat = OMX_VIDEO_CodingDIVX;
         break;
+    case MODE_HEVC:
+        formatParams->eCompressionFormat = OMX_VIDEO_CodingHEVC;
+        break;
     case MODE_TRIAL:
         formatParams->eCompressionFormat = OMX_VIDEO_CodingAutoDetect;
         break;
@@ -440,22 +450,23 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalGetParameter(
             return OMX_ErrorNone;
         }
 
-        default:
-            if ((OMX_FF_INDEXTYPE)index == OMX_IndexParamVideoFFmpeg)
-            {
-                OMX_VIDEO_PARAM_FFMPEGTYPE *ffmpegParams =
-                    (OMX_VIDEO_PARAM_FFMPEGTYPE *)params;
+		case OMX_IndexParamVideoFFmpeg:
+        {
+            OMX_VIDEO_PARAM_FFMPEGTYPE *profile =
+                (OMX_VIDEO_PARAM_FFMPEGTYPE *)params;
 
-                if (ffmpegParams->nPortIndex != kInputPortIndex) {
-                    return OMX_ErrorUndefined;
-                }
-
-                ffmpegParams->eCodecId = CODEC_ID_NONE;
-                ffmpegParams->nWidth   = 0;
-                ffmpegParams->nHeight  = 0;
-
-                return OMX_ErrorNone;
+            if (profile->nPortIndex != kInputPortIndex) {
+                return OMX_ErrorUndefined;
             }
+
+            profile->eCodecId = AV_CODEC_ID_NONE;
+            profile->nWidth   = 0;
+            profile->nHeight  = 0;
+
+            return OMX_ErrorNone;
+        }
+
+        default:
 
             return SimpleSoftOMXComponent::internalGetParameter(index, params);
     }
@@ -514,6 +525,11 @@ OMX_ERRORTYPE SoftFFmpegVideo::isRoleSupported(
     case MODE_DIVX:
         if (strncmp((const char *)roleParams->cRole,
                 "video_decoder.divx", OMX_MAX_STRINGNAME_SIZE - 1))
+            supported = false;
+            break;
+    case MODE_HEVC:
+        if (strncmp((const char *)roleParams->cRole,
+                "video_decoder.hevc", OMX_MAX_STRINGNAME_SIZE - 1))
             supported = false;
             break;
     case MODE_TRIAL:
@@ -595,11 +611,11 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
             }
 
             if (profile->eFormat == OMX_VIDEO_WMVFormat7) {
-                mCtx->codec_id = CODEC_ID_WMV1;
+                mCtx->codec_id = AV_CODEC_ID_WMV1;
             } else if (profile->eFormat == OMX_VIDEO_WMVFormat8) {
-                mCtx->codec_id = CODEC_ID_WMV2;
+                mCtx->codec_id = AV_CODEC_ID_WMV2;
             } else if (profile->eFormat == OMX_VIDEO_WMVFormat9) {
-                mCtx->codec_id = CODEC_ID_WMV3;
+                mCtx->codec_id = AV_CODEC_ID_WMV3;
             } else {
                 ALOGE("unsupported wmv codec: 0x%x", profile->eFormat);
                 return OMX_ErrorUndefined;
@@ -618,11 +634,11 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
             }
 
             if (profile->eFormat == OMX_VIDEO_RVFormatG2) {
-                mCtx->codec_id = CODEC_ID_RV20;
+                mCtx->codec_id = AV_CODEC_ID_RV20;
             } else if (profile->eFormat == OMX_VIDEO_RVFormat8) {
-                mCtx->codec_id = CODEC_ID_RV30;
+                mCtx->codec_id = AV_CODEC_ID_RV30;
             } else if (profile->eFormat == OMX_VIDEO_RVFormat9) {
-                mCtx->codec_id = CODEC_ID_RV40;
+                mCtx->codec_id = AV_CODEC_ID_RV40;
             } else {
                 ALOGE("unsupported rv codec: 0x%x", profile->eFormat);
                 return OMX_ErrorUndefined;
@@ -631,29 +647,30 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
             return OMX_ErrorNone;
         }
 
-        default:
-            if ((OMX_FF_INDEXTYPE)index == OMX_IndexParamVideoFFmpeg)
-            {
-                OMX_VIDEO_PARAM_FFMPEGTYPE *ffmpegParams =
-                    (OMX_VIDEO_PARAM_FFMPEGTYPE *)params;
+        case OMX_IndexParamVideoFFmpeg:
+        {
+            OMX_VIDEO_PARAM_FFMPEGTYPE *profile =
+                (OMX_VIDEO_PARAM_FFMPEGTYPE *)params;
 
-                if (ffmpegParams->nPortIndex != kInputPortIndex) {
-                    return OMX_ErrorUndefined;
-                }
-
-                mCtx->codec_id = (enum AVCodecID)ffmpegParams->eCodecId;
-                mCtx->width    = ffmpegParams->nWidth;
-                mCtx->height   = ffmpegParams->nHeight;
-
-                ALOGD("got OMX_IndexParamVideoFFmpeg, "
-                    "eCodecId:%ld(%s), width:%lu, height:%lu",
-                    ffmpegParams->eCodecId,
-                    avcodec_get_name(mCtx->codec_id),
-                    ffmpegParams->nWidth,
-                    ffmpegParams->nHeight); 
-
-                return OMX_ErrorNone;
+            if (profile->nPortIndex != kInputPortIndex) {
+                return OMX_ErrorUndefined;
             }
+
+            mCtx->codec_id = (enum AVCodecID)profile->eCodecId;
+            mCtx->width    = profile->nWidth;
+            mCtx->height   = profile->nHeight;
+
+            ALOGD("got OMX_IndexParamVideoFFmpeg, "
+                "eCodecId:%ld(%s), width:%lu, height:%lu",
+                profile->eCodecId,
+                avcodec_get_name(mCtx->codec_id),
+                profile->nWidth,
+                profile->nHeight);
+
+            return OMX_ErrorNone;
+        }
+
+        default:
 
             return SimpleSoftOMXComponent::internalSetParameter(index, params);
     }

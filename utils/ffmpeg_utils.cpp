@@ -354,10 +354,10 @@ int parser_split(AVCodecContext *avctx,
         return 0;
     }
 
-    if (avctx->codec_id == CODEC_ID_H264) {
+    if (avctx->codec_id == AV_CODEC_ID_H264) {
         return h264_split(avctx, buf, buf_size, 0);
-    } else if (avctx->codec_id == CODEC_ID_MPEG2VIDEO ||
-            avctx->codec_id == CODEC_ID_MPEG4) {
+    } else if (avctx->codec_id == AV_CODEC_ID_MPEG2VIDEO ||
+            avctx->codec_id == AV_CODEC_ID_MPEG4) {
         return mpegvideo_split(avctx, buf, buf_size, 0);
     } else {
         ALOGE("parser split, unsupport the codec, id: 0x%0x", avctx->codec_id);
@@ -374,7 +374,7 @@ int is_extradata_compatible_with_android(AVCodecContext *avctx)
         return 0;
     }
 
-    if (avctx->codec_id == CODEC_ID_H264
+    if (avctx->codec_id == AV_CODEC_ID_H264
 			&& avctx->extradata[0] != 1 /* configurationVersion */) {
         // SPS + PPS
         return !!(h264_split(avctx, avctx->extradata,

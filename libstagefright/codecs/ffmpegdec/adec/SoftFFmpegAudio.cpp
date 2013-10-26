@@ -24,8 +24,6 @@
 #include <media/stagefright/foundation/hexdump.h>
 #include <media/stagefright/MediaDefs.h>
 
-#include <OMX_FFExt.h>
-
 #include "utils/ffmpeg_utils.h"
 
 #define DEBUG_PKT 0
@@ -265,37 +263,37 @@ status_t SoftFFmpegAudio::initDecoder() {
     mCtx->codec_type = AVMEDIA_TYPE_AUDIO;
     switch (mMode) {
     case MODE_AAC:
-        mCtx->codec_id = CODEC_ID_AAC;
+        mCtx->codec_id = AV_CODEC_ID_AAC;
         break;
     case MODE_MPEG:
-        mCtx->codec_id = CODEC_ID_MP3;
+        mCtx->codec_id = AV_CODEC_ID_MP3;
         break;
     case MODE_VORBIS:
-        mCtx->codec_id = CODEC_ID_VORBIS;
+        mCtx->codec_id = AV_CODEC_ID_VORBIS;
         break;
     case MODE_WMA:
-        mCtx->codec_id = CODEC_ID_WMAV2; //should be adjusted later
+        mCtx->codec_id = AV_CODEC_ID_WMAV2; //should be adjusted later
         break;
     case MODE_RA:
-        mCtx->codec_id = CODEC_ID_COOK;
+        mCtx->codec_id = AV_CODEC_ID_COOK;
         break;
     case MODE_FLAC:
-        mCtx->codec_id = CODEC_ID_FLAC;
+        mCtx->codec_id = AV_CODEC_ID_FLAC;
         break;
     case MODE_MPEGL2:
-        mCtx->codec_id = CODEC_ID_MP2;
+        mCtx->codec_id = AV_CODEC_ID_MP2;
         break;
     case MODE_AC3:
-        mCtx->codec_id = CODEC_ID_AC3;
+        mCtx->codec_id = AV_CODEC_ID_AC3;
         break;
     case MODE_APE:
-        mCtx->codec_id = CODEC_ID_APE;
+        mCtx->codec_id = AV_CODEC_ID_APE;
         break;
     case MODE_DTS:
-        mCtx->codec_id = CODEC_ID_DTS;
+        mCtx->codec_id = AV_CODEC_ID_DTS;
         break;
     case MODE_TRIAL:
-        mCtx->codec_id = CODEC_ID_NONE;
+        mCtx->codec_id = AV_CODEC_ID_NONE;
         break;
     default:
         CHECK(!"Should not be here. Unsupported codec");
@@ -561,28 +559,29 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalGetParameter(
             return OMX_ErrorNone;
         }
 
-        default:
-            if ((OMX_FF_INDEXTYPE)index == OMX_IndexParamAudioFFmpeg)
-            {
-                OMX_AUDIO_PARAM_FFMPEGTYPE *profile =
-                    (OMX_AUDIO_PARAM_FFMPEGTYPE *)params;
+        case OMX_IndexParamAudioFFmpeg:
+        {
+            OMX_AUDIO_PARAM_FFMPEGTYPE *profile =
+                (OMX_AUDIO_PARAM_FFMPEGTYPE *)params;
 
-                if (profile->nPortIndex != kInputPortIndex) {
-                    return OMX_ErrorUndefined;
-                }
-
-                CHECK(!isConfigured());
-
-                profile->eCodecId = 0; 
-                profile->nChannels = 0;
-                profile->nBitRate = 0;
-                profile->nBitsPerSample = 0;
-                profile->nSampleRate = 0;
-                profile->nBlockAlign = 0;
-                profile->eSampleFormat = 0;
-
-                return OMX_ErrorNone;
+            if (profile->nPortIndex != kInputPortIndex) {
+                return OMX_ErrorUndefined;
             }
+
+            CHECK(!isConfigured());
+
+            profile->eCodecId = 0;
+            profile->nChannels = 0;
+            profile->nBitRate = 0;
+            profile->nBitsPerSample = 0;
+            profile->nSampleRate = 0;
+            profile->nBlockAlign = 0;
+            profile->eSampleFormat = 0;
+
+            return OMX_ErrorNone;
+        }
+
+        default:
 
             return SimpleSoftOMXComponent::internalGetParameter(index, params);
     }
@@ -802,11 +801,11 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
             CHECK(!isConfigured());
 
             if (profile->eFormat == OMX_AUDIO_WMAFormat7) {
-               mCtx->codec_id = CODEC_ID_WMAV2;
+               mCtx->codec_id = AV_CODEC_ID_WMAV2;
             } else if (profile->eFormat == OMX_AUDIO_WMAFormat8) {
-               mCtx->codec_id = CODEC_ID_WMAPRO;
+               mCtx->codec_id = AV_CODEC_ID_WMAPRO;
             } else if (profile->eFormat == OMX_AUDIO_WMAFormat9) {
-               mCtx->codec_id = CODEC_ID_WMALOSSLESS;
+               mCtx->codec_id = AV_CODEC_ID_WMALOSSLESS;
             } else {
                 ALOGE("unsupported wma codec: 0x%x", profile->eFormat);
                 return OMX_ErrorUndefined;
@@ -971,41 +970,41 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
             return OMX_ErrorNone;
         }
 
-        default:
-            if ((OMX_FF_INDEXTYPE)index == OMX_IndexParamAudioFFmpeg)
-            {
-                OMX_AUDIO_PARAM_FFMPEGTYPE *profile =
-                    (OMX_AUDIO_PARAM_FFMPEGTYPE *)params;
+        case OMX_IndexParamAudioFFmpeg:
+        {
+            OMX_AUDIO_PARAM_FFMPEGTYPE *profile =
+                (OMX_AUDIO_PARAM_FFMPEGTYPE *)params;
 
-                if (profile->nPortIndex != kInputPortIndex) {
-                    return OMX_ErrorUndefined;
-                }
-
-                CHECK(!isConfigured());
-
-
-                mCtx->codec_id = (enum AVCodecID)profile->eCodecId; 
-                mCtx->channels = profile->nChannels;
-                mCtx->bit_rate = profile->nBitRate;
-                mCtx->bits_per_coded_sample = profile->nBitsPerSample;
-                mCtx->sample_rate = profile->nSampleRate;
-                mCtx->block_align = profile->nBlockAlign;
-                mCtx->sample_fmt = (AVSampleFormat)profile->eSampleFormat;
-
-                adjustAudioParams();
-
-                ALOGD("set OMX_IndexParamAudioFFmpeg, "
-                    "eCodecId:%ld(%s), nChannels:%lu, nBitRate:%lu, "
-                    "nBitsPerSample:%lu, nSampleRate:%lu, "
-                    "nBlockAlign:%lu, eSampleFormat:%lu(%s)",
-                    profile->eCodecId, avcodec_get_name(mCtx->codec_id),
-                    profile->nChannels, profile->nBitRate,
-                    profile->nBitsPerSample, profile->nSampleRate,
-                    profile->nBlockAlign, profile->eSampleFormat,
-                    av_get_sample_fmt_name(mCtx->sample_fmt));
-
-                return OMX_ErrorNone;
+            if (profile->nPortIndex != kInputPortIndex) {
+                return OMX_ErrorUndefined;
             }
+
+            CHECK(!isConfigured());
+
+
+            mCtx->codec_id = (enum AVCodecID)profile->eCodecId;
+            mCtx->channels = profile->nChannels;
+            mCtx->bit_rate = profile->nBitRate;
+            mCtx->bits_per_coded_sample = profile->nBitsPerSample;
+            mCtx->sample_rate = profile->nSampleRate;
+            mCtx->block_align = profile->nBlockAlign;
+            mCtx->sample_fmt = (AVSampleFormat)profile->eSampleFormat;
+
+            adjustAudioParams();
+
+            ALOGD("set OMX_IndexParamAudioFFmpeg, "
+                "eCodecId:%ld(%s), nChannels:%lu, nBitRate:%lu, "
+                "nBitsPerSample:%lu, nSampleRate:%lu, "
+                "nBlockAlign:%lu, eSampleFormat:%lu(%s)",
+                profile->eCodecId, avcodec_get_name(mCtx->codec_id),
+                profile->nChannels, profile->nBitRate,
+                profile->nBitsPerSample, profile->nSampleRate,
+                profile->nBlockAlign, profile->eSampleFormat,
+                av_get_sample_fmt_name(mCtx->sample_fmt));
+            return OMX_ErrorNone;
+        }
+
+        default:
 
             return SimpleSoftOMXComponent::internalSetParameter(index, params);
     }

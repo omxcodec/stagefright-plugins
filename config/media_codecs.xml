@@ -96,6 +96,7 @@ Only the three quirks included above are recognized at this point:
         <MediaCodec name="OMX.ffmpeg.vc1.decoder"    type="video/vc1" />
         <MediaCodec name="OMX.ffmpeg.flv1.decoder"    type="video/x-flv" />
         <MediaCodec name="OMX.ffmpeg.divx.decoder"    type="video/divx" />
+        <MediaCodec name="OMX.ffmpeg.hevc.decoder"    type="video/hevc" />
         <MediaCodec name="OMX.ffmpeg.vtrial.decoder" type="video/ffmpeg" />
 
         <!-- ffmpeg audio codec -->

@@ -91,6 +91,7 @@ private:
         MODE_VC1,
         MODE_FLV1,
         MODE_DIVX,
+        MODE_HEVC,
         MODE_TRIAL
     } mMode;
 
