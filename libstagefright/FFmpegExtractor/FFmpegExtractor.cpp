@@ -1776,7 +1776,14 @@ static void adjustMPEG4Confidence(AVFormatContext *ic, float *confidence)
 static void adjustVideoCodecConfidence(AVFormatContext *ic,
 		enum AVCodecID codec_id, float *confidence)
 {
-	//add to here
+	switch (codec_id) {
+	case AV_CODEC_ID_HEVC:
+		ALOGI("ffmpeg can demux hevc only");
+		*confidence = 0.88f;
+		break;
+	default:
+		break;
+	}
 }
 
 //TODO. if the other stream(e.g. mp3) is supported by stagefright
