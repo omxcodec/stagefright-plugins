@@ -375,7 +375,7 @@ static uint32_t get_sample_rate(const uint8_t sf_index)
 
 int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
 {
-    enum AVCodecID codec_id = CODEC_ID_NONE;
+    enum AVCodecID codec_id = AV_CODEC_ID_NONE;
     const char *name = NULL;
     bool *defersToCreateTrack = NULL;
     AVBitStreamFilterContext **bsfc = NULL;
@@ -392,16 +392,16 @@ int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
 	codec_id = avctx->codec_id;
 
     // ignore extradata
-    if (codec_id != CODEC_ID_H264
-            && codec_id != CODEC_ID_MPEG4
-            && codec_id != CODEC_ID_MPEG1VIDEO
-            && codec_id != CODEC_ID_MPEG2VIDEO
-            && codec_id != CODEC_ID_AAC) {
+    if (codec_id != AV_CODEC_ID_H264
+            && codec_id != AV_CODEC_ID_MPEG4
+            && codec_id != AV_CODEC_ID_MPEG1VIDEO
+            && codec_id != AV_CODEC_ID_MPEG2VIDEO
+            && codec_id != AV_CODEC_ID_AAC) {
         return 1;
     }
 
     // is extradata compatible with android?
-    if (codec_id != CODEC_ID_AAC) {
+    if (codec_id != AV_CODEC_ID_AAC) {
         int is_compatible = is_extradata_compatible_with_android(avctx);
         if (!is_compatible) {
             ALOGI("%s extradata is not compatible with android, should to extract it from bitstream",
@@ -413,7 +413,7 @@ int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
         return 1;
     }
 
-    if (codec_id == CODEC_ID_AAC) {
+    if (codec_id == AV_CODEC_ID_AAC) {
         name = "aac_adtstoasc";
     }
 
@@ -461,34 +461,35 @@ bool FFmpegExtractor::is_codec_supported(enum AVCodecID codec_id)
     bool supported = false;
 
     switch(codec_id) {
-    case CODEC_ID_H264:
-    case CODEC_ID_MPEG4:
-    case CODEC_ID_H263:
-    case CODEC_ID_H263P:
-    case CODEC_ID_H263I:
-    case CODEC_ID_AAC:
-    case CODEC_ID_AC3:
-    case CODEC_ID_MP2:
-    case CODEC_ID_MP3:
-    case CODEC_ID_MPEG1VIDEO:
-    case CODEC_ID_MPEG2VIDEO:
-    case CODEC_ID_WMV1:
-    case CODEC_ID_WMV2:
-    case CODEC_ID_WMV3:
-    case CODEC_ID_VC1:
-    case CODEC_ID_WMAV1:
-    case CODEC_ID_WMAV2:
-    case CODEC_ID_WMAPRO:
-    case CODEC_ID_WMALOSSLESS:
-    case CODEC_ID_RV20:
-    case CODEC_ID_RV30:
-    case CODEC_ID_RV40:
-    case CODEC_ID_COOK:
-    case CODEC_ID_APE:
-    case CODEC_ID_DTS:
-    case CODEC_ID_FLAC:
-    case CODEC_ID_FLV1:
-    case CODEC_ID_VORBIS:
+    case AV_CODEC_ID_H264:
+    case AV_CODEC_ID_MPEG4:
+    case AV_CODEC_ID_H263:
+    case AV_CODEC_ID_H263P:
+    case AV_CODEC_ID_H263I:
+    case AV_CODEC_ID_AAC:
+    case AV_CODEC_ID_AC3:
+    case AV_CODEC_ID_MP2:
+    case AV_CODEC_ID_MP3:
+    case AV_CODEC_ID_MPEG1VIDEO:
+    case AV_CODEC_ID_MPEG2VIDEO:
+    case AV_CODEC_ID_WMV1:
+    case AV_CODEC_ID_WMV2:
+    case AV_CODEC_ID_WMV3:
+    case AV_CODEC_ID_VC1:
+    case AV_CODEC_ID_WMAV1:
+    case AV_CODEC_ID_WMAV2:
+    case AV_CODEC_ID_WMAPRO:
+    case AV_CODEC_ID_WMALOSSLESS:
+    case AV_CODEC_ID_RV20:
+    case AV_CODEC_ID_RV30:
+    case AV_CODEC_ID_RV40:
+    case AV_CODEC_ID_COOK:
+    case AV_CODEC_ID_APE:
+    case AV_CODEC_ID_DTS:
+    case AV_CODEC_ID_FLAC:
+    case AV_CODEC_ID_FLV1:
+    case AV_CODEC_ID_VORBIS:
+    case AV_CODEC_ID_HEVC:
 
         supported = true;
         break;
@@ -576,7 +577,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         meta = new MetaData;
 
         switch(avctx->codec_id) {
-        case CODEC_ID_H264:
+        case AV_CODEC_ID_H264:
             /**
              * H.264 Video Types
              * http://msdn.microsoft.com/en-us/library/dd757808(v=vs.85).aspx
@@ -612,7 +613,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
                 meta = MakeAVCCodecSpecificData(buffer);
             }
             break;
-        case CODEC_ID_MPEG4:
+        case AV_CODEC_ID_MPEG4:
             ALOGV("MPEG4");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_MPEG4);
             {
@@ -622,15 +623,15 @@ int FFmpegExtractor::stream_component_open(int stream_index)
                 meta->setData(kKeyESDS, kTypeESDS, esds->data(), esds->size());
             }
             break;
-        case CODEC_ID_H263:
-        case CODEC_ID_H263P:
-        case CODEC_ID_H263I:
+        case AV_CODEC_ID_H263:
+        case AV_CODEC_ID_H263P:
+        case AV_CODEC_ID_H263I:
             ALOGV("H263");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_H263);
             break;
-        case CODEC_ID_MPEG1VIDEO:
-        case CODEC_ID_MPEG2VIDEO:
-            ALOGV("MPEG%dVIDEO", avctx->codec_id == CODEC_ID_MPEG2VIDEO ? 2 : 1);
+        case AV_CODEC_ID_MPEG1VIDEO:
+        case AV_CODEC_ID_MPEG2VIDEO:
+            ALOGV("MPEG%dVIDEO", avctx->codec_id == AV_CODEC_ID_MPEG2VIDEO ? 2 : 1);
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_MPEG2);
             {
                 sp<ABuffer> csd = new ABuffer(avctx->extradata_size);
@@ -639,48 +640,53 @@ int FFmpegExtractor::stream_component_open(int stream_index)
                 meta->setData(kKeyESDS, kTypeESDS, esds->data(), esds->size());
             }
             break;
-        case CODEC_ID_VC1:
+        case AV_CODEC_ID_VC1:
             ALOGV("VC1");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_VC1);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
-        case CODEC_ID_WMV1:
+        case AV_CODEC_ID_WMV1:
             ALOGV("WMV1");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV);
             meta->setInt32(kKeyWMVVersion, kTypeWMVVer_7);
             break;
-        case CODEC_ID_WMV2:
+        case AV_CODEC_ID_WMV2:
             ALOGV("WMV2");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             meta->setInt32(kKeyWMVVersion, kTypeWMVVer_8);
             break;
-        case CODEC_ID_WMV3:
+        case AV_CODEC_ID_WMV3:
             ALOGV("WMV3");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_WMV);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             meta->setInt32(kKeyWMVVersion, kTypeWMVVer_9);
             break;
-        case CODEC_ID_RV20:
+        case AV_CODEC_ID_RV20:
             ALOGV("RV30");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_RV);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             meta->setInt32(kKeyRVVersion, kTypeRVVer_G2); //http://en.wikipedia.org/wiki/RealVideo
-        case CODEC_ID_RV30:
+        case AV_CODEC_ID_RV30:
             ALOGV("RV30");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_RV);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             meta->setInt32(kKeyRVVersion, kTypeRVVer_8); //http://en.wikipedia.org/wiki/RealVideo
             break;
-        case CODEC_ID_RV40:
+        case AV_CODEC_ID_RV40:
             ALOGV("RV40");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_RV);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             meta->setInt32(kKeyRVVersion, kTypeRVVer_9); //http://en.wikipedia.org/wiki/RealVideo
             break;
-        case CODEC_ID_FLV1:
+        case AV_CODEC_ID_FLV1:
             ALOGV("FLV1");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_FLV1);
+            meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
+            break;
+        case AV_CODEC_ID_HEVC:
+            ALOGV("HEVC");
+            meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_HEVC);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
         default:
@@ -756,28 +762,28 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         }
 
         switch(avctx->codec_id) {
-        case CODEC_ID_MP2:
+        case AV_CODEC_ID_MP2:
             ALOGV("MP2");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_MPEG_LAYER_II);
             break;
-        case CODEC_ID_MP3:
+        case AV_CODEC_ID_MP3:
             ALOGV("MP3");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_MPEG);
             break;
-        case CODEC_ID_VORBIS:
+        case AV_CODEC_ID_VORBIS:
             ALOGV("VORBIS");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_VORBIS);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
-        case CODEC_ID_AC3:
+        case AV_CODEC_ID_AC3:
             ALOGV("AC3");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_AC3);
             break;
-        case CODEC_ID_AAC:
+        case AV_CODEC_ID_AAC:
             ALOGV("AAC");
             uint32_t sr;
             const uint8_t *header;
@@ -804,52 +810,52 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             meta = MakeAACCodecSpecificData(profile, sf_index, channel);
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_AAC);
             break;
-        case CODEC_ID_WMAV1:  // TODO, version?
+        case AV_CODEC_ID_WMAV1:  // TODO, version?
             ALOGV("WMAV1");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_WMA);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
-        case CODEC_ID_WMAV2:
+        case AV_CODEC_ID_WMAV2:
             ALOGV("WMAV2");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_WMA);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             meta->setInt32(kKeyWMAVersion, kTypeWMA);
             break;
-        case CODEC_ID_WMAPRO:
+        case AV_CODEC_ID_WMAPRO:
             ALOGV("WMAPRO");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_WMA);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             meta->setInt32(kKeyWMAVersion, kTypeWMAPro);
             break;
-        case CODEC_ID_WMALOSSLESS:
+        case AV_CODEC_ID_WMALOSSLESS:
             ALOGV("WMALOSSLESS");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_WMA);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             meta->setInt32(kKeyWMAVersion, kTypeWMALossLess);
             break;
-        case CODEC_ID_COOK: // audio codec in RMVB
+        case AV_CODEC_ID_COOK: // audio codec in RMVB
             ALOGV("COOK");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_RA);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
-        case CODEC_ID_APE:
+        case AV_CODEC_ID_APE:
             ALOGV("APE");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_APE);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
-        case CODEC_ID_DTS:
+        case AV_CODEC_ID_DTS:
             ALOGV("DTS");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_DTS);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             break;
-        case CODEC_ID_FLAC:
+        case AV_CODEC_ID_FLAC:
             ALOGV("FLAC");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_FLAC);
@@ -1733,6 +1739,7 @@ static formatmap FILE_FORMATS[] = {
         {"ac3",                     MEDIA_MIMETYPE_AUDIO_AC3          },
         {"wav",                     MEDIA_MIMETYPE_CONTAINER_WAV      },
         {"ogg",                     MEDIA_MIMETYPE_CONTAINER_OGG      },
+        {"hevc",                     MEDIA_MIMETYPE_CONTAINER_HEVC    },
 };
 
 static void adjustMPEG4Confidence(AVFormatContext *ic, float *confidence)
@@ -1777,12 +1784,12 @@ static void adjustAudioCodecConfidence(AVFormatContext *ic,
 		enum AVCodecID codec_id, float *confidence)
 {
 	switch (codec_id) {
-	case CODEC_ID_AC3:
+	case AV_CODEC_ID_AC3:
 		ALOGI("ffmpeg can demux ac3 only");
 		*confidence = 0.88f;
 		break;
-	case CODEC_ID_MP1:
-	case CODEC_ID_MP2:
+	case AV_CODEC_ID_MP1:
+	case AV_CODEC_ID_MP2:
 		//TODO. if the other stream(e.g. mp3) is supported by stagefright
 		ALOGI("ffmpeg can demux mp1 and mp2 only");
 		*confidence = 0.88f;
@@ -1813,7 +1820,7 @@ static void adjustCodecConfidence(AVFormatContext *ic, float *confidence)
 		} else if (codec_type == AVMEDIA_TYPE_AUDIO) {
 			haveAudio = true;
 			adjustAudioCodecConfidence(ic, codec_id, confidence);
-			if (codec_id == CODEC_ID_MP3)
+			if (codec_id == AV_CODEC_ID_MP3)
 				haveMP3 = true;
 		}
 	}
@@ -2028,6 +2035,7 @@ MediaExtractor *CreateFFmpegExtractor(const sp<DataSource> &source, const char *
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MP2)       ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_RA)        ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_OGG)       ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_HEVC)      ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_WMA))) {
         ret = new FFmpegExtractor(source);
     }
