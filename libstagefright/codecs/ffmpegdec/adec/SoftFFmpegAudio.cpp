@@ -1176,9 +1176,12 @@ int32_t SoftFFmpegAudio::decodeAudio() {
         ALOGV("ffmpeg audio decoder, consume pkt len: %d", len);
 #endif
         if (!gotFrm) {
+#if DEBUG_FRM
             ALOGI("ffmpeg audio decoder failed to get frame.");
+#endif
             //stop sending empty packets if the decoder is finished
             if (is_flush && mCtx->codec->capabilities & CODEC_CAP_DELAY) {
+                ALOGI("ffmpeg audio decoder failed to get more frames when flush.");
 			    ret = ERR_FLUSHED;
 		    } else {
 		        ret = ERR_NO_FRM;
