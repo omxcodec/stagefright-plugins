@@ -1742,16 +1742,50 @@ static formatmap FILE_FORMATS[] = {
         {"hevc",                    MEDIA_MIMETYPE_CONTAINER_HEVC     },
 };
 
+static enum AVCodecID getCodecId(AVFormatContext *ic, AVMediaType codec_type)
+{
+	unsigned int idx = 0;
+	AVCodecContext *avctx = NULL;
+
+	for (idx = 0; idx < ic->nb_streams; idx++) {
+		avctx = ic->streams[idx]->codec;
+		if (avctx->codec_type == codec_type) {
+			return avctx->codec_id;
+		}
+	}
+
+	return AV_CODEC_ID_NONE;
+}
+
 static void adjustMPEG4Confidence(AVFormatContext *ic, float *confidence)
 {
 	AVDictionary *tags = NULL;
 	AVDictionaryEntry *tag = NULL;
+	enum AVCodecID codec_id = AV_CODEC_ID_NONE;
 
+	//1. check codec id
+	codec_id = getCodecId(ic, AVMEDIA_TYPE_VIDEO);
+	if (codec_id != AV_CODEC_ID_H264 && codec_id != AV_CODEC_ID_MPEG4
+			&& codec_id != AV_CODEC_ID_H263 && codec_id != AV_CODEC_ID_H263P
+			&& codec_id != AV_CODEC_ID_H263I) {
+		//the MEDIA_MIMETYPE_CONTAINER_MPEG4 of confidence is 0.4f
+		ALOGI("[mp4]video codec(%s), confidence should be larger than MPEG4Extractor",
+				avcodec_get_name(codec_id));
+		*confidence = 0.41f;
+	}
+
+	codec_id = getCodecId(ic, AVMEDIA_TYPE_AUDIO);
+	if (codec_id != AV_CODEC_ID_MP3 && codec_id != AV_CODEC_ID_AAC
+			&& codec_id != AV_CODEC_ID_AMR_NB && codec_id != AV_CODEC_ID_AMR_WB) {
+		ALOGI("[mp4]audio codec(%s), confidence should be larger than MPEG4Extractor",
+				avcodec_get_name(codec_id));
+		*confidence = 0.41f;
+	}
+
+	//2. check tag
 	tags = ic->metadata;
-
 	//NOTE: You can use command to show these tags,
 	//e.g. "ffprobe -show_format 2012.mov"
-
 	tag = av_dict_get(tags, "major_brand", NULL, 0);
 	if (!tag) {
 		return;
@@ -1767,8 +1801,7 @@ static void adjustMPEG4Confidence(AVFormatContext *ic, float *confidence)
 	//  FOURCC('q', 't', ' ', ' '),  // Apple's QuickTime
 	//So......
 	if (!strcmp(tag->value, "qt  ")) {
-		ALOGI("format is mov, confidence should be larger than mpeg4");
-		//the MEDIA_MIMETYPE_CONTAINER_MPEG4 of confidence is 0.4f
+		ALOGI("[mp4]format is mov, confidence should be larger than mpeg4");
 		*confidence = 0.41f;
 	}
 }
@@ -1816,20 +1849,18 @@ static void adjustCodecConfidence(AVFormatContext *ic, float *confidence)
 	bool haveAudio = false;
 	bool haveMP3 = false;
 
-	for (idx = 0; idx < ic->nb_streams; idx++) {
-		avctx = ic->streams[idx]->codec;
-		codec_type = avctx->codec_type;
-		codec_id = avctx->codec_id;
+	codec_id = getCodecId(ic, AVMEDIA_TYPE_VIDEO);
+	if (codec_id != AV_CODEC_ID_NONE) {
+		haveVideo = true;
+		adjustVideoCodecConfidence(ic, codec_id, confidence);
+	}
 
-		if (codec_type == AVMEDIA_TYPE_VIDEO) {
-			haveVideo = true;
-			adjustVideoCodecConfidence(ic, codec_id, confidence);
-		} else if (codec_type == AVMEDIA_TYPE_AUDIO) {
-			haveAudio = true;
-			adjustAudioCodecConfidence(ic, codec_id, confidence);
-			if (codec_id == AV_CODEC_ID_MP3)
-				haveMP3 = true;
-		}
+	codec_id = getCodecId(ic, AVMEDIA_TYPE_AUDIO);
+	if (codec_id != AV_CODEC_ID_NONE) {
+		haveAudio = true;
+		adjustAudioCodecConfidence(ic, codec_id, confidence);
+		if (codec_id == AV_CODEC_ID_MP3)
+			haveMP3 = true;
 	}
 
 	if (haveVideo && haveMP3) {
