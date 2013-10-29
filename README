@@ -53,7 +53,10 @@ How to build
    directories.
  
 2. Compile
-   compile your android source tree again!
+   add USES_NAM flag to COMMON_GLOBAL_CFLAGS in your android build system(e.g. my device: maguro)
+   vi vendor/samsung/maguro/BoardConfigVendor.mk and add this line to it
+       COMMON_GLOBAL_CFLAGS += -DUSES_NAM
+   then compile your android source tree again!
 
 3. Install
    adb root

@@ -52,7 +52,10 @@ branch: cm_maguro-10.1
    "android/frameworks/native"和"android/frameworks/av"两个目录。
  
 2. 编译
-   请重新编译你的整个Android系统。
+   根据你的设备(比如说我的设备: maguro)，增加"USES_NAM" flag到Android全局编译参数"COMMON_GLOBAL_CFLAGS"中.
+   编辑 vendor/samsung/maguro/BoardConfigVendor.mk 增加如下一行:
+       COMMON_GLOBAL_CFLAGS += -DUSES_NAM
+   然后请重新编译你的整个Android系统。
 
 3. 安装
    adb root
