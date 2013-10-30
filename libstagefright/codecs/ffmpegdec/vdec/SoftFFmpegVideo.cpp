@@ -144,7 +144,7 @@ void SoftFFmpegVideo::initInputFormat(uint32_t mode,
         break;
     case MODE_VC1:
         def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_VC1);
-        def.format.video.eCompressionFormat = OMX_VIDEO_CodingWMV;
+        def.format.video.eCompressionFormat = OMX_VIDEO_CodingVC1;
         break;
     case MODE_FLV1:
         def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_FLV1);
