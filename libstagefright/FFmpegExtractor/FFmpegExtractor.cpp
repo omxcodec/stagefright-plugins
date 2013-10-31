@@ -1765,8 +1765,11 @@ static void adjustMPEG4Confidence(AVFormatContext *ic, float *confidence)
 
 	//1. check codec id
 	codec_id = getCodecId(ic, AVMEDIA_TYPE_VIDEO);
-	if (codec_id != AV_CODEC_ID_H264 && codec_id != AV_CODEC_ID_MPEG4
-			&& codec_id != AV_CODEC_ID_H263 && codec_id != AV_CODEC_ID_H263P
+	if (codec_id != AV_CODEC_ID_NONE
+			&& codec_id != AV_CODEC_ID_H264
+			&& codec_id != AV_CODEC_ID_MPEG4
+			&& codec_id != AV_CODEC_ID_H263
+			&& codec_id != AV_CODEC_ID_H263P
 			&& codec_id != AV_CODEC_ID_H263I) {
 		//the MEDIA_MIMETYPE_CONTAINER_MPEG4 of confidence is 0.4f
 		ALOGI("[mp4]video codec(%s), confidence should be larger than MPEG4Extractor",
@@ -1775,8 +1778,11 @@ static void adjustMPEG4Confidence(AVFormatContext *ic, float *confidence)
 	}
 
 	codec_id = getCodecId(ic, AVMEDIA_TYPE_AUDIO);
-	if (codec_id != AV_CODEC_ID_MP3 && codec_id != AV_CODEC_ID_AAC
-			&& codec_id != AV_CODEC_ID_AMR_NB && codec_id != AV_CODEC_ID_AMR_WB) {
+	if (codec_id != AV_CODEC_ID_NONE
+			&& codec_id != AV_CODEC_ID_MP3
+			&& codec_id != AV_CODEC_ID_AAC
+			&& codec_id != AV_CODEC_ID_AMR_NB
+			&& codec_id != AV_CODEC_ID_AMR_WB) {
 		ALOGI("[mp4]audio codec(%s), confidence should be larger than MPEG4Extractor",
 				avcodec_get_name(codec_id));
 		*confidence = 0.41f;
