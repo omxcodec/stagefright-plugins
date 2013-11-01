@@ -918,7 +918,7 @@ int32_t SoftFFmpegVideo::drainOneOutputBuffer() {
 
     int sws_flags = SWS_BICUBIC;
     mImgConvertCtx = sws_getCachedContext(mImgConvertCtx,
-           mWidth, mHeight, mCtx->pix_fmt, mWidth, mHeight,
+           mWidth, mHeight, (AVPixelFormat)mFrame->format, mWidth, mHeight,
            PIX_FMT_YUV420P, sws_flags, NULL, NULL, NULL);
     if (mImgConvertCtx == NULL) {
         ALOGE("Cannot initialize the conversion context");
@@ -948,7 +948,7 @@ int32_t SoftFFmpegVideo::drainOneOutputBuffer() {
     if (pts == AV_NOPTS_VALUE) {
         pts = 0;
     }
-    outHeader->nTimeStamp = pts;
+    outHeader->nTimeStamp = pts; //FIXME pts is right???
 
 #if DEBUG_FRM
     ALOGV("mFrame pts: %lld", pts);
@@ -1041,7 +1041,7 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
     }
 
     while (((mEOSStatus != INPUT_DATA_AVAILABLE) || !inQueue.empty())
-            && !outQueue.empty()) {
+            && outQueue.size() == kNumOutputBuffers) {
         if (mEOSStatus == INPUT_EOS_SEEN) {
             drainAllOutputBuffers();
             return;
@@ -1148,7 +1148,8 @@ void SoftFFmpegVideo::updatePortDefinitions() {
     def->format.video.nStride = def->format.video.nFrameWidth;
     def->format.video.nSliceHeight = def->format.video.nFrameHeight;
     def->nBufferSize =
-            def->format.video.nFrameWidth * def->format.video.nFrameHeight;
+        (def->format.video.nFrameWidth
+            * def->format.video.nFrameHeight * 3) / 2;
 
     def = &editPortInfo(1)->mDef;
     def->format.video.nFrameWidth = mWidth;

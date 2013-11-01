@@ -112,7 +112,7 @@ private:
     };
 
     bool mFFmpegAlreadyInited;
-	bool mCodecAlreadyOpened;
+    bool mCodecAlreadyOpened;
 	bool mPendingFrameAsSettingChanged;
     AVCodecContext *mCtx;
     struct SwsContext *mImgConvertCtx;
