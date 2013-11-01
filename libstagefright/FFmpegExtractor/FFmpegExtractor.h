@@ -72,7 +72,7 @@ struct Track;
 struct String8;
 
 struct FFmpegExtractor : public MediaExtractor {
-    FFmpegExtractor(const sp<DataSource> &source);
+    FFmpegExtractor(const sp<DataSource> &source, const sp<AMessage> &meta);
 
     virtual size_t countTracks();
     virtual sp<MediaSource> getTrack(size_t index);
@@ -95,7 +95,7 @@ private:
 
     KeyedVector<unsigned, sp<Track> > mTracks;
 
-    char mFilename[1024];
+    char mFilename[PATH_MAX];
     int mGenPTS;
     int mVideoDisable;
     int mAudioDisable;
@@ -136,7 +136,7 @@ private:
     static int decode_interrupt_cb(void *ctx);
     int initStreams();
     void deInitStreams();
-    void buildFileName(const sp<DataSource> &source);
+    void buildFileName(const sp<AMessage> &meta);
     void setFFmpegDefaultOpts();
     void printTime(int64_t time);
 	bool is_codec_supported(enum AVCodecID codec_id);

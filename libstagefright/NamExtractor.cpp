@@ -71,7 +71,7 @@ MediaExtractor *createExtractor(const sp<DataSource> &source, const char *mime) 
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MP2)       ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_RA)        ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_WMA)) {
-        ret = new FFmpegExtractor(source);
+        ret = new FFmpegExtractor(source, NULL);
     }
 
     if (ret)

@@ -107,7 +107,7 @@ private:
 
 ////////////////////////////////////////////////////////////////////////////////
 
-FFmpegExtractor::FFmpegExtractor(const sp<DataSource> &source)
+FFmpegExtractor::FFmpegExtractor(const sp<DataSource> &source, const sp<AMessage> &meta)
     : mDataSource(source),
       mMeta(new MetaData),
       mInitCheck(NO_INIT),
@@ -116,7 +116,7 @@ FFmpegExtractor::FFmpegExtractor(const sp<DataSource> &source)
       mReaderThreadStarted(false) {
     ALOGV("FFmpegExtractor::FFmpegExtractor");
 
-    buildFileName(source);
+    buildFileName(meta);
 
     int err = initStreams();
     if (err < 0) {
@@ -1021,27 +1021,18 @@ int FFmpegExtractor::decode_interrupt_cb(void *ctx)
     return extrator->mAbortRequest;
 }
 
-void FFmpegExtractor::buildFileName(const sp<DataSource> &source)
+void FFmpegExtractor::buildFileName(const sp<AMessage> &meta)
 {
-#if 1
-    ALOGI("android-source:%p", source.get());
-    // pass the addr of smart pointer("source")
-    snprintf(mFilename, sizeof(mFilename), "android-source:%p", source.get());
-    ALOGI("build mFilename: %s", mFilename);
-#else
-    const char *url = mDataSource->getNamURI();
-    if (url == NULL) {
-        ALOGI("url is error!");
-        return;
-    }
-    // is it right?
-    if (!strcmp(url, "-")) {
-        av_strlcpy(mFilename, "pipe:", strlen("pipe:") + 1);
-    } else {
-        av_strlcpy(mFilename, url, strlen(url) + 1);
-    }
-    ALOGI("build url: %s, mFilename: %s", url, mFilename);
-#endif
+    AString url;
+
+    CHECK(meta.get() != NULL);
+    CHECK(meta->findString("extended-extractor-url", &url));
+    CHECK(url.c_str() != NULL);
+    CHECK(url.size() < PATH_MAX);
+
+    memcpy(mFilename, url.c_str(), url.size());
+    mFilename[url.size()] = '\0';
+    ALOGD("build mFilename: %s", mFilename);
 }
 
 void FFmpegExtractor::setFFmpegDefaultOpts()
@@ -1132,6 +1123,7 @@ int FFmpegExtractor::initStreams()
         ret = -1;
         goto fail;
     }
+
     if ((t = av_dict_get(format_opts, "", NULL, AV_DICT_IGNORE_SUFFIX))) {
         ALOGE("Option %s not found.\n", t->key);
         //ret = AVERROR_OPTION_NOT_FOUND;
@@ -1739,6 +1731,7 @@ static formatmap FILE_FORMATS[] = {
         {"ac3",                     MEDIA_MIMETYPE_AUDIO_AC3          },
         {"wav",                     MEDIA_MIMETYPE_CONTAINER_WAV      },
         {"ogg",                     MEDIA_MIMETYPE_CONTAINER_OGG      },
+        {"vc1",                     MEDIA_MIMETYPE_CONTAINER_VC1      },
         {"hevc",                    MEDIA_MIMETYPE_CONTAINER_HEVC     },
 };
 
@@ -1974,28 +1967,47 @@ fail:
 	return container;
 }
 
-static const char *LegacySniffFFMPEG(const sp<DataSource> &source, float *confidence)
+static const char *LegacySniffFFMPEG(const sp<DataSource> &source,
+         float *confidence, sp<AMessage> meta)
 {
+	const char *ret = NULL;
+	char url[PATH_MAX] = {0};
+
 	String8 uri = source->getUri();
-	if (uri.empty()) {
+	if (!uri.string()) {
 		return NULL;
 	}
 
 	ALOGI("source url:%s", uri.string());
 
-	return SniffFFMPEGCommon(uri.string(), confidence);
+	// pass the addr of smart pointer("source") + file name
+	snprintf(url, sizeof(url), "android-source:%p|file:%s", source.get(), uri.string());
+
+	ret = SniffFFMPEGCommon(url, confidence);
+	if (ret) {
+		meta->setString("extended-extractor-url", url);
+	}
+
+	return ret;
 }
 
-static const char *BetterSniffFFMPEG(const sp<DataSource> &source, float *confidence)
+static const char *BetterSniffFFMPEG(const sp<DataSource> &source,
+        float *confidence, sp<AMessage> meta)
 {
-	char url[128] = {0};
+	const char *ret = NULL;
+	char url[PATH_MAX] = {0};
 
 	ALOGI("android-source:%p", source.get());
 
 	// pass the addr of smart pointer("source")
 	snprintf(url, sizeof(url), "android-source:%p", source.get());
 
-	return SniffFFMPEGCommon(url, confidence);
+	ret = SniffFFMPEGCommon(url, confidence);
+	if (ret) {
+		meta->setString("extended-extractor-url", url);
+	}
+
+	return ret;
 }
 
 bool SniffFFMPEG(
@@ -2003,12 +2015,13 @@ bool SniffFFMPEG(
         sp<AMessage> *meta) {
 	ALOGV("SniffFFMPEG");
 
+	*meta = new AMessage;
 	*confidence = 0.08f;  // be the last resort, by default
 
-	const char *container = BetterSniffFFMPEG(source, confidence);
+	const char *container = BetterSniffFFMPEG(source, confidence, *meta);
 	if (!container) {
 		ALOGW("sniff through BetterSniffFFMPEG failed, try LegacySniffFFMPEG");
-		container = LegacySniffFFMPEG(source, confidence);
+		container = LegacySniffFFMPEG(source, confidence, *meta);
 		if (container) {
 			ALOGI("sniff through LegacySniffFFMPEG success");
 		}
@@ -2018,6 +2031,8 @@ bool SniffFFMPEG(
 
 	if (container == NULL) {
 		ALOGD("SniffFFMPEG failed to sniff this source");
+		(*meta)->clear();
+		*meta = NULL;
 		return false;
 	}
 
@@ -2029,12 +2044,13 @@ bool SniffFFMPEG(
 			&& (source->flags() & DataSource::kIsCachingDataSource)) {
 		ALOGI("support container: %s, but it is caching data source, "
 				"Don't use ffmpegextractor", container);
+		(*meta)->clear();
+		*meta = NULL;
 		return false;
 	}
 
 	mimeType->setTo(container);
 
-	*meta = new AMessage;
 	(*meta)->setString("extended-extractor", "extended-extractor");
 	(*meta)->setString("extended-extractor-subtype", "ffmpegextractor");
 
@@ -2079,9 +2095,10 @@ MediaExtractor *CreateFFmpegExtractor(const sp<DataSource> &source, const char *
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MP2)       ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_RA)        ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_OGG)       ||
+            !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_VC1)       ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_HEVC)      ||
             !strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_WMA))) {
-        ret = new FFmpegExtractor(source);
+        ret = new FFmpegExtractor(source, meta);
     }
 
     ALOGD("%ssupported mime: %s", (ret ? "" : "un"), mime);
