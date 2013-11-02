@@ -81,6 +81,7 @@ SoftFFmpegVideo::SoftFFmpegVideo(
       mMode(MODE_NONE),
       mFFmpegAlreadyInited(false),
       mCodecAlreadyOpened(false),
+      mPendingSettingChangeEvent(false),
       mPendingFrameAsSettingChanged(false),
       mCtx(NULL),
       mImgConvertCtx(NULL),
@@ -676,6 +677,10 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
     }
 }
 
+bool SoftFFmpegVideo::isPortSettingChanged() {
+    return (mCtx->width != mWidth || mCtx->height != mHeight);
+}
+
 bool SoftFFmpegVideo::handlePortSettingChangeEvent() {
     if (mCtx->width != mWidth || mCtx->height != mHeight) {
        ALOGI("ffmpeg video port setting change event(%dx%d)->(%dx%d).",
@@ -827,6 +832,8 @@ int32_t SoftFFmpegVideo::decodeVideo() {
         //don't send error to OMXCodec, skip!
         ret = ERR_NO_FRM;
     } else {
+        mPendingSettingChangeEvent = isPortSettingChanged();
+
         if (!gotPic) {
             ALOGI("ffmpeg video decoder failed to get frame.");
             //stop sending empty packets if the decoder is finished
@@ -836,7 +843,7 @@ int32_t SoftFFmpegVideo::decodeVideo() {
                 ret = ERR_NO_FRM;
             }
         } else {
-            if (handlePortSettingChangeEvent()) {
+            if (mPendingSettingChangeEvent) {
                 mPendingFrameAsSettingChanged = true;
             }
 			ret = ERR_OK;
@@ -1008,8 +1015,8 @@ void SoftFFmpegVideo::drainAllOutputBuffers() {
                 return;
             } else {
                 CHECK_EQ(err, ERR_OK);
-                if (mPendingFrameAsSettingChanged) {
-					return;
+                if (mPendingSettingChangeEvent) {
+                    return;
                 }
             }
 		}
@@ -1041,10 +1048,19 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
     }
 
     while (((mEOSStatus != INPUT_DATA_AVAILABLE) || !inQueue.empty())
-            && outQueue.size() == kNumOutputBuffers) {
+            && !outQueue.empty()) {
+        if (mPendingSettingChangeEvent) {
+            //fix crash! We don't notify event until wait for all output buffers
+            if (outQueue.size() == kNumOutputBuffers) {
+                CHECK(handlePortSettingChangeEvent() == true);
+                mPendingSettingChangeEvent = false;
+            }
+            return;
+        }
+
         if (mEOSStatus == INPUT_EOS_SEEN) {
             drainAllOutputBuffers();
-            return;
+            continue;
         }
 
         inInfo   = *inQueue.begin();
@@ -1085,8 +1101,8 @@ void SoftFFmpegVideo::onQueueFilled(OMX_U32 portIndex) {
                 continue;
             } else {
                 CHECK_EQ(err, ERR_OK);
-                if (mPendingFrameAsSettingChanged) {
-					return;
+                if (mPendingSettingChangeEvent) {
+                    continue;
                 }
             }
 		}

@@ -113,7 +113,8 @@ private:
 
     bool mFFmpegAlreadyInited;
     bool mCodecAlreadyOpened;
-	bool mPendingFrameAsSettingChanged;
+    bool mPendingSettingChangeEvent;
+    bool mPendingFrameAsSettingChanged;
     AVCodecContext *mCtx;
     struct SwsContext *mImgConvertCtx;
 	AVFrame *mFrame;
@@ -132,27 +133,28 @@ private:
         AWAITING_ENABLED
     } mOutputPortSettingsChange;
 
-    void setMode(const char *name);
-    void initInputFormat(uint32_t mode, OMX_PARAM_PORTDEFINITIONTYPE &def);
-	void getInputFormat(uint32_t mode, OMX_VIDEO_PARAM_PORTFORMATTYPE *formatParams);
-    void setDefaultCtx(AVCodecContext *avctx, const AVCodec *codec);
+    void     setMode(const char *name);
+    void     initInputFormat(uint32_t mode, OMX_PARAM_PORTDEFINITIONTYPE &def);
+	void     getInputFormat(uint32_t mode, OMX_VIDEO_PARAM_PORTFORMATTYPE *formatParams);
+    void     setDefaultCtx(AVCodecContext *avctx, const AVCodec *codec);
     OMX_ERRORTYPE isRoleSupported(const OMX_PARAM_COMPONENTROLETYPE *roleParams);
 
-    void initPorts();
+    void     initPorts();
     status_t initDecoder();
-    void deInitDecoder();
+    void     deInitDecoder();
 
-	bool    handlePortSettingChangeEvent();
-	int32_t handleExtradata();
-	int32_t openDecoder();
-    void    initPacket(AVPacket *pkt, OMX_BUFFERHEADERTYPE *inHeader);
-    int32_t decodeVideo();
-    int32_t preProcessVideoFrame(AVPicture *picture, void **bufp);
-	int32_t drainOneOutputBuffer();
-	void    drainEOSOutputBuffer();
-	void    drainAllOutputBuffers();
+    bool     isPortSettingChanged();
+	bool     handlePortSettingChangeEvent();
+	int32_t  handleExtradata();
+	int32_t  openDecoder();
+    void     initPacket(AVPacket *pkt, OMX_BUFFERHEADERTYPE *inHeader);
+    int32_t  decodeVideo();
+    int32_t  preProcessVideoFrame(AVPicture *picture, void **bufp);
+	int32_t  drainOneOutputBuffer();
+	void     drainEOSOutputBuffer();
+	void     drainAllOutputBuffers();
 
-    void updatePortDefinitions();
+    void     updatePortDefinitions();
 
     DISALLOW_EVIL_CONSTRUCTORS(SoftFFmpegVideo);
 };
