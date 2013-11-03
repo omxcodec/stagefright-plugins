@@ -446,6 +446,26 @@ int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
     return 1;
 }
 
+bool FFmpegExtractor::setupVorbisCodecSpecificData(sp<MetaData> meta,
+        AVCodecContext *avctx)
+{
+    uint8_t *header_start[3];
+    int header_len[3];
+
+    if (avpriv_split_xiph_headers(avctx->extradata,
+        avctx->extradata_size, 30,
+        header_start, header_len) < 0) {
+		ALOGE("vorbis extradata corrupt.");
+        return false;
+    }
+    //identification header
+    meta->setData(kKeyVorbisInfo,  0, header_start[0], header_len[0]);
+    //setup header
+    meta->setData(kKeyVorbisBooks, 0, header_start[2], header_len[2]);
+
+    return true;
+}
+
 void FFmpegExtractor::printTime(int64_t time)
 {
     int hours, mins, secs, us;
@@ -773,7 +793,9 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             ALOGV("VORBIS");
             meta = new MetaData;
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_VORBIS);
-            meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
+            if (!setupVorbisCodecSpecificData(meta, avctx)) {
+                return -1;
+            }
             break;
         case AV_CODEC_ID_AC3:
             ALOGV("AC3");
@@ -2059,7 +2081,7 @@ bool SniffFFMPEG(
 	char value[PROPERTY_VALUE_MAX];
 	property_get("sys.media.parser.ffmpeg", value, "0");
 	if (atoi(value)) {
-		ALOGI("[debug] parser use ffmpeg");
+		ALOGI("[debug] use ffmpeg parser");
 		*confidence = 0.88f;
 	}
 

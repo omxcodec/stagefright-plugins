@@ -49,6 +49,7 @@ extern "C" {
 #include "libavutil/opt.h"
 #include "libavutil/internal.h"
 #include "libavcodec/avfft.h"
+#include "libavcodec/xiph.h"
 #include "libswresample/swresample.h"
 
 #ifdef __cplusplus
@@ -136,6 +137,7 @@ private:
     void deInitStreams();
     void buildFileName(const sp<AMessage> &meta);
     void setFFmpegDefaultOpts();
+    bool setupVorbisCodecSpecificData(sp<MetaData> meta, AVCodecContext *avctx);
     void printTime(int64_t time);
 	bool is_codec_supported(enum AVCodecID codec_id);
     int stream_component_open(int stream_index);
