@@ -215,6 +215,13 @@ void FFmpegExtractor::packet_queue_init(PacketQueue *q)
     packet_queue_put(q, &flush_pkt);
 }
 
+void FFmpegExtractor::packet_queue_destroy(PacketQueue *q)
+{
+    packet_queue_flush(q);
+    pthread_mutex_destroy(&q->mutex);
+    pthread_cond_destroy(&q->cond);
+}
+
 void FFmpegExtractor::packet_queue_flush(PacketQueue *q)
 {
     AVPacketList *pkt, *pkt1;
@@ -549,10 +556,6 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             mVideoStreamIdx = stream_index;
         if (mVideoStream == NULL)
             mVideoStream = mFormatCtx->streams[stream_index];
-        if (!mVideoQInited) {
-	        packet_queue_init(&mVideoQ);
-            mVideoQInited = true;
-        }
 
         ret = check_extradata(avctx);
         if (ret != 1) {
@@ -561,7 +564,6 @@ int FFmpegExtractor::stream_component_open(int stream_index)
                 mVideoStreamIdx = -1;
                 mVideoStream = NULL;
                 packet_queue_end(&mVideoQ);
-                mVideoQInited =  false;
                 mFormatCtx->streams[stream_index]->discard = AVDISCARD_ALL;
             }
             return ret;
@@ -736,10 +738,6 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             mAudioStreamIdx = stream_index;
         if (mAudioStream == NULL)
             mAudioStream = mFormatCtx->streams[stream_index];
-        if (!mAudioQInited) {
-	    packet_queue_init(&mAudioQ);
-            mAudioQInited = true;
-        }
 
         ret = check_extradata(avctx);
         if (ret != 1) {
@@ -748,7 +746,6 @@ int FFmpegExtractor::stream_component_open(int stream_index)
                 mAudioStreamIdx = -1;
                 mAudioStream = NULL;
                 packet_queue_end(&mAudioQ);
-                mAudioQInited =  false;
                 mFormatCtx->streams[stream_index]->discard = AVDISCARD_ALL;
             }
             return ret;
@@ -994,10 +991,10 @@ int FFmpegExtractor::stream_seek(int64_t pos, enum AVMediaType media_type)
 {
     Mutex::Autolock autoLock(mLock);
 
-    if (mVideoStreamIdx >= 0 &&
-        mAudioStreamIdx >= 0 &&
-        media_type == AVMEDIA_TYPE_AUDIO &&
-        !mVideoEOSReceived) {
+    if (mVideoStreamIdx >= 0
+            && mAudioStreamIdx >= 0
+            && media_type == AVMEDIA_TYPE_AUDIO
+            && !mVideoEOSReceived) {
        return NO_SEEK;
     }
 
@@ -1059,8 +1056,6 @@ void FFmpegExtractor::setFFmpegDefaultOpts()
     mAudioStreamIdx = -1;
     mVideoStream  = NULL;
     mAudioStream  = NULL;
-    mVideoQInited = false;
-    mAudioQInited = false;
     mDefersToCreateVideoTrack = false;
     mDefersToCreateAudioTrack = false;
     mVideoBsfc = NULL;
@@ -1191,6 +1186,9 @@ int FFmpegExtractor::initStreams()
             hours, mins, secs, (100 * us) / AV_TIME_BASE);
     }
 
+    packet_queue_init(&mVideoQ);
+    packet_queue_init(&mAudioQ);
+
     if (st_index[AVMEDIA_TYPE_AUDIO] >= 0) {
         audio_ret = stream_component_open(st_index[AVMEDIA_TYPE_AUDIO]);
     }
@@ -1213,6 +1211,9 @@ fail:
 
 void FFmpegExtractor::deInitStreams()
 {
+    packet_queue_destroy(&mVideoQ);
+    packet_queue_destroy(&mAudioQ);
+
     if (mFormatCtx) {
         avformat_close_input(&mFormatCtx);
     }
@@ -1321,7 +1322,8 @@ void FFmpegExtractor::readerEntry() {
             || (   (mAudioQ   .size  > MIN_AUDIOQ_SIZE || mAudioStreamIdx < 0)
                 && (mVideoQ   .nb_packets > MIN_FRAMES || mVideoStreamIdx < 0))) {
 #if DEBUG_READ_ENTRY
-            ALOGV("readerEntry, is full, fuck");
+            ALOGV("readerEntry, full(wtf!!!), mVideoQ.size: %d, mVideoQ.nb_packets: %d, mAudioQ.size: %d, mAudioQ.nb_packets: %d",
+                    mVideoQ.size, mVideoQ.nb_packets, mAudioQ.size, mAudioQ.nb_packets);
 #endif
             /* wait 10 ms */
             usleep(10000);
@@ -1364,10 +1366,10 @@ void FFmpegExtractor::readerEntry() {
             if (ret == AVERROR_EOF || url_feof(mFormatCtx->pb))
                 if (ret == AVERROR_EOF) {
                     //ALOGV("ret == AVERROR_EOF");
-		}
+                }
                 if (url_feof(mFormatCtx->pb)) {
                     //ALOGV("url_feof(mFormatCtx->pb)");
-		}
+                }
 
                 eof = 1;
                 mEOF = true;
@@ -1958,7 +1960,6 @@ static const char *SniffFFMPEGCommon(const char *url, float *confidence)
 fail:
 	if (ic) {
 		avformat_close_input(&ic);
-		av_free(ic);
 	}
 	if (status == OK) {
 		deInitFFmpeg();

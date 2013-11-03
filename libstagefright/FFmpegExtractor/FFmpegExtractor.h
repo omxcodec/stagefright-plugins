@@ -126,8 +126,6 @@ private:
     int mAudioStreamIdx;
     AVStream *mVideoStream;
     AVStream *mAudioStream;
-    bool mVideoQInited;
-    bool mAudioQInited;
     bool mDefersToCreateVideoTrack;
     bool mDefersToCreateAudioTrack;
     AVBitStreamFilterContext *mVideoBsfc;
@@ -143,6 +141,7 @@ private:
     int stream_component_open(int stream_index);
     void stream_component_close(int stream_index);
     void packet_queue_init(PacketQueue *q);
+    void packet_queue_destroy(PacketQueue *q);
     void packet_queue_flush(PacketQueue *q);
     void packet_queue_end(PacketQueue *q);
     void packet_queue_abort(PacketQueue *q);
