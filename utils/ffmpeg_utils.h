@@ -47,6 +47,9 @@ void nam_av_log_set_flags(int arg);
 int is_extradata_compatible_with_android(AVCodecContext *avctx);
 int parser_split(AVCodecContext *avctx, const uint8_t *buf, int buf_size);
 
+bool setup_vorbis_extradata(uint8_t **extradata, int *extradata_size,
+		const uint8_t *header_start[3], const int header_len[3]);
+
 }  // namespace android
 
 #endif  // FFMPEG_UTILS_H_

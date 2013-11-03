@@ -102,7 +102,7 @@ Only the three quirks included above are recognized at this point:
         <!-- ffmpeg audio codec -->
         <MediaCodec name="OMX.ffmpeg.aac.decoder"    type="audio/mp4a-latm" />
         <MediaCodec name="OMX.ffmpeg.mp3.decoder"    type="audio/mpeg" />
-        <!--MediaCodec name="OMX.ffmpeg.vorbis.decoder"    type="audio/vorbis" /-->
+        <MediaCodec name="OMX.ffmpeg.vorbis.decoder" type="audio/vorbis" />
         <MediaCodec name="OMX.ffmpeg.wma.decoder"    type="audio/x-ms-wma" />
         <MediaCodec name="OMX.ffmpeg.ra.decoder"     type="audio/vnd.rn-realaudio" />
         <MediaCodec name="OMX.ffmpeg.flac.decoder"   type="audio/flac" />
@@ -121,7 +121,7 @@ Only the three quirks included above are recognized at this point:
         <MediaCodec name="OMX.google.g711.mlaw.decoder" type="audio/g711-mlaw" />
         <MediaCodec name="OMX.google.vorbis.decoder" type="audio/vorbis" />
 
-		<!-- google video codec -->
+        <!-- google video codec -->
         <MediaCodec name="OMX.google.mpeg4.decoder" type="video/mp4v-es" />
         <MediaCodec name="OMX.google.h263.decoder" type="video/3gpp" />
         <MediaCodec name="OMX.google.h264.decoder" type="video/avc" />

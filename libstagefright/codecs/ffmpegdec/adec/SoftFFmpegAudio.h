@@ -128,6 +128,9 @@ private:
     struct SwrContext *mSwrCtx;
     AVFrame *mFrame;
 
+    uint8_t *mVorbisHeaderStart[3];
+    int mVorbisHeaderLen[3];
+
     EOSStatus mEOSStatus;
 
     bool mSignalledError;
@@ -172,6 +175,7 @@ private:
     status_t initDecoder();
     void deInitDecoder();
 
+    int32_t handleVorbisExtradata(OMX_BUFFERHEADERTYPE *inHeader);
     int32_t handleExtradata();
     int32_t openDecoder();
 	void    updateTimeStamp(OMX_BUFFERHEADERTYPE *inHeader);

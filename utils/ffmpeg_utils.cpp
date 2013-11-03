@@ -385,5 +385,36 @@ int is_extradata_compatible_with_android(AVCodecContext *avctx)
     }
 }
 
+//////////////////////////////////////////////////////////////////////////////////
+// misc
+//////////////////////////////////////////////////////////////////////////////////
+bool setup_vorbis_extradata(uint8_t **extradata, int *extradata_size,
+        const uint8_t *header_start[3], const int header_len[3])
+{
+	uint8_t *p = NULL;
+    int len = 0;
+    int i = 0;
+
+    len = header_len[0] + header_len[1] + header_len[2];
+    p = *extradata = (uint8_t *)av_mallocz(64 + len + len/255);
+    if (!p) {
+        ALOGE("oom for vorbis extradata");
+        return false;
+	}
+
+    *p++ = 2;
+    p += av_xiphlacing(p, header_len[0]);
+    p += av_xiphlacing(p, header_len[1]);
+    for (i = 0; i < 3; i++) {
+        if (header_len[i] > 0) {
+            memcpy(p, header_start[i], header_len[i]);
+            p += header_len[i];
+        }
+    }
+    *extradata_size = p - *extradata;
+
+    return true;
+}
+
 }  // namespace android
 
