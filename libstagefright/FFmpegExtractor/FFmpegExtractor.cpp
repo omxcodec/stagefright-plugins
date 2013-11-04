@@ -1829,6 +1829,62 @@ static void adjustMPEG4Confidence(AVFormatContext *ic, float *confidence)
 	}
 }
 
+static void adjustMPEG2TSConfidence(AVFormatContext *ic, float *confidence)
+{
+	enum AVCodecID codec_id = AV_CODEC_ID_NONE;
+
+	codec_id = getCodecId(ic, AVMEDIA_TYPE_VIDEO);
+	if (codec_id != AV_CODEC_ID_NONE
+			&& codec_id != AV_CODEC_ID_H264
+			&& codec_id != AV_CODEC_ID_MPEG4
+			&& codec_id != AV_CODEC_ID_MPEG1VIDEO
+			&& codec_id != AV_CODEC_ID_MPEG2VIDEO) {
+		//the MEDIA_MIMETYPE_CONTAINER_MPEG2TS of confidence is 0.1f
+		ALOGI("[mpeg2ts]video codec(%s), confidence should be larger than MPEG2TSExtractor",
+				avcodec_get_name(codec_id));
+		*confidence = 0.11f;
+	}
+
+	codec_id = getCodecId(ic, AVMEDIA_TYPE_AUDIO);
+	if (codec_id != AV_CODEC_ID_NONE
+			&& codec_id != AV_CODEC_ID_AAC
+			&& codec_id != AV_CODEC_ID_PCM_S16LE //FIXME, AV_CODEC_ID_PCM_S24LE, AV_CODEC_ID_PCM_S32LE?
+			&& codec_id != AV_CODEC_ID_MP1
+			&& codec_id != AV_CODEC_ID_MP2
+			&& codec_id != AV_CODEC_ID_MP3) {
+		ALOGI("[mpeg2ts]audio codec(%s), confidence should be larger than MPEG2TSExtractor",
+				avcodec_get_name(codec_id));
+		*confidence = 0.11f;
+	}
+}
+
+static void adjustMKVConfidence(AVFormatContext *ic, float *confidence)
+{
+	enum AVCodecID codec_id = AV_CODEC_ID_NONE;
+
+	codec_id = getCodecId(ic, AVMEDIA_TYPE_VIDEO);
+	if (codec_id != AV_CODEC_ID_NONE
+			&& codec_id != AV_CODEC_ID_H264
+			&& codec_id != AV_CODEC_ID_MPEG4
+			&& codec_id != AV_CODEC_ID_VP6
+			&& codec_id != AV_CODEC_ID_VP8) {
+		//the MEDIA_MIMETYPE_CONTAINER_MATROSKA of confidence is 0.6f
+		ALOGI("[mkv]video codec(%s), confidence should be larger than MatroskaExtractor",
+				avcodec_get_name(codec_id));
+		*confidence = 0.61f;
+	}
+
+	codec_id = getCodecId(ic, AVMEDIA_TYPE_AUDIO);
+	if (codec_id != AV_CODEC_ID_NONE
+			&& codec_id != AV_CODEC_ID_AAC
+			&& codec_id != AV_CODEC_ID_MP3
+			&& codec_id != AV_CODEC_ID_VORBIS) {
+		ALOGI("[mkv]audio codec(%s), confidence should be larger than MatroskaExtractor",
+				avcodec_get_name(codec_id));
+		*confidence = 0.61f;
+	}
+}
+
 static void adjustVideoCodecConfidence(AVFormatContext *ic,
 		enum AVCodecID codec_id, float *confidence)
 {
@@ -1855,6 +1911,10 @@ static void adjustAudioCodecConfidence(AVFormatContext *ic,
 	case AV_CODEC_ID_MP2:
 		//TODO. if the other stream(e.g. mp3) is supported by stagefright
 		ALOGI("ffmpeg can demux mp1 and mp2 only");
+		*confidence = 0.88f;
+		break;
+	case AV_CODEC_ID_DTS:
+		ALOGI("ffmpeg can demux dts only");
 		*confidence = 0.88f;
 		break;
 	default:
@@ -1891,14 +1951,20 @@ static void adjustCodecConfidence(AVFormatContext *ic, float *confidence)
 	}
 }
 
+//FIXME
 static void adjustConfidenceIfNeeded(const char *mime,
 		AVFormatContext *ic, float *confidence)
 {
+
 	//check mime
 	if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MPEG4)) {
 		adjustMPEG4Confidence(ic, confidence);
+	} else if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MPEG2TS)) {
+		adjustMPEG2TSConfidence(ic, confidence);
+	} else if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MATROSKA)) {
+		adjustMKVConfidence(ic, confidence);
 	} else {
-		//add to here;
+		//todo
 	}
 
 	//check codec
