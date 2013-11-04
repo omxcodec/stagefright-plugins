@@ -245,8 +245,26 @@ void SoftFFmpegAudio::resetCtx() {
     mAudioSrcChannelLayout = mAudioTgtChannelLayout = 0;
 }
 
-status_t SoftFFmpegAudio::initDecoder() {
+void SoftFFmpegAudio::initVorbisHdr() {
     int32_t i = 0;
+    for(i = 0; i < 3; i++) {
+        mVorbisHeaderStart[i] = NULL;
+        mVorbisHeaderLen[i] = 0;
+    }
+}
+
+void SoftFFmpegAudio::deinitVorbisHdr() {
+    int32_t i = 0;
+    for(i = 0; i < 3; i++) {
+        if (mVorbisHeaderLen[i] > 0) {
+            av_free(mVorbisHeaderStart[i]);
+            mVorbisHeaderStart[i] = NULL;
+            mVorbisHeaderLen[i] = 0;
+        }
+    }
+}
+
+status_t SoftFFmpegAudio::initDecoder() {
     status_t status;
 
     status = initFFmpeg();
@@ -307,11 +325,7 @@ status_t SoftFFmpegAudio::initDecoder() {
     mCtx->extradata = NULL;
     mCtx->extradata_size = 0;
 
-    //vorbis
-    for(i = 0; i < 3; i++) {
-        mVorbisHeaderStart[i] = NULL;
-        mVorbisHeaderLen[i] = 0;
-    }
+    initVorbisHdr();
 
     memset(mSilenceBuffer, 0, kOutputBufferSize);
 
@@ -319,22 +333,15 @@ status_t SoftFFmpegAudio::initDecoder() {
 }
 
 void SoftFFmpegAudio::deInitDecoder() {
-    int32_t i = 0;
-
     if (mCtx) {
         if (!mCtx->extradata) {
             av_free(mCtx->extradata);
             mCtx->extradata = NULL;
             mCtx->extradata_size = 0;
         }
-        //vorbis
-        for(i = 0; i < 3; i++) {
-            if (mVorbisHeaderLen[i] > 0) {
-                av_free(mVorbisHeaderStart[i]);
-                mVorbisHeaderStart[i] = NULL;
-                mVorbisHeaderLen[i] = 0;
-            }
-        }
+
+        deinitVorbisHdr();
+
         if (mCodecAlreadyOpened) {
             avcodec_close(mCtx);
             av_free(mCtx);
@@ -1110,8 +1117,10 @@ int32_t SoftFFmpegAudio::openDecoder() {
 		    if (!setup_vorbis_extradata(&mCtx->extradata,
                         &mCtx->extradata_size,
                         (const uint8_t **)mVorbisHeaderStart,
-                        mVorbisHeaderLen))
-            return ERR_OOM;
+                        mVorbisHeaderLen)) {
+                return ERR_OOM;
+            }
+            deinitVorbisHdr();
 	    }
         ALOGI("extradata is ready, size: %d", mCtx->extradata_size);
         hexdump(mCtx->extradata, mCtx->extradata_size);

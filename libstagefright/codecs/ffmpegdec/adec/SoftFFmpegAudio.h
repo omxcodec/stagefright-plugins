@@ -175,8 +175,10 @@ private:
     status_t initDecoder();
     void deInitDecoder();
 
-    int32_t handleVorbisExtradata(OMX_BUFFERHEADERTYPE *inHeader);
+    void    initVorbisHdr();
+    void    deinitVorbisHdr();
     int32_t handleExtradata();
+    int32_t handleVorbisExtradata(OMX_BUFFERHEADERTYPE *inHeader);
     int32_t openDecoder();
 	void    updateTimeStamp(OMX_BUFFERHEADERTYPE *inHeader);
 	void    initPacket(AVPacket *pkt, OMX_BUFFERHEADERTYPE *inHeader);
