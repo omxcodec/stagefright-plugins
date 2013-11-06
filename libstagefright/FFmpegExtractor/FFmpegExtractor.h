@@ -135,7 +135,7 @@ private:
     static int decode_interrupt_cb(void *ctx);
     int initStreams();
     void deInitStreams();
-    void buildFileName(const sp<AMessage> &meta);
+    void fetchStuffsFromSniffedMeta(const sp<AMessage> &meta);
     void setFFmpegDefaultOpts();
     bool setupVorbisCodecSpecificData(sp<MetaData> meta, AVCodecContext *avctx);
     void printTime(int64_t time);
