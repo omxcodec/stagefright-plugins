@@ -136,7 +136,7 @@ void SoftFFmpegAudio::initInputFormat(uint32_t mode,
         break;
     case MODE_MPEGL2:
         def.format.audio.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_AUDIO_MPEG_LAYER_II);
-        def.format.audio.eEncoding = OMX_AUDIO_CodingMP3;
+        def.format.audio.eEncoding = OMX_AUDIO_CodingMP2;
         break;
     case MODE_AC3:
         def.format.audio.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_AUDIO_AC3);
@@ -247,7 +247,7 @@ void SoftFFmpegAudio::resetCtx() {
 
 void SoftFFmpegAudio::initVorbisHdr() {
     int32_t i = 0;
-    for(i = 0; i < 3; i++) {
+    for (i = 0; i < 3; i++) {
         mVorbisHeaderStart[i] = NULL;
         mVorbisHeaderLen[i] = 0;
     }
@@ -255,7 +255,7 @@ void SoftFFmpegAudio::initVorbisHdr() {
 
 void SoftFFmpegAudio::deinitVorbisHdr() {
     int32_t i = 0;
-    for(i = 0; i < 3; i++) {
+    for (i = 0; i < 3; i++) {
         if (mVorbisHeaderLen[i] > 0) {
             av_free(mVorbisHeaderStart[i]);
             mVorbisHeaderStart[i] = NULL;
