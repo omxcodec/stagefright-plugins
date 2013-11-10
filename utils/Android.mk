@@ -6,14 +6,16 @@ include external/ffmpeg/android/ffmpeg.mk
 LOCAL_SRC_FILES := \
 	ffmpeg_source.cpp \
 	ffmpeg_utils.cpp \
-	ffmpeg_cmdutils.c
+	ffmpeg_cmdutils.c \
+	codec_utils.cpp
 
 LOCAL_SHARED_LIBRARIES := \
 	libavcodec \
 	libavformat \
 	libavutil \
 	libutils \
-	libcutils
+	libcutils \
+	libstagefright_foundation
 
 LOCAL_MODULE := libffmpeg_utils
 

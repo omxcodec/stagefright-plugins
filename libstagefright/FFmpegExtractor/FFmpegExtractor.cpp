@@ -40,6 +40,7 @@
 #include <utils/misc.h>
 
 #include "include/avc_utils.h"
+#include "utils/codec_utils.h"
 #include "utils/ffmpeg_utils.h"
 #include "utils/ffmpeg_cmdutils.h"
 #include "FFmpegExtractor.h"
@@ -55,7 +56,6 @@
 #define DEBUG_DISABLE_VIDEO        0
 #define DEBUG_DISABLE_AUDIO        0
 #define WAIT_KEY_PACKET_AFTER_SEEK 1
-#define DISABLE_NAL_TO_ANNEXB      0
 #define DEBUG_PKT                  0
 
 enum {
@@ -201,62 +201,6 @@ uint32_t FFmpegExtractor::flags() const {
     }
 
     return flags;
-}
-
-static void EncodeSize14(uint8_t **_ptr, size_t size) {
-    CHECK_LE(size, 0x3fff);
-
-    uint8_t *ptr = *_ptr;
-
-    *ptr++ = 0x80 | (size >> 7);
-    *ptr++ = size & 0x7f;
-
-    *_ptr = ptr;
-}
-
-static sp<ABuffer> MakeMPEGVideoESDS(const sp<ABuffer> &csd) {
-    sp<ABuffer> esds = new ABuffer(csd->size() + 25);
-
-    uint8_t *ptr = esds->data();
-    *ptr++ = 0x03;
-    EncodeSize14(&ptr, 22 + csd->size());
-
-    *ptr++ = 0x00;  // ES_ID
-    *ptr++ = 0x00;
-
-    *ptr++ = 0x00;  // streamDependenceFlag, URL_Flag, OCRstreamFlag
-
-    *ptr++ = 0x04;
-    EncodeSize14(&ptr, 16 + csd->size());
-
-    *ptr++ = 0x40;  // Audio ISO/IEC 14496-3
-
-    for (size_t i = 0; i < 12; ++i) {
-        *ptr++ = 0x00;
-    }
-
-    *ptr++ = 0x05;
-    EncodeSize14(&ptr, csd->size());
-
-    memcpy(ptr, csd->data(), csd->size());
-
-    return esds;
-}
-
-// Returns the sample rate based on the sampling frequency index
-static uint32_t get_sample_rate(const uint8_t sf_index)
-{
-    static const uint32_t sample_rates[] =
-    {
-        96000, 88200, 64000, 48000, 44100, 32000,
-        24000, 22050, 16000, 12000, 11025, 8000
-    };
-
-    if (sf_index < sizeof(sample_rates) / sizeof(sample_rates[0])) {
-        return sample_rates[sf_index];
-    }
-
-    return 0;
 }
 
 int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
@@ -613,7 +557,6 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         if (mVideoStream->duration != AV_NOPTS_VALUE) {
             int64_t duration = mVideoStream->duration * av_q2d(mVideoStream->time_base) * 1000000;
             printTime(duration);
-            ALOGV("video startTime: %lld", mVideoStream->start_time);
             if (mVideoStream->start_time != AV_NOPTS_VALUE) {
                 ALOGV("video startTime:%lld", mVideoStream->start_time);
             } else {
@@ -697,7 +640,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             // c - channelConfig
             profile = ((header[0] & 0xf8) >> 3) - 1;
             sf_index = (header[0] & 0x07) << 1 | (header[1] & 0x80) >> 7;
-            sr = get_sample_rate(sf_index);
+            sr = getAACSampleRate(sf_index);
             if (sr == 0) {
                 ALOGE("unsupport the sample rate");
                 return -1;
@@ -1527,45 +1470,17 @@ retry:
     MediaBuffer *mediaBuffer = new MediaBuffer(pkt.size + FF_INPUT_BUFFER_PADDING_SIZE);
     mediaBuffer->meta_data()->clear();
     mediaBuffer->set_range(0, pkt.size);
-#if DISABLE_NAL_TO_ANNEXB
-    mNal2AnnexB = false;
-#endif
+
+    //copy data
     if (mIsAVC && mNal2AnnexB) {
+        /* This only works for NAL sizes 3-4 */
+        CHECK(mNALLengthSize == 3 || mNALLengthSize == 4);
+
+        uint8_t *dst = (uint8_t *)mediaBuffer->data();
         /* Convert H.264 NAL format to annex b */
-        if (mNALLengthSize >= 3 && mNALLengthSize <= 4 )
-        {
-            uint8_t *dst = (uint8_t *)mediaBuffer->data();
-
-            /* This only works for NAL sizes 3-4 */
-            size_t len = pkt.size, i;
-            uint8_t *ptr = pkt.data;
-            while (len >= mNALLengthSize) {
-                uint32_t nal_len = 0;
-                for( i = 0; i < mNALLengthSize; i++ ) {
-                    nal_len = (nal_len << 8) | ptr[i];
-                    dst[i] = 0;
-                }
-                dst[mNALLengthSize - 1] = 1;
-                if (nal_len > INT_MAX || nal_len > (unsigned int)len) {
-                    status = ERROR_MALFORMED;
-                    break;
-                }
-				dst += mNALLengthSize;
-				ptr += mNALLengthSize;
-                len -= mNALLengthSize;
-
-                memcpy(dst, ptr, nal_len);
-
-                dst += nal_len;
-                ptr += nal_len;
-                len -= nal_len;
-            }
-        } else {
-             status = ERROR_MALFORMED;
-        }
-
+        status = convertNal2AnnexB(dst, pkt.size, pkt.data, pkt.size, mNALLengthSize);
         if (status != OK) {
-            ALOGV("status != OK");
+            ALOGE("convertNal2AnnexB failed");
             mediaBuffer->release();
             mediaBuffer = NULL;
             av_free_packet(&pkt);
