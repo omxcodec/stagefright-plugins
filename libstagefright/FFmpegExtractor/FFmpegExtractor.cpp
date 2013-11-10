@@ -508,7 +508,7 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             meta->setInt32(kKeyWMVVersion, kTypeWMVVer_9);
             break;
         case AV_CODEC_ID_RV20:
-            ALOGV("RV30");
+            ALOGV("RV20");
             meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_RV);
             meta->setData(kKeyRawCodecSpecificData, 0, avctx->extradata, avctx->extradata_size);
             meta->setInt32(kKeyRVVersion, kTypeRVVer_G2); //http://en.wikipedia.org/wiki/RealVideo
