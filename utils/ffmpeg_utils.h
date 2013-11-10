@@ -28,25 +28,62 @@ extern "C" {
 #endif
 
 #include "config.h"
+#include "libavformat/avformat.h"
 #include "libavcodec/avcodec.h"
 
 #ifdef __cplusplus
 }
 #endif
 
+//XXX hack!!!
 #define SF_NOPTS_VALUE ((uint64_t)AV_NOPTS_VALUE-1)
 
 namespace android {
 
-status_t initFFmpeg();
-void deInitFFmpeg();
-
+//////////////////////////////////////////////////////////////////////////////////
+// log
+//////////////////////////////////////////////////////////////////////////////////
 void nam_av_log_callback(void* ptr, int level, const char* fmt, va_list vl);
 void nam_av_log_set_flags(int arg);
 
+//////////////////////////////////////////////////////////////////////////////////
+// constructor and destructor
+//////////////////////////////////////////////////////////////////////////////////
+status_t initFFmpeg();
+void deInitFFmpeg();
+
+//////////////////////////////////////////////////////////////////////////////////
+// parser
+//////////////////////////////////////////////////////////////////////////////////
 int is_extradata_compatible_with_android(AVCodecContext *avctx);
 int parser_split(AVCodecContext *avctx, const uint8_t *buf, int buf_size);
 
+//////////////////////////////////////////////////////////////////////////////////
+// packet queue
+//////////////////////////////////////////////////////////////////////////////////
+
+typedef struct PacketQueue {
+    AVPacket flush_pkt;
+    AVPacketList *first_pkt, *last_pkt;
+    int nb_packets;
+    int size;
+    int abort_request;
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
+} PacketQueue;
+
+void packet_queue_init(PacketQueue *q);
+void packet_queue_destroy(PacketQueue *q);
+void packet_queue_flush(PacketQueue *q);
+void packet_queue_end(PacketQueue *q);
+void packet_queue_abort(PacketQueue *q);
+int packet_queue_put(PacketQueue *q, AVPacket *pkt);
+int packet_queue_put_nullpacket(PacketQueue *q, int stream_index);
+int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block);
+
+//////////////////////////////////////////////////////////////////////////////////
+// misc
+//////////////////////////////////////////////////////////////////////////////////
 bool setup_vorbis_extradata(uint8_t **extradata, int *extradata_size,
 		const uint8_t *header_start[3], const int header_len[3]);
 

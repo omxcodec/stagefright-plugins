@@ -52,18 +52,11 @@ extern "C" {
 #include "libavcodec/xiph.h"
 #include "libswresample/swresample.h"
 
+#include "utils/ffmpeg_utils.h"
+
 #ifdef __cplusplus
 }
 #endif
-
-typedef struct PacketQueue {
-    AVPacketList *first_pkt, *last_pkt;
-    int nb_packets;
-    int size;
-    int abort_request;
-    pthread_mutex_t mutex;
-    pthread_cond_t cond;
-} PacketQueue;
 
 namespace android {
 
@@ -142,13 +135,6 @@ private:
 	bool is_codec_supported(enum AVCodecID codec_id);
     int stream_component_open(int stream_index);
     void stream_component_close(int stream_index);
-    void packet_queue_init(PacketQueue *q);
-    void packet_queue_destroy(PacketQueue *q);
-    void packet_queue_flush(PacketQueue *q);
-    void packet_queue_end(PacketQueue *q);
-    void packet_queue_abort(PacketQueue *q);
-    int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block);
-    int packet_queue_put(PacketQueue *q, AVPacket *pkt);
     void reachedEOS(enum AVMediaType media_type);
     int stream_seek(int64_t pos, enum AVMediaType media_type);
     int check_extradata(AVCodecContext *avctx);

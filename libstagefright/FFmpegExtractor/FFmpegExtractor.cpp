@@ -63,11 +63,7 @@ enum {
     SEEK,
 };
 
-static AVPacket flush_pkt;
-
 namespace android {
-
-static const char *findMatchingContainer(const char *name);
 
 struct FFmpegExtractor::Track : public MediaSource {
     Track(FFmpegExtractor *extractor, sp<MetaData> meta, bool isAVC,
@@ -205,123 +201,6 @@ uint32_t FFmpegExtractor::flags() const {
     }
 
     return flags;
-}
-
-void FFmpegExtractor::packet_queue_init(PacketQueue *q)
-{
-    memset(q, 0, sizeof(PacketQueue));
-    pthread_mutex_init(&q->mutex, NULL);
-    pthread_cond_init(&q->cond, NULL);
-    packet_queue_put(q, &flush_pkt);
-}
-
-void FFmpegExtractor::packet_queue_destroy(PacketQueue *q)
-{
-    packet_queue_flush(q);
-    pthread_mutex_destroy(&q->mutex);
-    pthread_cond_destroy(&q->cond);
-}
-
-void FFmpegExtractor::packet_queue_flush(PacketQueue *q)
-{
-    AVPacketList *pkt, *pkt1;
-
-    pthread_mutex_lock(&q->mutex);
-    for (pkt = q->first_pkt; pkt != NULL; pkt = pkt1) {
-        pkt1 = pkt->next;
-        av_free_packet(&pkt->pkt);
-        av_freep(&pkt);
-    }
-    q->last_pkt = NULL;
-    q->first_pkt = NULL;
-    q->nb_packets = 0;
-    q->size = 0;
-    pthread_mutex_unlock(&q->mutex);
-}
-
-void FFmpegExtractor::packet_queue_end(PacketQueue *q)
-{
-    packet_queue_flush(q);
-}
-
-void FFmpegExtractor::packet_queue_abort(PacketQueue *q)
-{
-    pthread_mutex_lock(&q->mutex);
-
-    q->abort_request = 1;
-
-    pthread_cond_signal(&q->cond);
-
-    pthread_mutex_unlock(&q->mutex);
-}
-
-int FFmpegExtractor::packet_queue_put(PacketQueue *q, AVPacket *pkt)
-{
-    AVPacketList *pkt1;
-
-    /* duplicate the packet */
-    if (pkt != &flush_pkt && av_dup_packet(pkt) < 0)
-        return -1;
-
-    pkt1 = (AVPacketList *)av_malloc(sizeof(AVPacketList));
-    if (!pkt1)
-        return -1;
-    pkt1->pkt = *pkt;
-    pkt1->next = NULL;
-
-    pthread_mutex_lock(&q->mutex);
-
-    if (!q->last_pkt)
-
-        q->first_pkt = pkt1;
-    else
-        q->last_pkt->next = pkt1;
-    q->last_pkt = pkt1;
-    q->nb_packets++;
-    //q->size += pkt1->pkt.size + sizeof(*pkt1);
-    q->size += pkt1->pkt.size;
-    pthread_cond_signal(&q->cond);
-
-    pthread_mutex_unlock(&q->mutex);
-    return 0;
-}
-
-/* packet queue handling */
-/* return < 0 if aborted, 0 if no packet and > 0 if packet.  */
-int FFmpegExtractor::packet_queue_get(PacketQueue *q, AVPacket *pkt, int block)
-{
-    AVPacketList *pkt1;
-    int ret;
-
-    pthread_mutex_lock(&q->mutex);
-
-    for (;;) {
-        if (q->abort_request) {
-            ret = -1;
-            break;
-        }
-
-        pkt1 = q->first_pkt;
-        if (pkt1) {
-            q->first_pkt = pkt1->next;
-            if (!q->first_pkt)
-                q->last_pkt = NULL;
-            q->nb_packets--;
-            //q->size -= pkt1->pkt.size + sizeof(*pkt1);
-            q->size -= pkt1->pkt.size;
-            *pkt = pkt1->pkt;
-            av_free(pkt1);
-            ret = 1;
-            break;
-        } else if (!block) {
-            ret = 0;
-            break;
-        } else {
-            pthread_cond_wait(&q->cond, &q->mutex);
-        }
-    }
-    pthread_mutex_unlock(&q->mutex);
-    return ret;
 }
 
 static void EncodeSize14(uint8_t **_ptr, size_t size) {
@@ -1125,10 +1004,6 @@ int FFmpegExtractor::initStreams()
     }
     mFFmpegInited = true;
 
-    av_init_packet(&flush_pkt);
-    flush_pkt.data = (uint8_t *)"FLUSH";
-    flush_pkt.size = 0;
-
     mFormatCtx = avformat_alloc_context();
 	if (!mFormatCtx)
 	{
@@ -1329,11 +1204,11 @@ void FFmpegExtractor::readerEntry() {
             } else {
                 if (mAudioStreamIdx >= 0) {
                     packet_queue_flush(&mAudioQ);
-                    packet_queue_put(&mAudioQ, &flush_pkt);
+                    packet_queue_put(&mAudioQ, &mAudioQ.flush_pkt);
                 }
                 if (mVideoStreamIdx >= 0) {
                     packet_queue_flush(&mVideoQ);
-                    packet_queue_put(&mVideoQ, &flush_pkt);
+                    packet_queue_put(&mVideoQ, &mVideoQ.flush_pkt);
                 }
             }
             mSeekReq = 0;
@@ -1355,18 +1230,10 @@ void FFmpegExtractor::readerEntry() {
 
         if (eof) {
             if (mVideoStreamIdx >= 0) {
-                av_init_packet(pkt);
-                pkt->data = NULL;
-                pkt->size = 0;
-                pkt->stream_index = mVideoStreamIdx;
-                packet_queue_put(&mVideoQ, pkt);
+                packet_queue_put_nullpacket(&mVideoQ, mVideoStreamIdx);
             }
             if (mAudioStreamIdx >= 0) {
-                av_init_packet(pkt);
-                pkt->data = NULL;
-                pkt->size = 0;
-                pkt->stream_index = mAudioStreamIdx;
-                packet_queue_put(&mAudioQ, pkt);
+                packet_queue_put_nullpacket(&mAudioQ, mAudioStreamIdx);
             }
             usleep(10000);
 #if DEBUG_READ_ENTRY
@@ -1592,13 +1459,13 @@ status_t FFmpegExtractor::Track::read(
     }
 
 retry:
-    if (mExtractor->packet_queue_get(mQueue, &pkt, 1) < 0) {
+    if (packet_queue_get(mQueue, &pkt, 1) < 0) {
         mExtractor->reachedEOS(mMediaType);
         return ERROR_END_OF_STREAM;
     }
 
     if (seeking) {
-        if (pkt.data != flush_pkt.data) {
+        if (pkt.data != mQueue->flush_pkt.data) {
             av_free_packet(&pkt);
             goto retry;
         } else {
@@ -1609,7 +1476,7 @@ retry:
         }
     }
 
-    if (pkt.data == flush_pkt.data) {
+    if (pkt.data == mQueue->flush_pkt.data) {
         ALOGV("read %s flush pkt", av_get_media_type_string(mMediaType));
         av_free_packet(&pkt);
         mFirstKeyPktTimestamp = AV_NOPTS_VALUE;
