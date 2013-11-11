@@ -24,11 +24,40 @@
 #include <utils/Errors.h>
 #include <media/stagefright/foundation/ABuffer.h>
 
+#include "ffmpeg_utils.h"
+
 namespace android {
 
-sp<ABuffer> MakeMPEGVideoESDS(const sp<ABuffer> &csd);
-//Returns the sample rate based on the sampling frequency index
-uint32_t getAACSampleRate(const uint8_t sf_index);
+//video
+sp<MetaData> setAVCFormat(AVCodecContext *avctx);
+sp<MetaData> setH264Format(AVCodecContext *avctx);
+sp<MetaData> setMPEG4Format(AVCodecContext *avctx);
+sp<MetaData> setH263Format(AVCodecContext *avctx);
+sp<MetaData> setMPEG2VIDEOFormat(AVCodecContext *avctx);
+sp<MetaData> setVC1Format(AVCodecContext *avctx);
+sp<MetaData> setWMV1Format(AVCodecContext *avctx);
+sp<MetaData> setWMV2Format(AVCodecContext *avctx);
+sp<MetaData> setWMV3Format(AVCodecContext *avctx);
+sp<MetaData> setRV20Format(AVCodecContext *avctx);
+sp<MetaData> setRV30Format(AVCodecContext *avctx);
+sp<MetaData> setRV40Format(AVCodecContext *avctx);
+sp<MetaData> setFLV1Format(AVCodecContext *avctx);
+sp<MetaData> setHEVCFormat(AVCodecContext *avctx);
+//audio
+sp<MetaData> setMP2Format(AVCodecContext *avctx);
+sp<MetaData> setMP3Format(AVCodecContext *avctx);
+sp<MetaData> setVORBISFormat(AVCodecContext *avctx);
+sp<MetaData> setAC3Format(AVCodecContext *avctx);
+sp<MetaData> setAACFormat(AVCodecContext *avctx);
+sp<MetaData> setWMAV1Format(AVCodecContext *avctx);
+sp<MetaData> setWMAV2Format(AVCodecContext *avctx);
+sp<MetaData> setWMAProFormat(AVCodecContext *avctx);
+sp<MetaData> setWMALossLessFormat(AVCodecContext *avctx);
+sp<MetaData> setRAFormat(AVCodecContext *avctx);
+sp<MetaData> setAPEFormat(AVCodecContext *avctx);
+sp<MetaData> setDTSFormat(AVCodecContext *avctx);
+sp<MetaData> setFLACFormat(AVCodecContext *avctx);
+
 //Convert H.264 NAL format to annex b
 status_t convertNal2AnnexB(uint8_t *dst, size_t dst_size,
         uint8_t *src, size_t src_size, size_t nal_len_size);

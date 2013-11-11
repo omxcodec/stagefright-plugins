@@ -24,8 +24,6 @@
 #include <media/stagefright/foundation/hexdump.h>
 #include <media/stagefright/MediaDefs.h>
 
-#include "utils/ffmpeg_utils.h"
-
 #define DEBUG_PKT 0
 #define DEBUG_FRM 0
 

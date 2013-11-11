@@ -23,40 +23,7 @@
 #include <utils/threads.h>
 #include <utils/KeyedVector.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include <inttypes.h>
-#include <math.h>
-#include <signal.h>
-#include <limits.h> /* INT_MAX */
-
-#include "config.h"
-#include "libavutil/avstring.h"
-#include "libavutil/colorspace.h"
-#include "libavutil/mathematics.h"
-#include "libavutil/pixdesc.h"
-#include "libavutil/imgutils.h"
-#include "libavutil/dict.h"
-#include "libavutil/parseutils.h"
-#include "libavutil/samplefmt.h"
-#include "libavutil/avassert.h"
-#include "libavformat/avformat.h"
-#include "libavdevice/avdevice.h"
-#include "libswscale/swscale.h"
-#include "libavcodec/audioconvert.h"
-#include "libavutil/opt.h"
-#include "libavutil/internal.h"
-#include "libavcodec/avfft.h"
-#include "libavcodec/xiph.h"
-#include "libswresample/swresample.h"
-
 #include "utils/ffmpeg_utils.h"
-
-#ifdef __cplusplus
-}
-#endif
 
 namespace android {
 
@@ -130,9 +97,11 @@ private:
     void deInitStreams();
     void fetchStuffsFromSniffedMeta(const sp<AMessage> &meta);
     void setFFmpegDefaultOpts();
-    bool setupVorbisCodecSpecificData(sp<MetaData> meta, AVCodecContext *avctx);
     void printTime(int64_t time);
-	bool is_codec_supported(enum AVCodecID codec_id);
+    bool is_codec_supported(enum AVCodecID codec_id);
+    sp<MetaData> setVideoFormat(AVCodecContext *avctx);
+    sp<MetaData> setAudioFormat(AVCodecContext *avctx);
+    void setStreamDurationMeta(AVStream *stream, sp<MetaData> &meta);
     int stream_component_open(int stream_index);
     void stream_component_close(int stream_index);
     void reachedEOS(enum AVMediaType media_type);

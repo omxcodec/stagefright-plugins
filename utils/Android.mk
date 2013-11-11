@@ -9,12 +9,18 @@ LOCAL_SRC_FILES := \
 	ffmpeg_cmdutils.c \
 	codec_utils.cpp
 
+LOCAL_C_INCLUDES += \
+	$(TOP)/frameworks/native/include/media/openmax \
+	$(TOP)/frameworks/av/include \
+	$(TOP)/frameworks/av/media/libstagefright
+
 LOCAL_SHARED_LIBRARIES := \
 	libavcodec \
 	libavformat \
 	libavutil \
 	libutils \
 	libcutils \
+	libstagefright \
 	libstagefright_foundation
 
 LOCAL_MODULE := libffmpeg_utils

@@ -25,35 +25,7 @@
 #error "__GNUC__ cflags should be enabled"
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include <inttypes.h>
-#include <math.h>
-#include <limits.h> /* INT_MAX */
-
-#include "config.h"
-#include "libavutil/avstring.h"
-#include "libavutil/colorspace.h"
-#include "libavutil/mathematics.h"
-#include "libavutil/pixdesc.h"
-#include "libavutil/imgutils.h"
-#include "libavutil/dict.h"
-#include "libavutil/parseutils.h"
-#include "libavutil/samplefmt.h"
-#include "libavutil/avassert.h"
-#include "libavformat/avformat.h"
-#include "libavdevice/avdevice.h"
-#include "libswscale/swscale.h"
-#include "libavutil/opt.h"
-#include "libavutil/internal.h"
-#include "libavcodec/avfft.h"
-#include "libswresample/swresample.h"
-
-#ifdef __cplusplus
-}
-#endif
+#include "utils/ffmpeg_utils.h"
 
 const int AVCODEC_MAX_AUDIO_FRAME_SIZE = 192000; // Deprecated in ffmpeg
 
