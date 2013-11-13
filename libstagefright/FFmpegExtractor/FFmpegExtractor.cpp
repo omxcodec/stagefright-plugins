@@ -335,10 +335,12 @@ bool FFmpegExtractor::is_codec_supported(enum AVCodecID codec_id)
 	return supported;
 }
 
-sp<MetaData> FFmpegExtractor::setVideoFormat(AVCodecContext *avctx)
+sp<MetaData> FFmpegExtractor::setVideoFormat(AVStream *stream)
 {
+    AVCodecContext *avctx = NULL;
     sp<MetaData> meta = NULL;
 
+    avctx = stream->codec;
     CHECK_EQ(avctx->codec_type, AVMEDIA_TYPE_VIDEO);
 
     switch(avctx->codec_id) {
@@ -409,16 +411,19 @@ sp<MetaData> FFmpegExtractor::setVideoFormat(AVCodecContext *avctx)
         meta->setInt32(kKeyHeight, avctx->height);
         if (avctx->bit_rate > 0) {
             meta->setInt32(kKeyBitRate, avctx->bit_rate);
-	    }
+        }
+        setDurationMetaData(stream, meta);
 	}
 
     return meta;
 }
 
-sp<MetaData> FFmpegExtractor::setAudioFormat(AVCodecContext *avctx)
+sp<MetaData> FFmpegExtractor::setAudioFormat(AVStream *stream)
 {
+    AVCodecContext *avctx = NULL;
     sp<MetaData> meta = NULL;
 
+    avctx = stream->codec;
     CHECK_EQ(avctx->codec_type, AVMEDIA_TYPE_AUDIO);
 
     switch(avctx->codec_id) {
@@ -486,12 +491,13 @@ sp<MetaData> FFmpegExtractor::setAudioFormat(AVCodecContext *avctx)
         meta->setInt32(kKeySampleRate, avctx->sample_rate);
         meta->setInt32(kKeyBlockAlign, avctx->block_align);
         meta->setInt32(kKeySampleFormat, avctx->sample_fmt);
+        setDurationMetaData(stream, meta);
     }
 
     return meta;
 }
 
-void FFmpegExtractor::setStreamDurationMeta(AVStream *stream, sp<MetaData> &meta)
+void FFmpegExtractor::setDurationMetaData(AVStream *stream, sp<MetaData> &meta)
 {
     AVCodecContext *avctx = stream->codec;
 
@@ -574,13 +580,11 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             ALOGV("video stream no extradata, but we can ignore it.");
         }
 
-        meta = setVideoFormat(avctx);
+        meta = setVideoFormat(mVideoStream);
         if (meta == NULL) {
             ALOGE("setVideoFormat failed");
             return -1;
         }
-
-        setStreamDurationMeta(mVideoStream, meta);
 
         ALOGV("create a video track");
         index = mTracks.add(
@@ -614,13 +618,11 @@ int FFmpegExtractor::stream_component_open(int stream_index)
             ALOGV("audio stream no extradata, but we can ignore it.");
         }
 
-        meta = setAudioFormat(avctx);
+        meta = setAudioFormat(mAudioStream);
         if (meta == NULL) {
             ALOGE("setAudioFormat failed");
             return -1;
         }
-
-        setStreamDurationMeta(mAudioStream, meta);
 
         ALOGV("create a audio track");
         index = mTracks.add(

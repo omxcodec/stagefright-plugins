@@ -99,9 +99,9 @@ private:
     void setFFmpegDefaultOpts();
     void printTime(int64_t time);
     bool is_codec_supported(enum AVCodecID codec_id);
-    sp<MetaData> setVideoFormat(AVCodecContext *avctx);
-    sp<MetaData> setAudioFormat(AVCodecContext *avctx);
-    void setStreamDurationMeta(AVStream *stream, sp<MetaData> &meta);
+    sp<MetaData> setVideoFormat(AVStream *stream);
+    sp<MetaData> setAudioFormat(AVStream *stream);
+    void setDurationMetaData(AVStream *stream, sp<MetaData> &meta);
     int stream_component_open(int stream_index);
     void stream_component_close(int stream_index);
     void reachedEOS(enum AVMediaType media_type);
