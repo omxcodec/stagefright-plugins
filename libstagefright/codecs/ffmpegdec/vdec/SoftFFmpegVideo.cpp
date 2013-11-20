@@ -24,8 +24,17 @@
 #include <media/stagefright/foundation/hexdump.h>
 #include <media/stagefright/MediaDefs.h>
 
-#define DEBUG_PKT 0
-#define DEBUG_FRM 0
+#include <HardwareAPI.h>
+#include <hardware/gralloc.h>
+
+//ref: hardware/ti/omap4xxx/domx/omx_proxy_component/omx_video_dec/src/omx_proxy_videodec.c
+#define HAL_NV12_PADDED_PIXEL_FORMAT \
+    (OMX_TI_COLOR_FormatYUV420PackedSemiPlanar - OMX_COLOR_FormatVendorStartUnused)
+
+#define USE_TI_ANB  1
+
+#define DEBUG_PKT   0
+#define DEBUG_FRM   0
 
 static int decoder_reorder_pts = -1;
 
@@ -110,120 +119,131 @@ SoftFFmpegVideo::~SoftFFmpegVideo() {
     }
 }
 
-void SoftFFmpegVideo::initInputFormat(uint32_t mode,
-        OMX_PARAM_PORTDEFINITIONTYPE &def) {
+void SoftFFmpegVideo::initInputMime(uint32_t mode,
+        OMX_PARAM_PORTDEFINITIONTYPE *def) {
     switch (mode) {
     case MODE_MPEG2:
-        def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_MPEG2);
-        def.format.video.eCompressionFormat = OMX_VIDEO_CodingMPEG2;
+        def->format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_MPEG2);
+        def->format.video.eCompressionFormat = OMX_VIDEO_CodingMPEG2;
         break;
     case MODE_H263:
-        def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_H263);
-        def.format.video.eCompressionFormat = OMX_VIDEO_CodingH263;
+        def->format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_H263);
+        def->format.video.eCompressionFormat = OMX_VIDEO_CodingH263;
         break;
     case MODE_MPEG4:
-        def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_MPEG4);
-        def.format.video.eCompressionFormat = OMX_VIDEO_CodingMPEG4;
+        def->format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_MPEG4);
+        def->format.video.eCompressionFormat = OMX_VIDEO_CodingMPEG4;
         break;
     case MODE_WMV:
-        def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_WMV);
-        def.format.video.eCompressionFormat = OMX_VIDEO_CodingWMV;
+        def->format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_WMV);
+        def->format.video.eCompressionFormat = OMX_VIDEO_CodingWMV;
         break;
     case MODE_RV:
-        def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_RV);
-        def.format.video.eCompressionFormat = OMX_VIDEO_CodingRV;
+        def->format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_RV);
+        def->format.video.eCompressionFormat = OMX_VIDEO_CodingRV;
         break;
     case MODE_H264:
-        def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_AVC);
-        def.format.video.eCompressionFormat = OMX_VIDEO_CodingAVC;
+        def->format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_AVC);
+        def->format.video.eCompressionFormat = OMX_VIDEO_CodingAVC;
         break;
     case MODE_VPX:
-        def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_VPX);
-        def.format.video.eCompressionFormat = OMX_VIDEO_CodingVPX;
+        def->format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_VPX);
+        def->format.video.eCompressionFormat = OMX_VIDEO_CodingVPX;
         break;
     case MODE_VC1:
-        def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_VC1);
-        def.format.video.eCompressionFormat = OMX_VIDEO_CodingVC1;
+        def->format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_VC1);
+        def->format.video.eCompressionFormat = OMX_VIDEO_CodingVC1;
         break;
     case MODE_FLV1:
-        def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_FLV1);
-        def.format.video.eCompressionFormat = OMX_VIDEO_CodingFLV1;
+        def->format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_FLV1);
+        def->format.video.eCompressionFormat = OMX_VIDEO_CodingFLV1;
         break;
     case MODE_DIVX:
-        def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_DIVX);
-        def.format.video.eCompressionFormat = OMX_VIDEO_CodingDIVX;
+        def->format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_DIVX);
+        def->format.video.eCompressionFormat = OMX_VIDEO_CodingDIVX;
         break;
     case MODE_HEVC:
-        def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_HEVC);
-        def.format.video.eCompressionFormat = OMX_VIDEO_CodingHEVC;
+        def->format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_HEVC);
+        def->format.video.eCompressionFormat = OMX_VIDEO_CodingHEVC;
         break;
     case MODE_TRIAL:
-        def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_FFMPEG);
-        def.format.video.eCompressionFormat = OMX_VIDEO_CodingAutoDetect;
+        def->format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_FFMPEG);
+        def->format.video.eCompressionFormat = OMX_VIDEO_CodingAutoDetect;
         break;
     default:
         CHECK(!"Should not be here. Unsupported mime type and compression format");
         break;
     }
+}
 
-    def.format.video.pNativeRender = NULL;
-    def.format.video.nFrameWidth = mWidth;
-    def.format.video.nFrameHeight = mHeight;
-    def.format.video.nStride = def.format.video.nFrameWidth;
-    def.format.video.nSliceHeight = def.format.video.nFrameHeight;
-    def.format.video.nBitrate = 0;
-    def.format.video.xFramerate = 0;
-    def.format.video.bFlagErrorConcealment = OMX_FALSE;
-    def.format.video.eColorFormat = OMX_COLOR_FormatUnused;
-    def.format.video.pNativeWindow = NULL;
+void SoftFFmpegVideo::initInputPort(OMX_PARAM_PORTDEFINITIONTYPE *def) {
+    def->nPortIndex = kInputPortIndex;
+    def->eDir = OMX_DirInput;
+    def->nBufferCountMin = kNumInputBuffers;
+    def->nBufferCountActual = def->nBufferCountMin;
+    def->nBufferSize = (mWidth * mHeight * 3) / 2;
+    def->bEnabled = OMX_TRUE;
+    def->bPopulated = OMX_FALSE;
+    def->eDomain = OMX_PortDomainVideo;
+    def->bBuffersContiguous = OMX_FALSE;
+    def->nBufferAlignment = 1;
+
+    initInputMime(mMode, def);
+
+    def->format.video.pNativeRender = NULL;
+    def->format.video.nFrameWidth = mWidth;
+    def->format.video.nFrameHeight = mHeight;
+    def->format.video.nStride = def->format.video.nFrameWidth;
+    def->format.video.nSliceHeight = def->format.video.nFrameHeight;
+    def->format.video.nBitrate = 0;
+    def->format.video.xFramerate = 0;
+    def->format.video.bFlagErrorConcealment = OMX_FALSE;
+    def->format.video.eColorFormat = OMX_COLOR_FormatUnused;
+    def->format.video.pNativeWindow = NULL;
+}
+
+void SoftFFmpegVideo::initOutputPort(OMX_PARAM_PORTDEFINITIONTYPE *def) {
+    def->nPortIndex = kOutputPortIndex;
+    def->eDir = OMX_DirOutput;
+    def->nBufferCountMin = kNumOutputBuffers;
+    def->nBufferCountActual = def->nBufferCountMin;
+    def->bEnabled = OMX_TRUE;
+    def->bPopulated = OMX_FALSE;
+    def->eDomain = OMX_PortDomainVideo;
+    def->bBuffersContiguous = OMX_FALSE;
+    def->nBufferAlignment = 2;
+
+    def->format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_RAW);
+    def->format.video.pNativeRender = NULL;
+    def->format.video.nFrameWidth = mWidth;
+    def->format.video.nFrameHeight = mHeight;
+    def->format.video.nStride = def->format.video.nFrameWidth;
+    def->format.video.nSliceHeight = def->format.video.nFrameHeight;
+    def->format.video.nBitrate = 0;
+    def->format.video.xFramerate = 0;
+    def->format.video.bFlagErrorConcealment = OMX_FALSE;
+    def->format.video.eCompressionFormat = OMX_VIDEO_CodingUnused;
+#ifdef USE_TI_ANB
+    def->format.video.eColorFormat = OMX_TI_COLOR_FormatYUV420PackedSemiPlanar;
+#else
+    def->format.video.eColorFormat = OMX_COLOR_FormatYUV420Planar;
+#endif
+    def->format.video.pNativeWindow = NULL;
+
+    def->nBufferSize =
+        (def->format.video.nFrameWidth * def->format.video.nFrameHeight * 3) / 2;
 }
 
 void SoftFFmpegVideo::initPorts() {
-    OMX_PARAM_PORTDEFINITIONTYPE def;
-    InitOMXParams(&def);
+    memset(&mDefParams, 0, sizeof(mDefParams));
 
-    def.nPortIndex = 0;
-    def.eDir = OMX_DirInput;
-    def.nBufferCountMin = kNumInputBuffers;
-    def.nBufferCountActual = def.nBufferCountMin;
-    def.nBufferSize = 1280 * 720 * 3 / 2; // 256 * 1024?
-    def.bEnabled = OMX_TRUE;
-    def.bPopulated = OMX_FALSE;
-    def.eDomain = OMX_PortDomainVideo;
-    def.bBuffersContiguous = OMX_FALSE;
-    def.nBufferAlignment = 1;
+    InitOMXParams(&mDefParams[kInputPortIndex]);
+    initInputPort(&mDefParams[kInputPortIndex]);
+    addPort(mDefParams[kInputPortIndex]);
 
-    initInputFormat(mMode, def);
-
-    addPort(def);
-
-    def.nPortIndex = 1;
-    def.eDir = OMX_DirOutput;
-    def.nBufferCountMin = kNumOutputBuffers;
-    def.nBufferCountActual = def.nBufferCountMin;
-    def.bEnabled = OMX_TRUE;
-    def.bPopulated = OMX_FALSE;
-    def.eDomain = OMX_PortDomainVideo;
-    def.bBuffersContiguous = OMX_FALSE;
-    def.nBufferAlignment = 2;
-
-    def.format.video.cMIMEType = const_cast<char *>(MEDIA_MIMETYPE_VIDEO_RAW);
-    def.format.video.pNativeRender = NULL;
-    def.format.video.nFrameWidth = mWidth;
-    def.format.video.nFrameHeight = mHeight;
-    def.format.video.nStride = def.format.video.nFrameWidth;
-    def.format.video.nSliceHeight = def.format.video.nFrameHeight;
-    def.format.video.nBitrate = 0;
-    def.format.video.xFramerate = 0;
-    def.format.video.bFlagErrorConcealment = OMX_FALSE;
-    def.format.video.eCompressionFormat = OMX_VIDEO_CodingUnused;
-    def.format.video.eColorFormat = OMX_COLOR_FormatYUV420Planar;
-    def.format.video.pNativeWindow = NULL;
-
-    def.nBufferSize =
-        (def.format.video.nFrameWidth * def.format.video.nFrameHeight * 3) / 2;
-
-    addPort(def);
+    InitOMXParams(&mDefParams[kOutputPortIndex]);
+    initOutputPort(&mDefParams[kOutputPortIndex]);
+    addPort(mDefParams[kOutputPortIndex]);
 }
 
 void SoftFFmpegVideo::setDefaultCtx(AVCodecContext *avctx, const AVCodec *codec) {
@@ -391,9 +411,29 @@ void SoftFFmpegVideo::getInputFormat(uint32_t mode,
     formatParams->xFramerate = 0;
 }
 
+OMX_ERRORTYPE SoftFFmpegVideo::getANBParameter(
+        FFMPEG_OMX_INDEXTYPE index, const OMX_PTR params) {
+    ALOGV("get ANB, index:0x%x", index);
+
+	CHECK_EQ(OMX_IndexParamGetAndroidNativeBuffer, index);
+
+	GetAndroidNativeBufferUsageParams *pANBParams =
+        (GetAndroidNativeBufferUsageParams *)params;
+
+    if (pANBParams->nPortIndex > kOutputPortIndex ||
+            pANBParams->nSize != sizeof(GetAndroidNativeBufferUsageParams)) {
+        return OMX_ErrorUndefined;
+    }
+
+    //pANBParams->nUsage |= (GRALLOC_USAGE_HW_TEXTURE | GRALLOC_USAGE_EXTERNAL_DISP); //exynos_omx
+    pANBParams->nUsage = GRALLOC_USAGE_HW_RENDER; //TI OMAP4xxx
+
+    return OMX_ErrorNone;
+}
+
 OMX_ERRORTYPE SoftFFmpegVideo::internalGetParameter(
         OMX_INDEXTYPE index, OMX_PTR params) {
-    //ALOGV("internalGetParameter index:0x%x", index);
+    ALOGV("internalGetParameter index:0x%x", index);
     switch (index) {
         case OMX_IndexParamVideoPortFormat:
         {
@@ -414,9 +454,35 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalGetParameter(
                 CHECK_EQ(formatParams->nPortIndex, kOutputPortIndex);
 
                 formatParams->eCompressionFormat = OMX_VIDEO_CodingUnused;
+#ifdef USE_TI_ANB
+                formatParams->eColorFormat = OMX_TI_COLOR_FormatYUV420PackedSemiPlanar;
+#else
                 formatParams->eColorFormat = OMX_COLOR_FormatYUV420Planar;
+#endif
                 formatParams->xFramerate = 0;
             }
+
+            return OMX_ErrorNone;
+        }
+
+        case OMX_IndexParamPortDefinition:
+        {
+            OMX_PARAM_PORTDEFINITIONTYPE *defParams =
+                (OMX_PARAM_PORTDEFINITIONTYPE *)params;
+
+            if (defParams->nPortIndex > kOutputPortIndex ||
+                    defParams->nSize != sizeof(OMX_PARAM_PORTDEFINITIONTYPE)) {
+                return OMX_ErrorUndefined;
+            }
+
+            memcpy(defParams, &mDefParams[defParams->nPortIndex],
+                    sizeof(OMX_PARAM_PORTDEFINITIONTYPE));
+#ifdef USE_TI_ANB
+            if (defParams->nPortIndex == kOutputPortIndex) {
+                defParams->format.video.eColorFormat =
+                    (OMX_COLOR_FORMATTYPE)HAL_NV12_PADDED_PIXEL_FORMAT;
+            }
+#endif
 
             return OMX_ErrorNone;
         }
@@ -466,6 +532,10 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalGetParameter(
         }
 
         default:
+            if ((FFMPEG_OMX_INDEXTYPE)index == OMX_IndexParamGetAndroidNativeBuffer)
+            {
+                return getANBParameter((FFMPEG_OMX_INDEXTYPE)index, params);
+            }
 
             return SimpleSoftOMXComponent::internalGetParameter(index, params);
     }
@@ -548,9 +618,15 @@ OMX_ERRORTYPE SoftFFmpegVideo::isRoleSupported(
     return OMX_ErrorNone;
 }
 
+OMX_ERRORTYPE SoftFFmpegVideo::setANBParameter(
+        FFMPEG_OMX_INDEXTYPE index, const OMX_PTR params) {
+    ALOGV("set ANB, index:0x%x", index);
+    return OMX_ErrorNone;
+}
+
 OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
         OMX_INDEXTYPE index, const OMX_PTR params) {
-    //ALOGV("internalSetParameter index:0x%x", index);
+    ALOGV("internalSetParameter index:0x%x", index);
     switch (index) {
         case OMX_IndexParamStandardComponentRole:
         {
@@ -572,11 +648,24 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
                 return OMX_ErrorNoMore;
             }
 
+            if (formatParams->nPortIndex == kOutputPortIndex) {
+#ifdef USE_TI_ANB
+                if (formatParams->eColorFormat != OMX_TI_COLOR_FormatYUV420PackedSemiPlanar) {
+#else
+                if (formatParams->eColorFormat != OMX_COLOR_FormatYUV420Planar) {
+#endif
+                    ALOGE("set OMX_IndexParamVideoPortFormat, unexpected color format:0x%x",
+                            formatParams->eColorFormat);
+                    return OMX_ErrorUndefined;
+                }
+            }
+
             return OMX_ErrorNone;
         }
 
         case OMX_IndexParamPortDefinition:
         {
+            OMX_PARAM_PORTDEFINITIONTYPE *ourDef = NULL;
             OMX_PARAM_PORTDEFINITIONTYPE *defParams =
                 (OMX_PARAM_PORTDEFINITIONTYPE *)params;
 
@@ -585,16 +674,41 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
                 return OMX_ErrorUndefined;
             }
 
-            CHECK_EQ((int)defParams->eDomain, (int)OMX_PortDomainVideo);
+            ourDef = &mDefParams[defParams->nPortIndex];
 
-            //only care about input port
-            if (defParams->nPortIndex == kOutputPortIndex) {
-                OMX_VIDEO_PORTDEFINITIONTYPE *video_def = &defParams->format.video;
-                mCtx->width = video_def->nFrameWidth;
-                mCtx->height = video_def->nFrameHeight;
-                ALOGV("got OMX_IndexParamPortDefinition, width: %lu, height: %lu",
-                        video_def->nFrameWidth, video_def->nFrameHeight);
-                return OMX_ErrorNone;
+            if (defParams->nBufferSize != ourDef->nBufferSize) {
+                CHECK_GE(defParams->nBufferSize, ourDef->nBufferSize);
+                ourDef->nBufferSize = defParams->nBufferSize;
+                ALOGV("set OMX_IndexParamPortDefinition(%lu), nBufferSize:%lu",
+                        defParams->nPortIndex,
+                        defParams->nBufferSize);
+            }
+
+            if (defParams->nBufferCountActual != ourDef->nBufferCountActual) {
+                CHECK_GE(defParams->nBufferCountActual, ourDef->nBufferCountMin);
+                ourDef->nBufferCountActual = defParams->nBufferCountActual;
+                ALOGV("set OMX_IndexParamPortDefinition(%lu), nBufferCountActual:%lu",
+                        defParams->nPortIndex,
+                        defParams->nBufferCountActual);
+            }
+
+            if (defParams->format.video.nFrameWidth != ourDef->format.video.nFrameWidth
+					|| defParams->format.video.nFrameHeight != ourDef->format.video.nFrameHeight) {
+                ourDef->format.video.nFrameWidth = defParams->format.video.nFrameWidth;
+                ourDef->format.video.nFrameHeight = defParams->format.video.nFrameHeight;
+                ourDef->format.video.nStride = defParams->format.video.nFrameWidth; //XXX right?
+                ourDef->format.video.nSliceHeight = defParams->format.video.nFrameHeight; //XXX right?
+                if (defParams->nPortIndex == kInputPortIndex) {
+                    //update width and height
+                    mWidth  = mCtx->width  = defParams->format.video.nFrameWidth;
+                    mHeight = mCtx->height = defParams->format.video.nFrameHeight;
+				    mStride = mWidth;
+                }
+                ALOGV("set OMX_IndexParamPortDefinition(%lu), "
+                        "nFrameWidth:%lu, nFrameHeight:%lu",
+                        defParams->nPortIndex,
+                        defParams->format.video.nFrameWidth,
+                        defParams->format.video.nFrameHeight);
             }
 
             return OMX_ErrorNone;
@@ -659,7 +773,7 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
             mCtx->width    = profile->nWidth;
             mCtx->height   = profile->nHeight;
 
-            ALOGD("got OMX_IndexParamVideoFFmpeg, "
+            ALOGD("set OMX_IndexParamVideoFFmpeg, "
                 "eCodecId:%ld(%s), width:%lu, height:%lu",
                 profile->eCodecId,
                 avcodec_get_name(mCtx->codec_id),
@@ -670,9 +784,35 @@ OMX_ERRORTYPE SoftFFmpegVideo::internalSetParameter(
         }
 
         default:
+            if ((FFMPEG_OMX_INDEXTYPE)index == OMX_IndexParamEnableAndroidBuffers
+                    || (FFMPEG_OMX_INDEXTYPE)index == OMX_IndexParamUseAndroidNativeBuffer)
+            {
+                return setANBParameter((FFMPEG_OMX_INDEXTYPE)index, params);
+            }
 
             return SimpleSoftOMXComponent::internalSetParameter(index, params);
     }
+}
+
+OMX_ERRORTYPE SoftFFmpegVideo::internalGetExtensionIndex(
+        OMX_STRING name, OMX_INDEXTYPE *index) {
+    ALOGV("internalGetExtensionIndex name:%s", name ? name :"null");
+	if ((name == NULL) || (index == NULL)) {
+        return OMX_ErrorBadParameter;
+    }
+
+    if (!strcmp(name, FFMPEG_INDEX_PARAM_ENABLE_ANB)) {
+        *index = (OMX_INDEXTYPE)OMX_IndexParamEnableAndroidBuffers;
+        return OMX_ErrorNone;
+    } else if (!strcmp(name, FFMPEG_INDEX_PARAM_GET_ANB)) {
+        *index = (OMX_INDEXTYPE)OMX_IndexParamGetAndroidNativeBuffer;
+        return OMX_ErrorNone;
+    } else if (!strcmp(name, FFMPEG_INDEX_PARAM_USE_ANB)) {
+        *index = (OMX_INDEXTYPE)OMX_IndexParamUseAndroidNativeBuffer;
+        return OMX_ErrorNone;
+    }
+
+    return OMX_ErrorUnsupportedIndex;
 }
 
 bool SoftFFmpegVideo::isPortSettingChanged() {

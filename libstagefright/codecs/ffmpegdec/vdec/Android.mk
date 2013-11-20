@@ -11,6 +11,7 @@ LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/../../../.. \
 	$(TOP)/frameworks/av/media/libstagefright/include \
 	$(TOP)/frameworks/native/include/media/openmax \
+	$(TOP)/frameworks/native/include/media/hardware
 
 LOCAL_C_INCLUDES += \
 	$(FFMPEG_SRC_DIR) \

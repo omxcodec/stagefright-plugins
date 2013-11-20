@@ -39,6 +39,9 @@ protected:
     virtual OMX_ERRORTYPE internalSetParameter(
             OMX_INDEXTYPE index, const OMX_PTR params);
 
+    virtual OMX_ERRORTYPE internalGetExtensionIndex(
+            OMX_STRING name, OMX_INDEXTYPE *index);
+
     virtual void onQueueFilled(OMX_U32 portIndex);
     virtual void onPortFlushCompleted(OMX_U32 portIndex);
     virtual void onPortEnableCompleted(OMX_U32 portIndex, bool enabled);
@@ -83,6 +86,18 @@ private:
 		ERR_SWS_FAILED          = -3,
     };
 
+    typedef enum _FFMPEG_OMX_INDEXTYPE {
+        /* for Android Native Window */
+        #define FFMPEG_INDEX_PARAM_ENABLE_ANB "OMX.google.android.index.enableAndroidNativeBuffers"
+        OMX_IndexParamEnableAndroidBuffers      = 0x7F000011, //more than OMX_IndexParamAudioFFmpeg in OMX_Index.h
+        #define FFMPEG_INDEX_PARAM_GET_ANB    "OMX.google.android.index.getAndroidNativeBufferUsage"
+        OMX_IndexParamGetAndroidNativeBuffer    = 0x7F000012,
+        #define FFMPEG_INDEX_PARAM_USE_ANB    "OMX.google.android.index.useAndroidNativeBuffer"
+        OMX_IndexParamUseAndroidNativeBuffer    = 0x7F000013,
+    } FFMPEG_OMX_INDEXTYPE;
+
+    OMX_PARAM_PORTDEFINITIONTYPE mDefParams[2];
+
     bool mFFmpegAlreadyInited;
     bool mCodecAlreadyOpened;
     bool mPendingSettingChangeEvent;
@@ -106,11 +121,16 @@ private:
     } mOutputPortSettingsChange;
 
     void     setMode(const char *name);
-    void     initInputFormat(uint32_t mode, OMX_PARAM_PORTDEFINITIONTYPE &def);
-	void     getInputFormat(uint32_t mode, OMX_VIDEO_PARAM_PORTFORMATTYPE *formatParams);
+    void     initInputMime(uint32_t mode, OMX_PARAM_PORTDEFINITIONTYPE *def);
+    void     getInputFormat(uint32_t mode, OMX_VIDEO_PARAM_PORTFORMATTYPE *formatParams);
     void     setDefaultCtx(AVCodecContext *avctx, const AVCodec *codec);
     OMX_ERRORTYPE isRoleSupported(const OMX_PARAM_COMPONENTROLETYPE *roleParams);
 
+    OMX_ERRORTYPE getANBParameter(FFMPEG_OMX_INDEXTYPE index, const OMX_PTR params);
+    OMX_ERRORTYPE setANBParameter(FFMPEG_OMX_INDEXTYPE index, const OMX_PTR params);
+
+    void     initInputPort(OMX_PARAM_PORTDEFINITIONTYPE *def);
+    void     initOutputPort(OMX_PARAM_PORTDEFINITIONTYPE *def);
     void     initPorts();
     status_t initDecoder();
     void     deInitDecoder();
