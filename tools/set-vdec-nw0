@@ -1,0 +1,4 @@
+#!/system/bin/sh
+
+setprop sys.media.vdec.nw 0
+
