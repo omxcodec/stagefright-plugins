@@ -120,6 +120,7 @@ Only the three quirks included above are recognized at this point:
         <MediaCodec name="OMX.google.g711.alaw.decoder" type="audio/g711-alaw" />
         <MediaCodec name="OMX.google.g711.mlaw.decoder" type="audio/g711-mlaw" />
         <MediaCodec name="OMX.google.vorbis.decoder" type="audio/vorbis" />
+        <MediaCodec name="OMX.google.gsm.decoder" type="audio/gsm" />
 
         <!-- google video codec -->
         <MediaCodec name="OMX.google.mpeg4.decoder" type="video/mp4v-es" />
@@ -145,5 +146,6 @@ Only the three quirks included above are recognized at this point:
         <MediaCodec name="OMX.google.amrwb.encoder" type="audio/amr-wb" />
         <MediaCodec name="OMX.google.aac.encoder" type="audio/mp4a-latm" />
         <MediaCodec name="OMX.google.flac.encoder" type="audio/flac" />
+        <MediaCodec name="OMX.google.vpx.encoder" type="video/x-vnd.on2.vp8" />
     </Encoders>
 </MediaCodecs>
