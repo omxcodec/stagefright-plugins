@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_NDEBUG 0
+//#define LOG_NDEBUG 0
 #define LOG_TAG "FFmpegExtractor"
 #include <utils/Log.h>
 
@@ -65,9 +65,8 @@ enum {
 
 namespace android {
 
-struct FFmpegExtractor::Track : public MediaSource {
-    Track(FFmpegExtractor *extractor, sp<MetaData> meta,
-          AVStream *stream, PacketQueue *queue);
+struct FFmpegSource : public MediaSource {
+    FFmpegSource(const sp<FFmpegExtractor> &extractor, size_t index);
 
     virtual status_t start(MetaData *params);
     virtual status_t stop();
@@ -77,13 +76,13 @@ struct FFmpegExtractor::Track : public MediaSource {
             MediaBuffer **buffer, const ReadOptions *options);
 
 protected:
-    virtual ~Track();
+    virtual ~FFmpegSource();
 
 private:
     friend struct FFmpegExtractor;
 
-    FFmpegExtractor *mExtractor;
-    sp<MetaData> mMeta;
+    sp<FFmpegExtractor> mExtractor;
+    size_t mTrackIndex;
 
     enum AVMediaType mMediaType;
 
@@ -98,7 +97,7 @@ private:
 
     int64_t mFirstKeyPktTimestamp;
 
-    DISALLOW_EVIL_CONSTRUCTORS(Track);
+    DISALLOW_EVIL_CONSTRUCTORS(FFmpegSource);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +159,7 @@ sp<MediaSource> FFmpegExtractor::getTrack(size_t index) {
         return NULL;
     }
 
-    return mTracks.valueAt(index);
+    return new FFmpegSource(this, index);
 }
 
 sp<MetaData> FFmpegExtractor::getTrackMetaData(size_t index, uint32_t flags) {
@@ -174,7 +173,7 @@ sp<MetaData> FFmpegExtractor::getTrackMetaData(size_t index, uint32_t flags) {
         return NULL;
     }
 
-    return mTracks.valueAt(index)->getFormat();
+    return mTracks.itemAt(index).mMeta;
 }
 
 sp<MetaData> FFmpegExtractor::getMetaData() {
@@ -519,6 +518,7 @@ void FFmpegExtractor::setDurationMetaData(AVStream *stream, sp<MetaData> &meta)
 
 int FFmpegExtractor::stream_component_open(int stream_index)
 {
+    TrackInfo *trackInfo = NULL;
     AVCodecContext *avctx = NULL;
     sp<MetaData> meta = NULL;
     bool supported = false;
@@ -541,11 +541,11 @@ int FFmpegExtractor::stream_component_open(int stream_index)
     ALOGI("support the codec(%s)", avcodec_get_name(avctx->codec_id));
 
     unsigned streamType;
-    ssize_t index = mTracks.indexOfKey(stream_index);
-
-    if (index >= 0) {
-        ALOGE("this track already exists");
-        return 0;
+    for (size_t i = 0; i < mTracks.size(); ++i) {
+        if (stream_index == mTracks.editItemAt(i).mIndex) {
+            ALOGE("this track already exists");
+            return 0;
+        }
     }
 
     mFormatCtx->streams[stream_index]->discard = AVDISCARD_DEFAULT;
@@ -587,8 +587,12 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         }
 
         ALOGV("create a video track");
-        index = mTracks.add(
-            stream_index, new Track(this, meta, mVideoStream, &mVideoQ));
+        mTracks.push();
+        trackInfo = &mTracks.editItemAt(mTracks.size() - 1);
+        trackInfo->mIndex  = stream_index;
+        trackInfo->mMeta   = meta;
+        trackInfo->mStream = mVideoStream;
+        trackInfo->mQueue  = &mVideoQ;
 
         mDefersToCreateVideoTrack = false;
 
@@ -625,8 +629,12 @@ int FFmpegExtractor::stream_component_open(int stream_index)
         }
 
         ALOGV("create a audio track");
-        index = mTracks.add(
-            stream_index, new Track(this, meta, mAudioStream, &mAudioQ));
+        mTracks.push();
+        trackInfo = &mTracks.editItemAt(mTracks.size() - 1);
+        trackInfo->mIndex  = stream_index;
+        trackInfo->mMeta   = meta;
+        trackInfo->mStream = mAudioStream;
+        trackInfo->mQueue  = &mAudioQ;
 
         mDefersToCreateAudioTrack = false;
 
@@ -1191,20 +1199,19 @@ fail:
 
 ////////////////////////////////////////////////////////////////////////////////
 
-FFmpegExtractor::Track::Track(
-        FFmpegExtractor *extractor, sp<MetaData> meta,
-        AVStream *stream, PacketQueue *queue)
+FFmpegSource::FFmpegSource(
+        const sp<FFmpegExtractor> &extractor, size_t index)
     : mExtractor(extractor),
-      mMeta(meta),
+      mTrackIndex(index),
       mIsAVC(false),
       mNal2AnnexB(false),
-      mStream(stream),
-      mQueue(queue) {
-    const char *mime;
+      mStream(mExtractor->mTracks.itemAt(index).mStream),
+      mQueue(mExtractor->mTracks.itemAt(index).mQueue) {
+    sp<MetaData> meta = mExtractor->mTracks.itemAt(index).mMeta;
 
     /* H.264 Video Types */
     {
-        AVCodecContext *avctx = stream->codec;
+        AVCodecContext *avctx = mStream->codec;
 
         if (avctx->codec_id == AV_CODEC_ID_H264
                 && avctx->extradata_size > 0
@@ -1234,36 +1241,29 @@ FFmpegExtractor::Track::Track(
     mFirstKeyPktTimestamp = AV_NOPTS_VALUE;
 }
 
-FFmpegExtractor::Track::~Track() {
-    ALOGV("FFmpegExtractor::Track::~Track %s",
+FFmpegSource::~FFmpegSource() {
+    ALOGV("FFmpegSource::~FFmpegSource %s",
             av_get_media_type_string(mMediaType));
 	mExtractor = NULL;
-	mMeta = NULL;
 }
 
-status_t FFmpegExtractor::Track::start(MetaData *params) {
-    ALOGV("FFmpegExtractor::Track::start %s",
+status_t FFmpegSource::start(MetaData *params) {
+    ALOGV("FFmpegSource::start %s",
             av_get_media_type_string(mMediaType));
-    Mutex::Autolock autoLock(mLock);
-    //mExtractor->startReaderThread();
     return OK;
 }
 
-status_t FFmpegExtractor::Track::stop() {
-    ALOGV("FFmpegExtractor::Track::stop %s",
+status_t FFmpegSource::stop() {
+    ALOGV("FFmpegSource::stop %s",
             av_get_media_type_string(mMediaType));
-    Mutex::Autolock autoLock(mLock);
-    //mExtractor->stopReaderThread();
     return OK;
 }
 
-sp<MetaData> FFmpegExtractor::Track::getFormat() {
-    Mutex::Autolock autoLock(mLock);
-
-    return mMeta;
+sp<MetaData> FFmpegSource::getFormat() {
+    return mExtractor->mTracks.itemAt(mTrackIndex).mMeta;;
 }
 
-status_t FFmpegExtractor::Track::read(
+status_t FFmpegSource::read(
         MediaBuffer **buffer, const ReadOptions *options) {
     *buffer = NULL;
 
@@ -1292,6 +1292,7 @@ status_t FFmpegExtractor::Track::read(
 
 retry:
     if (packet_queue_get(mQueue, &pkt, 1) < 0) {
+        ALOGD("read %s abort reqeust", av_get_media_type_string(mMediaType));
         mExtractor->reachedEOS(mMediaType);
         return ERROR_END_OF_STREAM;
     }

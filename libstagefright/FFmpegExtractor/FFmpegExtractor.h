@@ -29,8 +29,8 @@ namespace android {
 
 struct ABuffer;
 struct AMessage;
-struct Track;
 struct String8;
+struct FFmpegSource;
 
 struct FFmpegExtractor : public MediaExtractor {
     FFmpegExtractor(const sp<DataSource> &source, const sp<AMessage> &meta);
@@ -47,14 +47,21 @@ protected:
     virtual ~FFmpegExtractor();
 
 private:
-    struct Track;
+    friend struct FFmpegSource;
+
+    struct TrackInfo {
+        int mIndex; //stream index
+        sp<MetaData> mMeta;
+        AVStream *mStream;
+        PacketQueue *mQueue;
+    };
+
+    Vector<TrackInfo> mTracks;
 
     mutable Mutex mLock;
     sp<DataSource> mDataSource;
     sp<MetaData> mMeta;
     status_t mInitCheck;
-
-    KeyedVector<unsigned, sp<Track> > mTracks;
 
     char mFilename[PATH_MAX];
     int mGenPTS;
