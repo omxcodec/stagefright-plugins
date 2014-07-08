@@ -220,7 +220,7 @@ int FFmpegExtractor::check_extradata(AVCodecContext *avctx)
         defersToCreateTrack = &mDefersToCreateAudioTrack;
     }
 
-	codec_id = avctx->codec_id;
+    codec_id = avctx->codec_id;
 
     // ignore extradata
     if (codec_id != AV_CODEC_ID_H264
@@ -328,12 +328,12 @@ bool FFmpegExtractor::is_codec_supported(enum AVCodecID codec_id)
         ALOGD("unsuppoted codec(%s), but give it a chance",
                 avcodec_get_name(codec_id));
         //Won't promise that the following codec id can be supported.
-	    //Just give these codecs a chance.
+        //Just give these codecs a chance.
         supported = true;
         break;
     }
 
-	return supported;
+    return supported;
 }
 
 sp<MetaData> FFmpegExtractor::setVideoFormat(AVStream *stream)
@@ -414,7 +414,7 @@ sp<MetaData> FFmpegExtractor::setVideoFormat(AVStream *stream)
             meta->setInt32(kKeyBitRate, avctx->bit_rate);
         }
         setDurationMetaData(stream, meta);
-	}
+    }
 
     return meta;
 }
@@ -816,7 +816,7 @@ void FFmpegExtractor::setFFmpegDefaultOpts()
 int FFmpegExtractor::initStreams()
 {
     int err = 0;
-	int i = 0;
+    int i = 0;
     status_t status = UNKNOWN_ERROR;
     int eof = 0;
     int ret = 0, audio_ret = -1, video_ret = -1;
@@ -842,12 +842,12 @@ int FFmpegExtractor::initStreams()
     mFFmpegInited = true;
 
     mFormatCtx = avformat_alloc_context();
-	if (!mFormatCtx)
-	{
+    if (!mFormatCtx)
+    {
         ALOGE("oom for alloc avformat context");
         ret = -1;
         goto fail;
-	}
+    }
     mFormatCtx->interrupt_callback.callback = decode_interrupt_cb;
     mFormatCtx->interrupt_callback.opaque = this;
     ALOGV("mFilename: %s", mFilename);
@@ -1246,7 +1246,7 @@ FFmpegSource::FFmpegSource(
 FFmpegSource::~FFmpegSource() {
     ALOGV("FFmpegSource::~FFmpegSource %s",
             av_get_media_type_string(mMediaType));
-	mExtractor = NULL;
+    mExtractor = NULL;
 }
 
 status_t FFmpegSource::start(MetaData *params) {
@@ -1320,7 +1320,7 @@ retry:
         ALOGD("read %s eos pkt", av_get_media_type_string(mMediaType));
         av_free_packet(&pkt);
         mExtractor->reachedEOS(mMediaType);
-	    return ERROR_END_OF_STREAM;
+        return ERROR_END_OF_STREAM;
     }
 
     key = pkt.flags & AV_PKT_FLAG_KEY ? 1 : 0;
@@ -1436,37 +1436,37 @@ static formatmap FILE_FORMATS[] = {
 
 static enum AVCodecID getCodecId(AVFormatContext *ic, AVMediaType codec_type)
 {
-	unsigned int idx = 0;
-	AVCodecContext *avctx = NULL;
+    unsigned int idx = 0;
+    AVCodecContext *avctx = NULL;
 
-	for (idx = 0; idx < ic->nb_streams; idx++) {
-		avctx = ic->streams[idx]->codec;
-		if (avctx->codec_type == codec_type) {
-			return avctx->codec_id;
-		}
-	}
+    for (idx = 0; idx < ic->nb_streams; idx++) {
+        avctx = ic->streams[idx]->codec;
+        if (avctx->codec_type == codec_type) {
+            return avctx->codec_id;
+        }
+    }
 
-	return AV_CODEC_ID_NONE;
+    return AV_CODEC_ID_NONE;
 }
 
 static bool hasAudioCodecOnly(AVFormatContext *ic)
 {
-	enum AVCodecID codec_id = AV_CODEC_ID_NONE;
-	bool haveVideo = false;
-	bool haveAudio = false;
+    enum AVCodecID codec_id = AV_CODEC_ID_NONE;
+    bool haveVideo = false;
+    bool haveAudio = false;
 
-	if (getCodecId(ic, AVMEDIA_TYPE_VIDEO) != AV_CODEC_ID_NONE) {
-		haveVideo = true;
-	}
-	if (getCodecId(ic, AVMEDIA_TYPE_AUDIO) != AV_CODEC_ID_NONE) {
-		haveAudio = true;
-	}
+    if (getCodecId(ic, AVMEDIA_TYPE_VIDEO) != AV_CODEC_ID_NONE) {
+        haveVideo = true;
+    }
+    if (getCodecId(ic, AVMEDIA_TYPE_AUDIO) != AV_CODEC_ID_NONE) {
+        haveAudio = true;
+    }
 
-	if (!haveVideo && haveAudio) {
-		return true;
-	}
+    if (!haveVideo && haveAudio) {
+        return true;
+    }
 
-	return false;
+    return false;
 }
 
 //FIXME all codecs: frameworks/av/media/libstagefright/codecs/*
@@ -1483,7 +1483,7 @@ static bool isCodecSupportedByStagefright(enum AVCodecID codec_id)
     case AV_CODEC_ID_H263I:
     case AV_CODEC_ID_VP6:
     case AV_CODEC_ID_VP8:
-	//audio
+    //audio
     case AV_CODEC_ID_AAC:
     case AV_CODEC_ID_MP3:
     case AV_CODEC_ID_AMR_NB:
@@ -1504,418 +1504,418 @@ static bool isCodecSupportedByStagefright(enum AVCodecID codec_id)
             (supported ? "" : "un"),
             avcodec_get_name(codec_id));
 
-	return supported;
+    return supported;
 }
 
 static void adjustMPEG4Confidence(AVFormatContext *ic, float *confidence)
 {
-	AVDictionary *tags = NULL;
-	AVDictionaryEntry *tag = NULL;
-	enum AVCodecID codec_id = AV_CODEC_ID_NONE;
+    AVDictionary *tags = NULL;
+    AVDictionaryEntry *tag = NULL;
+    enum AVCodecID codec_id = AV_CODEC_ID_NONE;
 
-	//1. check codec id
-	codec_id = getCodecId(ic, AVMEDIA_TYPE_VIDEO);
-	if (codec_id != AV_CODEC_ID_NONE
-			&& codec_id != AV_CODEC_ID_H264
-			&& codec_id != AV_CODEC_ID_MPEG4
-			&& codec_id != AV_CODEC_ID_H263
-			&& codec_id != AV_CODEC_ID_H263P
-			&& codec_id != AV_CODEC_ID_H263I) {
-		//the MEDIA_MIMETYPE_CONTAINER_MPEG4 of confidence is 0.4f
-		ALOGI("[mp4]video codec(%s), confidence should be larger than MPEG4Extractor",
-				avcodec_get_name(codec_id));
-		*confidence = 0.41f;
-	}
+    //1. check codec id
+    codec_id = getCodecId(ic, AVMEDIA_TYPE_VIDEO);
+    if (codec_id != AV_CODEC_ID_NONE
+            && codec_id != AV_CODEC_ID_H264
+            && codec_id != AV_CODEC_ID_MPEG4
+            && codec_id != AV_CODEC_ID_H263
+            && codec_id != AV_CODEC_ID_H263P
+            && codec_id != AV_CODEC_ID_H263I) {
+        //the MEDIA_MIMETYPE_CONTAINER_MPEG4 of confidence is 0.4f
+        ALOGI("[mp4]video codec(%s), confidence should be larger than MPEG4Extractor",
+                avcodec_get_name(codec_id));
+        *confidence = 0.41f;
+    }
 
-	codec_id = getCodecId(ic, AVMEDIA_TYPE_AUDIO);
-	if (codec_id != AV_CODEC_ID_NONE
-			&& codec_id != AV_CODEC_ID_MP3
-			&& codec_id != AV_CODEC_ID_AAC
-			&& codec_id != AV_CODEC_ID_AMR_NB
-			&& codec_id != AV_CODEC_ID_AMR_WB) {
-		ALOGI("[mp4]audio codec(%s), confidence should be larger than MPEG4Extractor",
-				avcodec_get_name(codec_id));
-		*confidence = 0.41f;
-	}
+    codec_id = getCodecId(ic, AVMEDIA_TYPE_AUDIO);
+    if (codec_id != AV_CODEC_ID_NONE
+            && codec_id != AV_CODEC_ID_MP3
+            && codec_id != AV_CODEC_ID_AAC
+            && codec_id != AV_CODEC_ID_AMR_NB
+            && codec_id != AV_CODEC_ID_AMR_WB) {
+        ALOGI("[mp4]audio codec(%s), confidence should be larger than MPEG4Extractor",
+                avcodec_get_name(codec_id));
+        *confidence = 0.41f;
+    }
 
-	//2. check tag
-	tags = ic->metadata;
-	//NOTE: You can use command to show these tags,
-	//e.g. "ffprobe -show_format 2012.mov"
-	tag = av_dict_get(tags, "major_brand", NULL, 0);
-	if (!tag) {
-		return;
-	}
+    //2. check tag
+    tags = ic->metadata;
+    //NOTE: You can use command to show these tags,
+    //e.g. "ffprobe -show_format 2012.mov"
+    tag = av_dict_get(tags, "major_brand", NULL, 0);
+    if (!tag) {
+        return;
+    }
 
-	ALOGV("major_brand tag is:%s", tag->value);
+    ALOGV("major_brand tag is:%s", tag->value);
 
-	//when MEDIA_MIMETYPE_CONTAINER_MPEG4
-	//WTF, MPEG4Extractor.cpp can not extractor mov format
-	//NOTE: isCompatibleBrand(MPEG4Extractor.cpp)
-	//  Won't promise that the following file types can be played.
-	//  Just give these file types a chance.
-	//  FOURCC('q', 't', ' ', ' '),  // Apple's QuickTime
-	//So......
-	if (!strcmp(tag->value, "qt  ")) {
-		ALOGI("[mp4]format is mov, confidence should be larger than mpeg4");
-		*confidence = 0.41f;
-	}
+    //when MEDIA_MIMETYPE_CONTAINER_MPEG4
+    //WTF, MPEG4Extractor.cpp can not extractor mov format
+    //NOTE: isCompatibleBrand(MPEG4Extractor.cpp)
+    //  Won't promise that the following file types can be played.
+    //  Just give these file types a chance.
+    //  FOURCC('q', 't', ' ', ' '),  // Apple's QuickTime
+    //So......
+    if (!strcmp(tag->value, "qt  ")) {
+        ALOGI("[mp4]format is mov, confidence should be larger than mpeg4");
+        *confidence = 0.41f;
+    }
 }
 
 static void adjustMPEG2TSConfidence(AVFormatContext *ic, float *confidence)
 {
-	enum AVCodecID codec_id = AV_CODEC_ID_NONE;
+    enum AVCodecID codec_id = AV_CODEC_ID_NONE;
 
-	codec_id = getCodecId(ic, AVMEDIA_TYPE_VIDEO);
-	if (codec_id != AV_CODEC_ID_NONE
-			&& codec_id != AV_CODEC_ID_H264
-			&& codec_id != AV_CODEC_ID_MPEG4
-			&& codec_id != AV_CODEC_ID_MPEG1VIDEO
-			&& codec_id != AV_CODEC_ID_MPEG2VIDEO) {
-		//the MEDIA_MIMETYPE_CONTAINER_MPEG2TS of confidence is 0.1f
-		ALOGI("[mpeg2ts]video codec(%s), confidence should be larger than MPEG2TSExtractor",
-				avcodec_get_name(codec_id));
-		*confidence = 0.11f;
-	}
+    codec_id = getCodecId(ic, AVMEDIA_TYPE_VIDEO);
+    if (codec_id != AV_CODEC_ID_NONE
+            && codec_id != AV_CODEC_ID_H264
+            && codec_id != AV_CODEC_ID_MPEG4
+            && codec_id != AV_CODEC_ID_MPEG1VIDEO
+            && codec_id != AV_CODEC_ID_MPEG2VIDEO) {
+        //the MEDIA_MIMETYPE_CONTAINER_MPEG2TS of confidence is 0.1f
+        ALOGI("[mpeg2ts]video codec(%s), confidence should be larger than MPEG2TSExtractor",
+                avcodec_get_name(codec_id));
+        *confidence = 0.11f;
+    }
 
-	codec_id = getCodecId(ic, AVMEDIA_TYPE_AUDIO);
-	if (codec_id != AV_CODEC_ID_NONE
-			&& codec_id != AV_CODEC_ID_AAC
-			&& codec_id != AV_CODEC_ID_PCM_S16LE //FIXME, AV_CODEC_ID_PCM_S24LE, AV_CODEC_ID_PCM_S32LE?
-			&& codec_id != AV_CODEC_ID_MP1
-			&& codec_id != AV_CODEC_ID_MP2
-			&& codec_id != AV_CODEC_ID_MP3) {
-		ALOGI("[mpeg2ts]audio codec(%s), confidence should be larger than MPEG2TSExtractor",
-				avcodec_get_name(codec_id));
-		*confidence = 0.11f;
-	}
+    codec_id = getCodecId(ic, AVMEDIA_TYPE_AUDIO);
+    if (codec_id != AV_CODEC_ID_NONE
+            && codec_id != AV_CODEC_ID_AAC
+            && codec_id != AV_CODEC_ID_PCM_S16LE //FIXME, AV_CODEC_ID_PCM_S24LE, AV_CODEC_ID_PCM_S32LE?
+            && codec_id != AV_CODEC_ID_MP1
+            && codec_id != AV_CODEC_ID_MP2
+            && codec_id != AV_CODEC_ID_MP3) {
+        ALOGI("[mpeg2ts]audio codec(%s), confidence should be larger than MPEG2TSExtractor",
+                avcodec_get_name(codec_id));
+        *confidence = 0.11f;
+    }
 }
 
 static void adjustMKVConfidence(AVFormatContext *ic, float *confidence)
 {
-	enum AVCodecID codec_id = AV_CODEC_ID_NONE;
+    enum AVCodecID codec_id = AV_CODEC_ID_NONE;
 
-	codec_id = getCodecId(ic, AVMEDIA_TYPE_VIDEO);
-	if (codec_id != AV_CODEC_ID_NONE
-			&& codec_id != AV_CODEC_ID_H264
-			&& codec_id != AV_CODEC_ID_MPEG4
-			&& codec_id != AV_CODEC_ID_VP6
-			&& codec_id != AV_CODEC_ID_VP8) {
-		//the MEDIA_MIMETYPE_CONTAINER_MATROSKA of confidence is 0.6f
-		ALOGI("[mkv]video codec(%s), confidence should be larger than MatroskaExtractor",
-				avcodec_get_name(codec_id));
-		*confidence = 0.61f;
-	}
+    codec_id = getCodecId(ic, AVMEDIA_TYPE_VIDEO);
+    if (codec_id != AV_CODEC_ID_NONE
+            && codec_id != AV_CODEC_ID_H264
+            && codec_id != AV_CODEC_ID_MPEG4
+            && codec_id != AV_CODEC_ID_VP6
+            && codec_id != AV_CODEC_ID_VP8) {
+        //the MEDIA_MIMETYPE_CONTAINER_MATROSKA of confidence is 0.6f
+        ALOGI("[mkv]video codec(%s), confidence should be larger than MatroskaExtractor",
+                avcodec_get_name(codec_id));
+        *confidence = 0.61f;
+    }
 
-	codec_id = getCodecId(ic, AVMEDIA_TYPE_AUDIO);
-	if (codec_id != AV_CODEC_ID_NONE
-			&& codec_id != AV_CODEC_ID_AAC
-			&& codec_id != AV_CODEC_ID_MP3
-			&& codec_id != AV_CODEC_ID_VORBIS) {
-		ALOGI("[mkv]audio codec(%s), confidence should be larger than MatroskaExtractor",
-				avcodec_get_name(codec_id));
-		*confidence = 0.61f;
-	}
+    codec_id = getCodecId(ic, AVMEDIA_TYPE_AUDIO);
+    if (codec_id != AV_CODEC_ID_NONE
+            && codec_id != AV_CODEC_ID_AAC
+            && codec_id != AV_CODEC_ID_MP3
+            && codec_id != AV_CODEC_ID_VORBIS) {
+        ALOGI("[mkv]audio codec(%s), confidence should be larger than MatroskaExtractor",
+                avcodec_get_name(codec_id));
+        *confidence = 0.61f;
+    }
 }
 
 static void adjustCodecConfidence(AVFormatContext *ic, float *confidence)
 {
-	enum AVCodecID codec_id = AV_CODEC_ID_NONE;
+    enum AVCodecID codec_id = AV_CODEC_ID_NONE;
 
-	codec_id = getCodecId(ic, AVMEDIA_TYPE_VIDEO);
-	if (codec_id != AV_CODEC_ID_NONE) {
-		if (!isCodecSupportedByStagefright(codec_id)) {
-			*confidence = 0.88f;
-		}
-	}
+    codec_id = getCodecId(ic, AVMEDIA_TYPE_VIDEO);
+    if (codec_id != AV_CODEC_ID_NONE) {
+        if (!isCodecSupportedByStagefright(codec_id)) {
+            *confidence = 0.88f;
+        }
+    }
 
-	codec_id = getCodecId(ic, AVMEDIA_TYPE_AUDIO);
-	if (codec_id != AV_CODEC_ID_NONE) {
-		if (!isCodecSupportedByStagefright(codec_id)) {
-			*confidence = 0.88f;
-		}
-	}
+    codec_id = getCodecId(ic, AVMEDIA_TYPE_AUDIO);
+    if (codec_id != AV_CODEC_ID_NONE) {
+        if (!isCodecSupportedByStagefright(codec_id)) {
+            *confidence = 0.88f;
+        }
+    }
 
-	if (getCodecId(ic, AVMEDIA_TYPE_VIDEO) != AV_CODEC_ID_NONE
-			&& getCodecId(ic, AVMEDIA_TYPE_AUDIO) == AV_CODEC_ID_MP3) {
-		*confidence = 0.22f; //larger than MP3Extractor
-	}
+    if (getCodecId(ic, AVMEDIA_TYPE_VIDEO) != AV_CODEC_ID_NONE
+            && getCodecId(ic, AVMEDIA_TYPE_AUDIO) == AV_CODEC_ID_MP3) {
+        *confidence = 0.22f; //larger than MP3Extractor
+    }
 }
 
 //TODO need more checks
 static void adjustConfidenceIfNeeded(const char *mime,
-		AVFormatContext *ic, float *confidence)
+        AVFormatContext *ic, float *confidence)
 {
-	//1. check mime
-	if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MPEG4)) {
-		adjustMPEG4Confidence(ic, confidence);
-	} else if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MPEG2TS)) {
-		adjustMPEG2TSConfidence(ic, confidence);
-	} else if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MATROSKA)) {
-		adjustMKVConfidence(ic, confidence);
-	} else {
-		//todo here
-	}
+    //1. check mime
+    if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MPEG4)) {
+        adjustMPEG4Confidence(ic, confidence);
+    } else if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MPEG2TS)) {
+        adjustMPEG2TSConfidence(ic, confidence);
+    } else if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MATROSKA)) {
+        adjustMKVConfidence(ic, confidence);
+    } else {
+        //todo here
+    }
 
-	if (*confidence > 0.08) {
-		return;
-	}
+    if (*confidence > 0.08) {
+        return;
+    }
 
-	//2. check codec
-	adjustCodecConfidence(ic, confidence);
+    //2. check codec
+    adjustCodecConfidence(ic, confidence);
 }
 
 static void adjustContainerIfNeeded(const char **mime, AVFormatContext *ic)
 {
-	const char *newMime = *mime;
-	enum AVCodecID codec_id = AV_CODEC_ID_NONE;
+    const char *newMime = *mime;
+    enum AVCodecID codec_id = AV_CODEC_ID_NONE;
 
-	if (!hasAudioCodecOnly(ic)) {
-		return;
-	}
+    if (!hasAudioCodecOnly(ic)) {
+        return;
+    }
 
-	codec_id = getCodecId(ic, AVMEDIA_TYPE_AUDIO);
-	CHECK(codec_id != AV_CODEC_ID_NONE);
-	switch (codec_id) {
-	case AV_CODEC_ID_MP3:
-		newMime = MEDIA_MIMETYPE_AUDIO_MPEG;
-		break;
-	case AV_CODEC_ID_AAC:
-		newMime = MEDIA_MIMETYPE_AUDIO_AAC;
-		break;
-	case AV_CODEC_ID_VORBIS:
-		newMime = MEDIA_MIMETYPE_AUDIO_VORBIS;
-		break;
-	case AV_CODEC_ID_FLAC:
-		newMime = MEDIA_MIMETYPE_AUDIO_FLAC;
-		break;
-	case AV_CODEC_ID_AC3:
-		newMime = MEDIA_MIMETYPE_AUDIO_AC3;
-		break;
-	case AV_CODEC_ID_APE:
-		newMime = MEDIA_MIMETYPE_AUDIO_APE;
-		break;
-	case AV_CODEC_ID_DTS:
-		newMime = MEDIA_MIMETYPE_AUDIO_DTS;
-		break;
-	case AV_CODEC_ID_MP2:
-		newMime = MEDIA_MIMETYPE_AUDIO_MPEG_LAYER_II;
-		break;
-	case AV_CODEC_ID_COOK:
-		newMime = MEDIA_MIMETYPE_AUDIO_RA;
-		break;
-	case AV_CODEC_ID_WMAV1:
-	case AV_CODEC_ID_WMAV2:
-	case AV_CODEC_ID_WMAPRO:
-	case AV_CODEC_ID_WMALOSSLESS:
-		newMime = MEDIA_MIMETYPE_AUDIO_WMA;
-		break;
-	default:
-		break;
-	}
+    codec_id = getCodecId(ic, AVMEDIA_TYPE_AUDIO);
+    CHECK(codec_id != AV_CODEC_ID_NONE);
+    switch (codec_id) {
+    case AV_CODEC_ID_MP3:
+        newMime = MEDIA_MIMETYPE_AUDIO_MPEG;
+        break;
+    case AV_CODEC_ID_AAC:
+        newMime = MEDIA_MIMETYPE_AUDIO_AAC;
+        break;
+    case AV_CODEC_ID_VORBIS:
+        newMime = MEDIA_MIMETYPE_AUDIO_VORBIS;
+        break;
+    case AV_CODEC_ID_FLAC:
+        newMime = MEDIA_MIMETYPE_AUDIO_FLAC;
+        break;
+    case AV_CODEC_ID_AC3:
+        newMime = MEDIA_MIMETYPE_AUDIO_AC3;
+        break;
+    case AV_CODEC_ID_APE:
+        newMime = MEDIA_MIMETYPE_AUDIO_APE;
+        break;
+    case AV_CODEC_ID_DTS:
+        newMime = MEDIA_MIMETYPE_AUDIO_DTS;
+        break;
+    case AV_CODEC_ID_MP2:
+        newMime = MEDIA_MIMETYPE_AUDIO_MPEG_LAYER_II;
+        break;
+    case AV_CODEC_ID_COOK:
+        newMime = MEDIA_MIMETYPE_AUDIO_RA;
+        break;
+    case AV_CODEC_ID_WMAV1:
+    case AV_CODEC_ID_WMAV2:
+    case AV_CODEC_ID_WMAPRO:
+    case AV_CODEC_ID_WMALOSSLESS:
+        newMime = MEDIA_MIMETYPE_AUDIO_WMA;
+        break;
+    default:
+        break;
+    }
 
-	if (!strcmp(*mime, MEDIA_MIMETYPE_CONTAINER_FFMPEG)) {
-		newMime = MEDIA_MIMETYPE_AUDIO_FFMPEG;
-	}
+    if (!strcmp(*mime, MEDIA_MIMETYPE_CONTAINER_FFMPEG)) {
+        newMime = MEDIA_MIMETYPE_AUDIO_FFMPEG;
+    }
 
-	if (strcmp(*mime, newMime)) {
-		ALOGI("adjust mime(%s -> %s)", *mime, newMime);
-		*mime = newMime;
-	}
+    if (strcmp(*mime, newMime)) {
+        ALOGI("adjust mime(%s -> %s)", *mime, newMime);
+        *mime = newMime;
+    }
 }
 
 static const char *findMatchingContainer(const char *name)
 {
-	size_t i = 0;
+    size_t i = 0;
 #if SUPPOURT_UNKNOWN_FORMAT
     //The FFmpegExtractor support all ffmpeg formats!!!
     //Unknown format is defined as MEDIA_MIMETYPE_CONTAINER_FFMPEG
     const char *container = MEDIA_MIMETYPE_CONTAINER_FFMPEG;
 #else
-	const char *container = NULL;
+    const char *container = NULL;
 #endif
 
-	ALOGV("list the formats suppoted by ffmpeg: ");
-	ALOGV("========================================");
-	for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
-		ALOGV("format_names[%02d]: %s", i, FILE_FORMATS[i].format);
-	}
-	ALOGV("========================================");
+    ALOGV("list the formats suppoted by ffmpeg: ");
+    ALOGV("========================================");
+    for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
+        ALOGV("format_names[%02d]: %s", i, FILE_FORMATS[i].format);
+    }
+    ALOGV("========================================");
 
-	for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
-		int len = strlen(FILE_FORMATS[i].format);
-		if (!strncasecmp(name, FILE_FORMATS[i].format, len)) {
-			container = FILE_FORMATS[i].container;
-			break;
-		}
-	}
+    for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
+        int len = strlen(FILE_FORMATS[i].format);
+        if (!strncasecmp(name, FILE_FORMATS[i].format, len)) {
+            container = FILE_FORMATS[i].container;
+            break;
+        }
+    }
 
-	return container;
+    return container;
 }
 
 static const char *SniffFFMPEGCommon(const char *url, float *confidence)
 {
-	int err = 0;
-	size_t i = 0;
-	size_t nb_streams = 0;
-	const char *container = NULL;
-	AVFormatContext *ic = NULL;
-	AVDictionary **opts = NULL;
+    int err = 0;
+    size_t i = 0;
+    size_t nb_streams = 0;
+    const char *container = NULL;
+    AVFormatContext *ic = NULL;
+    AVDictionary **opts = NULL;
 
-	status_t status = initFFmpeg();
-	if (status != OK) {
-		ALOGE("could not init ffmpeg");
-		return NULL;
-	}
+    status_t status = initFFmpeg();
+    if (status != OK) {
+        ALOGE("could not init ffmpeg");
+        return NULL;
+    }
 
-	ic = avformat_alloc_context();
-	if (!ic)
-	{
-		ALOGE("oom for alloc avformat context");
-		goto fail;
-	}
+    ic = avformat_alloc_context();
+    if (!ic)
+    {
+        ALOGE("oom for alloc avformat context");
+        goto fail;
+    }
 
-	err = avformat_open_input(&ic, url, NULL, NULL);
-	if (err < 0) {
+    err = avformat_open_input(&ic, url, NULL, NULL);
+    if (err < 0) {
         ALOGE("%s: avformat_open_input failed, err:%s", url, av_err2str(err));
-		goto fail;
-	}
+        goto fail;
+    }
 
-	opts = setup_find_stream_info_opts(ic, codec_opts);
-	nb_streams = ic->nb_streams;
-	err = avformat_find_stream_info(ic, opts);
-	if (err < 0) {
+    opts = setup_find_stream_info_opts(ic, codec_opts);
+    nb_streams = ic->nb_streams;
+    err = avformat_find_stream_info(ic, opts);
+    if (err < 0) {
         ALOGE("%s: could not find stream info, err:%s", url, av_err2str(err));
-		goto fail;
-	}
-	for (i = 0; i < nb_streams; i++) {
-		av_dict_free(&opts[i]);
-	}
-	av_freep(&opts);
+        goto fail;
+    }
+    for (i = 0; i < nb_streams; i++) {
+        av_dict_free(&opts[i]);
+    }
+    av_freep(&opts);
 
-	av_dump_format(ic, 0, url, 0);
+    av_dump_format(ic, 0, url, 0);
 
-	ALOGD("FFmpegExtrator, url: %s, format_name: %s, format_long_name: %s",
-			url, ic->iformat->name, ic->iformat->long_name);
+    ALOGD("FFmpegExtrator, url: %s, format_name: %s, format_long_name: %s",
+            url, ic->iformat->name, ic->iformat->long_name);
 
-	container = findMatchingContainer(ic->iformat->name);
+    container = findMatchingContainer(ic->iformat->name);
     if (container) {
         adjustContainerIfNeeded(&container, ic);
         adjustConfidenceIfNeeded(container, ic, confidence);
     }
 
 fail:
-	if (ic) {
-		avformat_close_input(&ic);
-	}
-	if (status == OK) {
-		deInitFFmpeg();
-	}
+    if (ic) {
+        avformat_close_input(&ic);
+    }
+    if (status == OK) {
+        deInitFFmpeg();
+    }
 
-	return container;
+    return container;
 }
 
 static const char *BetterSniffFFMPEG(const sp<DataSource> &source,
         float *confidence, sp<AMessage> meta)
 {
-	const char *ret = NULL;
-	char url[PATH_MAX] = {0};
+    const char *ret = NULL;
+    char url[PATH_MAX] = {0};
 
-	ALOGI("android-source:%p", source.get());
+    ALOGI("android-source:%p", source.get());
 
-	// pass the addr of smart pointer("source")
-	snprintf(url, sizeof(url), "android-source:%p", source.get());
+    // pass the addr of smart pointer("source")
+    snprintf(url, sizeof(url), "android-source:%p", source.get());
 
-	ret = SniffFFMPEGCommon(url, confidence);
-	if (ret) {
-		meta->setString("extended-extractor-url", url);
-	}
+    ret = SniffFFMPEGCommon(url, confidence);
+    if (ret) {
+        meta->setString("extended-extractor-url", url);
+    }
 
-	return ret;
+    return ret;
 }
 
 static const char *LegacySniffFFMPEG(const sp<DataSource> &source,
          float *confidence, sp<AMessage> meta)
 {
-	const char *ret = NULL;
-	char url[PATH_MAX] = {0};
+    const char *ret = NULL;
+    char url[PATH_MAX] = {0};
 
-	String8 uri = source->getUri();
-	if (!uri.string()) {
-		return NULL;
-	}
+    String8 uri = source->getUri();
+    if (!uri.string()) {
+        return NULL;
+    }
 
-	ALOGV("source url:%s", uri.string());
+    ALOGV("source url:%s", uri.string());
 
-	// pass the addr of smart pointer("source") + file name
-	snprintf(url, sizeof(url), "android-source:%p|file:%s", source.get(), uri.string());
+    // pass the addr of smart pointer("source") + file name
+    snprintf(url, sizeof(url), "android-source:%p|file:%s", source.get(), uri.string());
 
-	ret = SniffFFMPEGCommon(url, confidence);
-	if (ret) {
-		meta->setString("extended-extractor-url", url);
-	}
+    ret = SniffFFMPEGCommon(url, confidence);
+    if (ret) {
+        meta->setString("extended-extractor-url", url);
+    }
 
-	return ret;
+    return ret;
 }
 
 bool SniffFFMPEG(
         const sp<DataSource> &source, String8 *mimeType, float *confidence,
         sp<AMessage> *meta) {
-	ALOGV("SniffFFMPEG");
+    ALOGV("SniffFFMPEG");
 
-	*meta = new AMessage;
-	*confidence = 0.08f;  // be the last resort, by default
+    *meta = new AMessage;
+    *confidence = 0.08f;  // be the last resort, by default
 
-	const char *container = BetterSniffFFMPEG(source, confidence, *meta);
-	if (!container) {
-		ALOGW("sniff through BetterSniffFFMPEG failed, try LegacySniffFFMPEG");
-		container = LegacySniffFFMPEG(source, confidence, *meta);
-		if (container) {
-			ALOGV("sniff through LegacySniffFFMPEG success");
-		}
-	} else {
-		ALOGV("sniff through BetterSniffFFMPEG success");
-	}
+    const char *container = BetterSniffFFMPEG(source, confidence, *meta);
+    if (!container) {
+        ALOGW("sniff through BetterSniffFFMPEG failed, try LegacySniffFFMPEG");
+        container = LegacySniffFFMPEG(source, confidence, *meta);
+        if (container) {
+            ALOGV("sniff through LegacySniffFFMPEG success");
+        }
+    } else {
+        ALOGV("sniff through BetterSniffFFMPEG success");
+    }
 
-	if (container == NULL) {
-		ALOGD("SniffFFMPEG failed to sniff this source");
-		(*meta)->clear();
-		*meta = NULL;
-		return false;
-	}
+    if (container == NULL) {
+        ALOGD("SniffFFMPEG failed to sniff this source");
+        (*meta)->clear();
+        *meta = NULL;
+        return false;
+    }
 
-	ALOGD("ffmpeg detected media content as '%s' with confidence %.2f",
-			container, *confidence);
+    ALOGD("ffmpeg detected media content as '%s' with confidence %.2f",
+            container, *confidence);
 
-	/* use MPEG4Extractor(not extended extractor) for HTTP source only */
-	if (!strcasecmp(container, MEDIA_MIMETYPE_CONTAINER_MPEG4)
-			&& (source->flags() & DataSource::kIsCachingDataSource)) {
-		ALOGI("support container: %s, but it is caching data source, "
-				"Don't use ffmpegextractor", container);
-		(*meta)->clear();
-		*meta = NULL;
-		return false;
-	}
+    /* use MPEG4Extractor(not extended extractor) for HTTP source only */
+    if (!strcasecmp(container, MEDIA_MIMETYPE_CONTAINER_MPEG4)
+            && (source->flags() & DataSource::kIsCachingDataSource)) {
+        ALOGI("support container: %s, but it is caching data source, "
+                "Don't use ffmpegextractor", container);
+        (*meta)->clear();
+        *meta = NULL;
+        return false;
+    }
 
-	mimeType->setTo(container);
+    mimeType->setTo(container);
 
-	(*meta)->setString("extended-extractor", "extended-extractor");
-	(*meta)->setString("extended-extractor-subtype", "ffmpegextractor");
-	(*meta)->setString("extended-extractor-mime", container);
+    (*meta)->setString("extended-extractor", "extended-extractor");
+    (*meta)->setString("extended-extractor-subtype", "ffmpegextractor");
+    (*meta)->setString("extended-extractor-mime", container);
 
-	//debug only
-	char value[PROPERTY_VALUE_MAX];
-	property_get("sys.media.parser.ffmpeg", value, "0");
-	if (atoi(value)) {
-		ALOGD("[debug] use ffmpeg parser");
-		*confidence = 0.88f;
-	}
+    //debug only
+    char value[PROPERTY_VALUE_MAX];
+    property_get("sys.media.parser.ffmpeg", value, "0");
+    if (atoi(value)) {
+        ALOGD("[debug] use ffmpeg parser");
+        *confidence = 0.88f;
+    }
 
-	if (*confidence > 0.08f) {
-		(*meta)->setString("extended-extractor-use", "ffmpegextractor");
-	}
+    if (*confidence > 0.08f) {
+        (*meta)->setString("extended-extractor-use", "ffmpegextractor");
+    }
 
-	return true;
+    return true;
 }
 
 MediaExtractor *CreateFFmpegExtractor(const sp<DataSource> &source, const char *mime, const sp<AMessage> &meta) {
