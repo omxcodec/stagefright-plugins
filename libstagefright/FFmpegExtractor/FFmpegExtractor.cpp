@@ -51,11 +51,13 @@
 #define EXTRACTOR_MAX_PROBE_PACKETS 200
 #define FF_MAX_EXTRADATA_SIZE ((1 << 28) - FF_INPUT_BUFFER_PADDING_SIZE)
 
+#define WAIT_KEY_PACKET_AFTER_SEEK 1
+#define SUPPOURT_UNKNOWN_FORMAT    1
+
 //debug
 #define DEBUG_READ_ENTRY           0
 #define DEBUG_DISABLE_VIDEO        0
 #define DEBUG_DISABLE_AUDIO        0
-#define WAIT_KEY_PACKET_AFTER_SEEK 1
 #define DEBUG_PKT                  0
 
 enum {
@@ -1725,14 +1727,20 @@ static void adjustContainerIfNeeded(const char **mime, AVFormatContext *ic)
 static const char *findMatchingContainer(const char *name)
 {
 	size_t i = 0;
+#if SUPPOURT_UNKNOWN_FORMAT
+    //The FFmpegExtractor support all ffmpeg formats!!!
+    //Unknown format is defined as MEDIA_MIMETYPE_CONTAINER_FFMPEG
+    const char *container = MEDIA_MIMETYPE_CONTAINER_FFMPEG;
+#else
 	const char *container = NULL;
+#endif
 
-	ALOGI("list the formats suppoted by ffmpeg: ");
-	ALOGI("========================================");
+	ALOGV("list the formats suppoted by ffmpeg: ");
+	ALOGV("========================================");
 	for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
 		ALOGV("format_names[%02d]: %s", i, FILE_FORMATS[i].format);
 	}
-	ALOGI("========================================");
+	ALOGV("========================================");
 
 	for (i = 0; i < NELEM(FILE_FORMATS); ++i) {
 		int len = strlen(FILE_FORMATS[i].format);
@@ -1787,15 +1795,14 @@ static const char *SniffFFMPEGCommon(const char *url, float *confidence)
 
 	av_dump_format(ic, 0, url, 0);
 
-	ALOGI("FFmpegExtrator, url: %s, format_name: %s, format_long_name: %s",
+	ALOGD("FFmpegExtrator, url: %s, format_name: %s, format_long_name: %s",
 			url, ic->iformat->name, ic->iformat->long_name);
 
 	container = findMatchingContainer(ic->iformat->name);
-
-	if (container) {
-		adjustContainerIfNeeded(&container, ic);
-		adjustConfidenceIfNeeded(container, ic, confidence);
-	}
+    if (container) {
+        adjustContainerIfNeeded(&container, ic);
+        adjustConfidenceIfNeeded(container, ic, confidence);
+    }
 
 fail:
 	if (ic) {
@@ -1838,7 +1845,7 @@ static const char *LegacySniffFFMPEG(const sp<DataSource> &source,
 		return NULL;
 	}
 
-	ALOGI("source url:%s", uri.string());
+	ALOGV("source url:%s", uri.string());
 
 	// pass the addr of smart pointer("source") + file name
 	snprintf(url, sizeof(url), "android-source:%p|file:%s", source.get(), uri.string());
@@ -1864,10 +1871,10 @@ bool SniffFFMPEG(
 		ALOGW("sniff through BetterSniffFFMPEG failed, try LegacySniffFFMPEG");
 		container = LegacySniffFFMPEG(source, confidence, *meta);
 		if (container) {
-			ALOGI("sniff through LegacySniffFFMPEG success");
+			ALOGV("sniff through LegacySniffFFMPEG success");
 		}
 	} else {
-		ALOGI("sniff through BetterSniffFFMPEG success");
+		ALOGV("sniff through BetterSniffFFMPEG success");
 	}
 
 	if (container == NULL) {
@@ -1900,7 +1907,7 @@ bool SniffFFMPEG(
 	char value[PROPERTY_VALUE_MAX];
 	property_get("sys.media.parser.ffmpeg", value, "0");
 	if (atoi(value)) {
-		ALOGI("[debug] use ffmpeg parser");
+		ALOGD("[debug] use ffmpeg parser");
 		*confidence = 0.88f;
 	}
 

@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define LOG_NDEBUG 0
+
+//#define LOG_NDEBUG 0
 #define LOG_TAG "FFMPEG"
 #include <utils/Log.h>
 
@@ -110,25 +111,25 @@ static int android_open(URLContext *h, const char *url, int flags)
     // the DataSource Pointer passed by the ffmpeg extractor
     DataSource *source = NULL;
 
-    ALOGD("android source begin open");
+    ALOGV("android source begin open");
 
     if (!url) {
         ALOGE("android url is null!");
         return -1;
     }
 
-    ALOGD("android open, url: %s", url);
+    ALOGV("android open, url: %s", url);
     sscanf(url + strlen("android-source:"), "%p", &source);
     if(source == NULL){
         ALOGE("ffmpeg open data source error!");
         return -1;
     }
-    ALOGD("ffmpeg open android data source success, source ptr: %p", source);
+    ALOGV("ffmpeg open android data source success, source ptr: %p", source);
 
     FFSource *ffs = new FFSource(source);
     h->priv_data = (void *)ffs;
 
-    ALOGD("android source open success");
+    ALOGV("android source open success");
 
     return 0;
 }
@@ -158,7 +159,7 @@ static int64_t android_seek(URLContext *h, int64_t pos, int whence)
 static int android_close(URLContext *h)
 {
     FFSource* ffs = (FFSource*)h->priv_data;
-    ALOGD("android source close");
+    ALOGV("android source close");
     delete ffs;
     return 0;
 }
