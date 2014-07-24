@@ -228,17 +228,17 @@ void SoftFFmpegAudio::setDefaultCtx(AVCodecContext *avctx, const AVCodec *codec)
 }
 
 bool SoftFFmpegAudio::isConfigured() {
-	return mAudioSrcChannels != -1;
+	return mAudioSrcChannels != 0;
 }
 
 void SoftFFmpegAudio::resetCtx() {
-    mCtx->channels = -1;
-    mCtx->sample_rate = -1;
-    mCtx->bit_rate = -1;
+    mCtx->channels = 0;
+    mCtx->sample_rate = 0;
     mCtx->sample_fmt = AV_SAMPLE_FMT_NONE;
+    mCtx->bit_rate = 0;
 
-    mAudioSrcChannels = mAudioTgtChannels = -1;
-    mAudioSrcFreq = mAudioTgtFreq = -1;
+    mAudioSrcChannels = mAudioTgtChannels = 0;
+    mAudioSrcFreq = mAudioTgtFreq = 0;
     mAudioSrcFmt = mAudioTgtFmt = AV_SAMPLE_FMT_NONE;
     mAudioSrcChannelLayout = mAudioTgtChannelLayout = 0;
 }
@@ -358,7 +358,7 @@ void SoftFFmpegAudio::deInitDecoder() {
 
 OMX_ERRORTYPE SoftFFmpegAudio::internalGetParameter(
         OMX_INDEXTYPE index, OMX_PTR params) {
-    //ALOGV("internalGetParameter index:0x%x", index);
+    ALOGV("internalGetParameter index:0x%x", index);
     switch (index) {
         case OMX_IndexParamAudioPcm:
         {
@@ -377,12 +377,9 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalGetParameter(
             profile->eChannelMapping[0] = OMX_AUDIO_ChannelLF;
             profile->eChannelMapping[1] = OMX_AUDIO_ChannelRF;
 
-            CHECK(isConfigured());
+            profile->nChannels = mAudioTgtChannels;
+            profile->nSamplingRate = mAudioTgtFreq;
 
-            profile->nChannels = mAudioSrcChannels;
-            profile->nSamplingRate = mAudioSrcFreq;
-
-            //mCtx has been updated(adjustAudioParams)!
             ALOGV("get pcm params, nChannels:%lu, nSamplingRate:%lu",
                    profile->nChannels, profile->nSamplingRate);
 
@@ -683,16 +680,20 @@ OMX_ERRORTYPE SoftFFmpegAudio::isRoleSupported(
 }
 
 void SoftFFmpegAudio::adjustAudioParams() {
-    int32_t channels = 0;
-    int32_t sampling_rate = 0;
+    int32_t channels = mCtx->channels;
+    int32_t sampling_rate = mCtx->sample_rate;
 
     CHECK(!isConfigured());
 
-    sampling_rate = mCtx->sample_rate;
+    //src
+    mAudioSrcChannels = channels;
+    mAudioSrcFreq = sampling_rate;
+    mAudioSrcFmt = AV_SAMPLE_FMT_S16; //FIXME
+    mAudioSrcChannelLayout = av_get_default_channel_layout(mAudioSrcChannels);
 
-    //channels support 1 or 2 only
-    channels = mCtx->channels >= 2 ? 2 : 1;
-
+    //target
+    //channels support 1 or 2
+    channels = channels >= 2 ? 2 : 1;
     //4000 <= sampling rate <= 48000
     if (sampling_rate < 4000) {
         sampling_rate = 4000;
@@ -700,16 +701,19 @@ void SoftFFmpegAudio::adjustAudioParams() {
         sampling_rate = 48000;
     }
 
-    mAudioSrcChannels = mAudioTgtChannels = channels;
-    mAudioSrcFreq = mAudioTgtFreq = sampling_rate;
-    mAudioSrcFmt = mAudioTgtFmt = AV_SAMPLE_FMT_S16;
-    mAudioSrcChannelLayout = mAudioTgtChannelLayout =
-        av_get_default_channel_layout(channels);
+    if (mAudioTgtChannels == 0) {
+        mAudioTgtChannels = channels;
+    }
+    if (mAudioTgtFreq == 0) {
+        mAudioTgtFreq = sampling_rate;
+    }
+    mAudioTgtFmt = AV_SAMPLE_FMT_S16; //FIXME
+    mAudioTgtChannelLayout = av_get_default_channel_layout(mAudioTgtChannels);
 }
 
 OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
         OMX_INDEXTYPE index, const OMX_PTR params) {
-    //ALOGV("internalSetParameter index:0x%x", index);
+    ALOGV("internalSetParameter index:0x%x", index);
     switch (index) {
         case OMX_IndexParamStandardComponentRole:
         {
@@ -727,11 +731,8 @@ OMX_ERRORTYPE SoftFFmpegAudio::internalSetParameter(
                 return OMX_ErrorUndefined;
             }
 
-            CHECK(!isConfigured());
-
-            mCtx->channels = profile->nChannels;
-            mCtx->sample_rate = profile->nSamplingRate;
-            mCtx->bits_per_coded_sample = profile->nBitPerSample;
+            mAudioTgtChannels = profile->nChannels;
+            mAudioTgtFreq = profile->nSamplingRate;
 
             ALOGV("set OMX_IndexParamAudioPcm, nChannels:%lu, "
                     "nSampleRate:%lu, nBitsPerSample:%lu",
